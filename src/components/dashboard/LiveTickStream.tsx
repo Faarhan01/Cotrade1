@@ -56,7 +56,7 @@ export const LiveTickStream: React.FC<LiveTickStreamProps> = ({
             Awaiting Real Market Ticks from MetaTrader 5
           </div>
           <p className="text-slate-500">
-            No fake simulated ticks. Attach <code className="text-cyan-400">AIMT5Bridge.mq5</code> to any chart in MT5 with whitelisted URL <code className="text-cyan-400">http://127.0.0.1:7777</code> to begin live tick streaming.
+            Fake simulated data is disabled. Launch your local MetaTrader 5 application to stream real broker ticks via the Peron Python package.
           </p>
         </div>
       ) : (

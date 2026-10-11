@@ -97,17 +97,15 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
                 <input
                   type="text"
                   value={selectedSymbol}
-                  onChange={(e) => onSelectSymbol(e.target.value.toUpperCase())}
-                  placeholder="e.g. EURUSD"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white font-mono uppercase focus:border-cyan-500 focus:outline-none"
+                  onChange={(e) => onSelectSymbol(e.target.value)}
+                  placeholder="e.g. EURUSD or EURUSD.m"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white font-mono focus:border-cyan-500 focus:outline-none"
                   list="symbol-options"
                 />
                 <datalist id="symbol-options">
-                  {ticks.length > 0
-                    ? ticks.map((t) => <option key={t.symbol} value={t.symbol} />)
-                    : ['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD', 'BTCUSD', 'AUDUSD', 'USDCAD'].map((s) => (
-                        <option key={s} value={s} />
-                      ))}
+                  {ticks.map((t) => (
+                    <option key={t.symbol} value={t.symbol} />
+                  ))}
                 </datalist>
               </div>
             </div>

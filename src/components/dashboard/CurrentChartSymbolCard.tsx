@@ -49,27 +49,6 @@ export const CurrentChartSymbolCard: React.FC<CurrentChartSymbolCardProps> = ({
     }
   };
 
-  const handleSimulateCandles = async (symbol: string) => {
-    try {
-      setLoadingAction('simulate');
-      const res = await fetch('/api/candles/simulate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbol, timeframe: 'M1', count: 80, basePrice: currentChart?.bid || 1.085 }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setFeedback(`Generated ${data.count} test candles & indicators for ${symbol}`);
-        onRefresh?.();
-      }
-    } catch {
-      setFeedback('Simulation failed');
-    } finally {
-      setLoadingAction(null);
-      setTimeout(() => setFeedback(null), 3500);
-    }
-  };
-
   if (!currentChart) {
     return (
       <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-sm">
@@ -80,30 +59,18 @@ export const CurrentChartSymbolCard: React.FC<CurrentChartSymbolCardProps> = ({
               Current Connected Chart Symbol
             </h2>
           </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/60">
-            Awaiting Chart
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+            Awaiting MT5 Feed
           </span>
         </div>
 
-        <div className="border border-dashed border-slate-800 rounded-lg p-6 text-center text-slate-400 font-mono text-xs space-y-3">
+        <div className="border border-dashed border-slate-800 rounded-lg p-6 text-center text-slate-400 font-mono text-xs space-y-2">
           <p className="text-sm font-semibold text-slate-300">
-            No Active MT5 Chart Connected Yet
+            No Active MT5 Symbol Feed Connected Yet
           </p>
           <p className="text-slate-500 max-w-md mx-auto text-[11px] leading-relaxed">
-            Attach <code className="text-cyan-400 font-bold">AIMT5Bridge.mq5</code> to any chart in MetaTrader 5 (e.g. EURUSD M1).
-            This section will immediately display the active symbol specifications, live quotes, and session boundaries.
+            Connect to your local MetaTrader 5 terminal application via the Peron Python package. Once connected, real broker specifications, live quotes, and session metrics will stream here automatically.
           </p>
-
-          <div className="pt-2 flex items-center justify-center gap-3">
-            <button
-              onClick={() => handleSimulateCandles('EURUSD')}
-              disabled={loadingAction === 'simulate'}
-              className="px-3.5 py-1.5 rounded-lg bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-2 transition-all shadow-sm"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>{loadingAction === 'simulate' ? 'Seeding...' : 'Test With Synthetic Candles'}</span>
-            </button>
-          </div>
         </div>
       </div>
     );
@@ -210,7 +177,7 @@ export const CurrentChartSymbolCard: React.FC<CurrentChartSymbolCardProps> = ({
         <div className="bg-slate-950/70 border border-slate-800/80 p-2.5 rounded-lg">
           <span className="text-[10px] text-slate-500 block uppercase">Contract Size</span>
           <div className="text-slate-300 mt-0.5 font-bold">
-            {currentChart.contractSize.toLocaleString()}
+            {currentChart.contractSize?.toLocaleString() || '100,000'}
           </div>
         </div>
       </div>

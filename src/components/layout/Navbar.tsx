@@ -11,6 +11,7 @@ import {
   Check,
   AlertTriangle,
   Database,
+  Compass,
 } from 'lucide-react';
 import { AppState } from '../../types';
 import { api } from '../../services/api';
@@ -55,6 +56,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const navItems = [
     { id: 'dashboard', label: 'Live Terminal', icon: Terminal },
+    { id: 'strategies', label: 'Strategy Lab', icon: Compass },
     { id: 'mcp', label: 'AI MCP Hub', icon: Cpu },
     { id: 'risk', label: 'Risk & Trailing', icon: ShieldAlert },
     { id: 'database', label: 'Database & SQLite', icon: Database },
@@ -125,22 +127,28 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Status Indicators & Kill Switch */}
           <div className="flex items-center gap-3">
-            {/* MT5 EA Status */}
+            {/* MT5 Status */}
             <div
               className={`flex items-center gap-2 px-2.5 py-1 rounded-full border text-xs font-mono transition-colors ${
                 isEaOnline
                   ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60 shadow-sm shadow-emerald-900/30'
-                  : 'bg-amber-950/40 text-amber-300 border-amber-800/50'
+                  : 'bg-slate-900 text-slate-300 border-slate-700'
               }`}
-              title={isEaOnline ? 'MT5 Expert Advisor sending live ticks & executing orders' : 'Waiting for EA to attach in MT5 at http://127.0.0.1:7777'}
+              title={
+                isEaOnline
+                  ? 'Connected to local MetaTrader 5 app via Peron Python package'
+                  : 'Peron MT5 package ready. Awaiting local MetaTrader 5 application connection.'
+              }
             >
               <span
                 className={`h-2 w-2 rounded-full ${
-                  isEaOnline ? 'bg-emerald-400 animate-ping' : 'bg-amber-400 animate-pulse'
+                  isEaOnline ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'
                 }`}
               />
-              <span className="hidden sm:inline font-semibold">MT5 EA:</span>
-              <span>{isEaOnline ? 'ONLINE' : 'WAITING'}</span>
+              <span className="hidden sm:inline font-semibold">MT5 App:</span>
+              <span className={isEaOnline ? 'text-emerald-300 font-bold' : 'text-amber-400'}>
+                {isEaOnline ? 'CONNECTED' : 'DISCONNECTED'}
+              </span>
             </div>
 
             {/* WebSocket Latency */}

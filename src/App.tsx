@@ -7,6 +7,7 @@ import { RiskManagementPage } from './pages/RiskManagementPage';
 import { EaSetupGuide } from './components/ea/EaSetupGuide';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { DatabaseExplorer } from './components/database/DatabaseExplorer';
+import { KnowledgeBasePage } from './components/knowledge/KnowledgeBasePage';
 import { Activity, ShieldCheck, Terminal, Cpu } from 'lucide-react';
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === 'dashboard' && <DashboardPage state={state} onRefresh={reloadState} />}
+        {activeTab === 'strategies' && <KnowledgeBasePage />}
         {activeTab === 'mcp' && <McpConsole />}
         {activeTab === 'risk' && <RiskManagementPage state={state} />}
         {activeTab === 'database' && <DatabaseExplorer />}

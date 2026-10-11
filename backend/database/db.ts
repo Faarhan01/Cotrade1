@@ -141,10 +141,88 @@ function initSchema(db: Database) {
       updated_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS strategies (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      type TEXT NOT NULL,
+      symbol TEXT NOT NULL,
+      timeframe TEXT NOT NULL,
+      parameters_json TEXT NOT NULL,
+      status TEXT NOT NULL,
+      tags_json TEXT,
+      author TEXT,
+      notes TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS observations (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      symbol TEXT,
+      timeframe TEXT,
+      strategy_id TEXT,
+      category TEXT NOT NULL,
+      tags_json TEXT,
+      metrics_json TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS backtest_results (
+      id TEXT PRIMARY KEY,
+      strategy_id TEXT NOT NULL,
+      strategy_name TEXT NOT NULL,
+      symbol TEXT NOT NULL,
+      timeframe TEXT NOT NULL,
+      candle_count INTEGER NOT NULL,
+      start_time INTEGER NOT NULL,
+      start_time_iso TEXT,
+      end_time INTEGER NOT NULL,
+      end_time_iso TEXT,
+      initial_deposit REAL NOT NULL,
+      final_equity REAL NOT NULL,
+      net_profit REAL NOT NULL,
+      profit_factor REAL NOT NULL,
+      win_rate_pct REAL NOT NULL,
+      total_trades INTEGER NOT NULL,
+      winning_trades INTEGER NOT NULL,
+      losing_trades INTEGER NOT NULL,
+      max_drawdown_pct REAL NOT NULL,
+      max_drawdown_usd REAL NOT NULL,
+      average_trade_profit REAL NOT NULL,
+      average_win REAL NOT NULL,
+      average_loss REAL NOT NULL,
+      risk_reward_ratio REAL NOT NULL,
+      trades_json TEXT NOT NULL,
+      equity_curve_json TEXT NOT NULL,
+      evaluated_at INTEGER NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_candles_lookup ON candles_history(symbol, timeframe, time);
     CREATE INDEX IF NOT EXISTS idx_ticks_lookup ON ticks_history(symbol, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_strategies_symbol ON strategies(symbol, status);
+    CREATE INDEX IF NOT EXISTS idx_backtest_strategy ON backtest_results(strategy_id, evaluated_at);
+    CREATE INDEX IF NOT EXISTS idx_observations_cat ON observations(category, created_at);
     CREATE INDEX IF NOT EXISTS idx_account_created ON account_history(created_at);
   `);
+
+  // Migrate schema for existing tables if needed
+  try {
+    db.run(`ALTER TABLE account_history ADD COLUMN created_at_iso TEXT;`);
+  } catch {
+    // Column already exists or fresh table
+  }
+}
+
+/**
+ * Ensures that no bound parameter is undefined, which causes sql.js to throw:
+ * "Wrong API use : tried to bind a value of an unknown type (undefined)"
+ */
+export function safeParams(params: any[]): any[] {
+  return params.map((p) => (p === undefined ? null : p));
 }
 
 export function persistDatabase() {
@@ -210,6 +288,9 @@ export async function dbPruneDatabase(): Promise<{
     // 6. Cap audit logs (keep last 500 logs)
     db.run(`DELETE FROM audit_logs WHERE timestamp < ${sevenDaysAgo} OR id NOT IN (SELECT id FROM audit_logs ORDER BY timestamp DESC LIMIT 500)`);
 
+    // 7. Cap backtest results history (keep last 200 backtests)
+    db.run(`DELETE FROM backtest_results WHERE id NOT IN (SELECT id FROM backtest_results ORDER BY evaluated_at DESC LIMIT 200)`);
+
     persistDatabase();
     return {
       purgedUnexecutedOrders: unexecutedCount,
@@ -235,29 +316,32 @@ export async function dbInsertOrder(order: any) {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  stmt.run([
-    order.id,
-    order.action,
-    order.symbol || null,
-    order.orderType || null,
-    order.volume || null,
-    order.price || null,
-    order.sl || null,
-    order.tp || null,
-    order.ticket || null,
-    order.magic || null,
-    order.comment || null,
-    order.status,
-    order.source,
-    order.result?.dealTicket || null,
-    order.result?.executionPrice || null,
-    order.result?.executionTimeMs || null,
-    order.result?.errorCode || null,
-    order.result?.errorMessage || null,
-    order.createdAt,
-    order.executedAt || null,
-  ]);
-  stmt.free();
+  try {
+    stmt.run(safeParams([
+      order.id,
+      order.action,
+      order.symbol ? order.symbol.trim() : null,
+      order.orderType || null,
+      order.volume != null ? order.volume : null,
+      order.price != null ? order.price : null,
+      order.sl != null ? order.sl : null,
+      order.tp != null ? order.tp : null,
+      order.ticket || null,
+      order.magic || null,
+      order.comment || null,
+      order.status,
+      order.source,
+      order.result?.dealTicket || null,
+      order.result?.executionPrice || null,
+      order.result?.executionTimeMs || null,
+      order.result?.errorCode || null,
+      order.result?.errorMessage || null,
+      order.createdAt,
+      order.executedAt || null,
+    ]));
+  } finally {
+    stmt.free();
+  }
   persistDatabase();
 }
 
@@ -270,27 +354,31 @@ export async function dbInsertAccountSnapshot(account: AccountInfo) {
   if (now - lastAccountRecordTime < 5000) return;
   lastAccountRecordTime = now;
 
-  const db = await getDatabase();
-  const stmt = db.prepare(`
-    INSERT INTO account_history (
-      login, balance, equity, margin, free_margin, margin_level, profit, currency, server, created_at, created_at_iso
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  stmt.run([
-    account.login,
-    account.balance,
-    account.equity,
-    account.margin,
-    account.freeMargin,
-    account.marginLevel,
-    account.profit,
-    account.currency,
-    account.server,
-    now,
-    new Date(now).toISOString(),
-  ]);
-  stmt.free();
-  persistDatabase();
+  try {
+    const db = await getDatabase();
+    const stmt = db.prepare(`
+      INSERT INTO account_history (
+        login, balance, equity, margin, free_margin, margin_level, profit, currency, server, created_at, created_at_iso
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    stmt.run(safeParams([
+      account.login || 0,
+      account.balance ?? 0,
+      account.equity ?? 0,
+      account.margin ?? 0,
+      account.freeMargin ?? 0,
+      account.marginLevel ?? 0,
+      account.profit ?? 0,
+      account.currency || 'USD',
+      account.server || 'Default',
+      now,
+      new Date(now).toISOString(),
+    ]));
+    stmt.free();
+    persistDatabase();
+  } catch (err: any) {
+    console.error('dbInsertAccountSnapshot error:', err.message);
+  }
 }
 
 // 3. Candles History
@@ -303,46 +391,64 @@ export async function dbInsertCandles(symbol: string, timeframe: string, candles
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  for (const c of candles) {
-    const timeIso = c.timeIso || new Date(c.time * 1000).toISOString();
-    stmt.run([
-      symbol.toUpperCase(),
-      timeframe.toUpperCase(),
-      c.time,
-      c.open,
-      c.high,
-      c.low,
-      c.close,
-      c.volume,
-      timeIso,
-    ]);
+  try {
+    for (const c of candles) {
+      const timeIso = c.timeIso || new Date(c.time * 1000).toISOString();
+      stmt.run(safeParams([
+        symbol ? symbol.trim() : 'EURUSD',
+        timeframe ? timeframe.trim() : 'M1',
+        c.time || 0,
+        c.open ?? 0,
+        c.high ?? 0,
+        c.low ?? 0,
+        c.close ?? 0,
+        c.volume ?? 0,
+        timeIso,
+      ]));
+    }
+  } finally {
+    stmt.free();
   }
-  stmt.free();
   persistDatabase();
 }
 
 // 4. Ticks History
 export async function dbInsertTicks(ticks: TickData[]) {
-  if (!ticks || ticks.length === 0) return;
-  const db = await getDatabase();
-  const stmt = db.prepare(`
-    INSERT INTO ticks_history (symbol, bid, ask, spread, timestamp, time_iso)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
+  if (!ticks || !Array.isArray(ticks) || ticks.length === 0) return;
+  try {
+    const db = await getDatabase();
+    const stmt = db.prepare(`
+      INSERT INTO ticks_history (symbol, bid, ask, spread, timestamp, time_iso)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
 
-  for (const t of ticks) {
-    const timeIso = new Date(t.time * 1000).toISOString();
-    stmt.run([
-      t.symbol.toUpperCase(),
-      t.bid,
-      t.ask,
-      t.spread,
-      t.time,
-      timeIso,
-    ]);
+    try {
+      for (const t of ticks) {
+        if (!t) continue;
+        const timeSec = t.time || Math.floor(Date.now() / 1000);
+        let timeIso: string;
+        try {
+          timeIso = new Date(timeSec * 1000).toISOString();
+        } catch {
+          timeIso = new Date().toISOString();
+        }
+        const spread = t.spread != null ? Number(t.spread) : (t.ask != null && t.bid != null ? Math.round((t.ask - t.bid) * 100000) : 10);
+        stmt.run(safeParams([
+          t.symbol ? t.symbol.trim() : 'EURUSD',
+          t.bid ?? 0,
+          t.ask ?? 0,
+          spread,
+          timeSec,
+          timeIso,
+        ]));
+      }
+    } finally {
+      stmt.free();
+    }
+    persistDatabase();
+  } catch (err: any) {
+    console.error('dbInsertTicks error:', err.message);
   }
-  stmt.free();
-  persistDatabase();
 }
 
 // 5. Query Candles
@@ -351,7 +457,7 @@ export async function dbGetCandles(symbol: string, timeframe: string, limit = 10
   const sql = `
     SELECT time, open, high, low, close, volume, time_iso
     FROM candles_history
-    WHERE symbol = '${symbol.toUpperCase()}' AND timeframe = '${timeframe.toUpperCase()}'
+    WHERE symbol = '${(symbol || '').trim()}' COLLATE NOCASE AND timeframe = '${(timeframe || '').trim()}' COLLATE NOCASE
     ORDER BY time ASC
     LIMIT ${limit}
   `;
@@ -373,8 +479,8 @@ export async function dbGetCandles(symbol: string, timeframe: string, limit = 10
 export async function dbGetTicksHistory(symbol?: string, limit = 100): Promise<any[]> {
   const db = await getDatabase();
   let sql = `SELECT symbol, bid, ask, spread, timestamp, time_iso FROM ticks_history`;
-  if (symbol && symbol.toUpperCase() !== 'ALL') {
-    sql += ` WHERE symbol = '${symbol.toUpperCase()}'`;
+  if (symbol && symbol.trim().toLowerCase() !== 'all') {
+    sql += ` WHERE symbol = '${symbol.trim()}' COLLATE NOCASE`;
   }
   sql += ` ORDER BY timestamp DESC LIMIT ${limit}`;
 
@@ -408,16 +514,19 @@ export async function dbInsertLog(log: any) {
     INSERT OR REPLACE INTO audit_logs (id, timestamp, level, title, details, source, ticket)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run([
-    log.id,
-    log.timestamp,
-    log.level,
-    log.title,
-    log.details,
-    log.source,
-    log.ticket || null,
-  ]);
-  stmt.free();
+  try {
+    stmt.run(safeParams([
+      log.id,
+      log.timestamp,
+      log.level,
+      log.title,
+      log.details,
+      log.source,
+      log.ticket || null,
+    ]));
+  } finally {
+    stmt.free();
+  }
   persistDatabase();
 }
 
@@ -431,19 +540,22 @@ export async function dbSaveRiskSettings(risk: any) {
       max_open_positions, updated_at
     ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run([
-    risk.globalTakeProfitUSD,
-    risk.globalStopLossUSD,
-    risk.maxDrawdownPercent,
-    risk.emergencyKillSwitch ? 1 : 0,
-    risk.trailingStopEnabled ? 1 : 0,
-    risk.trailingStopDistancePoints,
-    risk.trailingStopStepPoints,
-    risk.maxLotSizePerTrade,
-    risk.maxOpenPositions,
-    Date.now(),
-  ]);
-  stmt.free();
+  try {
+    stmt.run(safeParams([
+      risk.globalTakeProfitUSD ?? 0,
+      risk.globalStopLossUSD ?? 0,
+      risk.maxDrawdownPercent ?? 5,
+      risk.emergencyKillSwitch ? 1 : 0,
+      risk.trailingStopEnabled ? 1 : 0,
+      risk.trailingStopDistancePoints ?? 50,
+      risk.trailingStopStepPoints ?? 10,
+      risk.maxLotSizePerTrade ?? 1.0,
+      risk.maxOpenPositions ?? 10,
+      Date.now(),
+    ]));
+  } finally {
+    stmt.free();
+  }
   persistDatabase();
 }
 
@@ -475,6 +587,9 @@ export async function dbGetAnalytics(): Promise<any> {
   const candlesRes = db.exec(`SELECT COUNT(*) as total FROM candles_history`);
   const ticksRes = db.exec(`SELECT COUNT(*) as total FROM ticks_history`);
   const accountRes = db.exec(`SELECT COUNT(*) as total FROM account_history`);
+  const stratRes = db.exec(`SELECT COUNT(*) as total FROM strategies`);
+  const obsRes = db.exec(`SELECT COUNT(*) as total FROM observations`);
+  const btRes = db.exec(`SELECT COUNT(*) as total FROM backtest_results`);
 
   let totalOrders = 0;
   let executedOrders = 0;
@@ -483,6 +598,9 @@ export async function dbGetAnalytics(): Promise<any> {
   let totalCandles = 0;
   let totalTicks = 0;
   let totalAccountSnapshots = 0;
+  let totalStrategies = 0;
+  let totalObservations = 0;
+  let totalBacktests = 0;
 
   if (totalOrdersRes.length > 0 && totalOrdersRes[0].values.length > 0) {
     const row = totalOrdersRes[0].values[0];
@@ -503,6 +621,15 @@ export async function dbGetAnalytics(): Promise<any> {
   if (accountRes.length > 0 && accountRes[0].values.length > 0) {
     totalAccountSnapshots = Number(accountRes[0].values[0][0]) || 0;
   }
+  if (stratRes.length > 0 && stratRes[0].values.length > 0) {
+    totalStrategies = Number(stratRes[0].values[0][0]) || 0;
+  }
+  if (obsRes.length > 0 && obsRes[0].values.length > 0) {
+    totalObservations = Number(obsRes[0].values[0][0]) || 0;
+  }
+  if (btRes.length > 0 && btRes[0].values.length > 0) {
+    totalBacktests = Number(btRes[0].values[0][0]) || 0;
+  }
 
   let dbSizeBytes = 0;
   if (fs.existsSync(DB_FILE)) {
@@ -521,5 +648,433 @@ export async function dbGetAnalytics(): Promise<any> {
     totalCandles,
     totalTicks,
     totalAccountSnapshots,
+    totalStrategies,
+    totalObservations,
+    totalBacktests,
   };
 }
+
+// ==========================================
+// 12. Strategies Knowledge Base CRUD
+// ==========================================
+
+export async function dbSaveStrategy(strategy: any): Promise<void> {
+  const db = await getDatabase();
+  const stmt = db.prepare(`
+    INSERT OR REPLACE INTO strategies (
+      id, name, description, type, symbol, timeframe, parameters_json,
+      status, tags_json, author, notes, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  try {
+    stmt.run(safeParams([
+      strategy.id,
+      strategy.name,
+      strategy.description || '',
+      strategy.type,
+      strategy.symbol ? strategy.symbol.trim() : 'EURUSD',
+      strategy.timeframe ? strategy.timeframe.trim() : 'M1',
+      JSON.stringify(strategy.parameters || {}),
+      strategy.status || 'active',
+      JSON.stringify(strategy.tags || []),
+      strategy.author || 'User',
+      strategy.notes || '',
+      strategy.createdAt || Date.now(),
+      Date.now(),
+    ]));
+  } finally {
+    stmt.free();
+  }
+  persistDatabase();
+}
+
+export async function dbGetStrategies(symbol?: string): Promise<any[]> {
+  const db = await getDatabase();
+  let sql = 'SELECT * FROM strategies';
+  if (symbol && symbol.trim().toLowerCase() !== 'all') {
+    sql += ` WHERE symbol = '${symbol.trim()}' COLLATE NOCASE`;
+  }
+  sql += ' ORDER BY updated_at DESC';
+
+  const res = db.exec(sql);
+  if (res.length === 0) {
+    // Seed default strategies if table is empty
+    await seedDefaultStrategies();
+    return dbGetStrategies(symbol);
+  }
+
+  const cols = res[0].columns;
+  return res[0].values.map((row) => {
+    const item: Record<string, any> = {};
+    cols.forEach((col, idx) => (item[col] = row[idx]));
+    return {
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      type: item.type,
+      symbol: item.symbol,
+      timeframe: item.timeframe,
+      parameters: item.parameters_json ? JSON.parse(item.parameters_json) : {},
+      status: item.status,
+      tags: item.tags_json ? JSON.parse(item.tags_json) : [],
+      author: item.author,
+      notes: item.notes,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    };
+  });
+}
+
+export async function dbGetStrategyById(id: string): Promise<any | null> {
+  const db = await getDatabase();
+  const res = db.exec(`SELECT * FROM strategies WHERE id = '${id}' LIMIT 1`);
+  if (res.length === 0 || res[0].values.length === 0) return null;
+  const cols = res[0].columns;
+  const row = res[0].values[0];
+  const item: Record<string, any> = {};
+  cols.forEach((col, idx) => (item[col] = row[idx]));
+  return {
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    type: item.type,
+    symbol: item.symbol,
+    timeframe: item.timeframe,
+    parameters: item.parameters_json ? JSON.parse(item.parameters_json) : {},
+    status: item.status,
+    tags: item.tags_json ? JSON.parse(item.tags_json) : [],
+    author: item.author,
+    notes: item.notes,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+  };
+}
+
+export async function dbDeleteStrategy(id: string): Promise<boolean> {
+  const db = await getDatabase();
+  db.run(`DELETE FROM strategies WHERE id = '${id}'`);
+  persistDatabase();
+  return true;
+}
+
+async function seedDefaultStrategies() {
+  const defaults = [
+    {
+      id: 'strat-rsi-reversal-eurusd',
+      name: 'RSI Reversal Mean Reversion',
+      description: 'Enters BUY when 14-period RSI drops below 30 (oversold) and SELL when RSI exceeds 70 (overbought). Optimal for oscillating range-bound FX pairs.',
+      type: 'RSI_REVERSAL',
+      symbol: 'EURUSD',
+      timeframe: 'M1',
+      parameters: {
+        rsiOversold: 30,
+        rsiOverbought: 70,
+        rsiPeriod: 14,
+        stopLossPoints: 250,
+        takeProfitPoints: 500,
+        lotSize: 0.1,
+        maxHoldBars: 40,
+      },
+      status: 'active',
+      tags: ['RSI', 'Oscillator', 'MeanReversion', 'Forex'],
+      author: 'Cotrade Algorithmic Suite',
+      notes: 'Best performed during London/New York session overlap with moderate volatility.',
+      createdAt: Date.now() - 3600000 * 24,
+      updatedAt: Date.now() - 3600000 * 24,
+    },
+    {
+      id: 'strat-ema-trend-gold',
+      name: 'EMA 9/21 Trend Scalper',
+      description: 'Captures fast trend continuation when EMA 9 crosses above EMA 21 with price confirmation. Wide 2:1 profit ratio.',
+      type: 'EMA_CROSSOVER',
+      symbol: 'XAUUSD',
+      timeframe: 'M5',
+      parameters: {
+        fastEmaPeriod: 9,
+        slowEmaPeriod: 21,
+        stopLossPoints: 400,
+        takeProfitPoints: 800,
+        lotSize: 0.05,
+        maxHoldBars: 60,
+      },
+      status: 'active',
+      tags: ['EMA', 'Trend', 'Gold', 'CrossOver'],
+      author: 'Cotrade Algorithmic Suite',
+      notes: 'Ensure gold spread is below 35 points before live execution.',
+      createdAt: Date.now() - 3600000 * 12,
+      updatedAt: Date.now() - 3600000 * 12,
+    },
+    {
+      id: 'strat-consensus-multi-ind',
+      name: 'Multi-Indicator Consensus Alpha',
+      description: 'Requires synchronous alignment between RSI momentum, MACD histogram positive slope, and EMA trend bias before emitting trade signal.',
+      type: 'MULTI_INDICATOR_CONSENSUS',
+      symbol: 'EURUSD',
+      timeframe: 'M1',
+      parameters: {
+        stopLossPoints: 300,
+        takeProfitPoints: 600,
+        lotSize: 0.1,
+        maxHoldBars: 50,
+      },
+      status: 'active',
+      tags: ['Consensus', 'RSI', 'MACD', 'EMA'],
+      author: 'AI Quantitative Engine',
+      notes: 'Produces high-conviction signals with lower frequency.',
+      createdAt: Date.now() - 3600000 * 6,
+      updatedAt: Date.now() - 3600000 * 6,
+    },
+  ];
+
+  for (const s of defaults) {
+    await dbSaveStrategy(s);
+  }
+}
+
+// ==========================================
+// 13. Observations Knowledge Base CRUD
+// ==========================================
+
+export async function dbSaveObservation(obs: any): Promise<void> {
+  const db = await getDatabase();
+  const stmt = db.prepare(`
+    INSERT OR REPLACE INTO observations (
+      id, title, content, symbol, timeframe, strategy_id, category,
+      tags_json, metrics_json, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  try {
+    stmt.run(safeParams([
+      obs.id,
+      obs.title,
+      obs.content,
+      obs.symbol ? obs.symbol.trim() : null,
+      obs.timeframe ? obs.timeframe.trim() : null,
+      obs.strategyId || null,
+      obs.category || 'market_insight',
+      JSON.stringify(obs.tags || []),
+      JSON.stringify(obs.metrics || {}),
+      obs.createdAt || Date.now(),
+      Date.now(),
+    ]));
+  } finally {
+    stmt.free();
+  }
+  persistDatabase();
+}
+
+export async function dbGetObservations(category?: string): Promise<any[]> {
+  const db = await getDatabase();
+  let sql = 'SELECT * FROM observations';
+  if (category && category !== 'all') {
+    sql += ` WHERE category = '${category}'`;
+  }
+  sql += ' ORDER BY created_at DESC';
+
+  const res = db.exec(sql);
+  if (res.length === 0) {
+    await seedDefaultObservations();
+    return dbGetObservations(category);
+  }
+
+  const cols = res[0].columns;
+  return res[0].values.map((row) => {
+    const item: Record<string, any> = {};
+    cols.forEach((col, idx) => (item[col] = row[idx]));
+    return {
+      id: item.id,
+      title: item.title,
+      content: item.content,
+      symbol: item.symbol,
+      timeframe: item.timeframe,
+      strategyId: item.strategy_id,
+      category: item.category,
+      tags: item.tags_json ? JSON.parse(item.tags_json) : [],
+      metrics: item.metrics_json ? JSON.parse(item.metrics_json) : {},
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    };
+  });
+}
+
+export async function dbDeleteObservation(id: string): Promise<boolean> {
+  const db = await getDatabase();
+  db.run(`DELETE FROM observations WHERE id = '${id}'`);
+  persistDatabase();
+  return true;
+}
+
+async function seedDefaultObservations() {
+  const defaults = [
+    {
+      id: 'obs-london-breakout',
+      title: 'London Open Spread Expansion & False Breaks',
+      content: 'Consistently observed that around 08:00 UTC (London open), EURUSD spread widens from 3 to 12 points for ~90 seconds. Breakout strategies entering immediately on the first M1 candle frequently encounter whipsaws. Waiting for 3 candles (08:03 UTC) filters out 68% of false breakouts.',
+      symbol: 'EURUSD',
+      timeframe: 'M1',
+      category: 'market_insight',
+      tags: ['LondonOpen', 'Spread', 'Liquidity', 'FalseBreak'],
+      metrics: { avgSpreadExpansion: '8.4 points', winRateImprovement: '+14%' },
+      createdAt: Date.now() - 3600000 * 18,
+      updatedAt: Date.now() - 3600000 * 18,
+    },
+    {
+      id: 'obs-gold-volatility-us-cpi',
+      title: 'Gold (XAUUSD) M5 Momentum Persistence during US CPI',
+      content: 'During major US CPI releases, Gold forms impulsive 40-60 point candles. Standard RSI triggers false overbought/oversold prematurely. Trend continuation with trailing stops in 150-point increments captures 2.4x more profit than fixed TP.',
+      symbol: 'XAUUSD',
+      timeframe: 'M5',
+      category: 'pattern',
+      tags: ['Gold', 'Macro', 'CPI', 'Volatility', 'TrailingStop'],
+      metrics: { avgImpulsePoints: '52.3', trailingStopGain: '2.4x' },
+      createdAt: Date.now() - 3600000 * 8,
+      updatedAt: Date.now() - 3600000 * 8,
+    },
+  ];
+
+  for (const o of defaults) {
+    await dbSaveObservation(o);
+  }
+}
+
+// ==========================================
+// 14. Backtest Results Storage CRUD
+// ==========================================
+
+export async function dbSaveBacktestResult(result: any): Promise<void> {
+  const db = await getDatabase();
+  const stmt = db.prepare(`
+    INSERT OR REPLACE INTO backtest_results (
+      id, strategy_id, strategy_name, symbol, timeframe, candle_count,
+      start_time, start_time_iso, end_time, end_time_iso, initial_deposit,
+      final_equity, net_profit, profit_factor, win_rate_pct, total_trades,
+      winning_trades, losing_trades, max_drawdown_pct, max_drawdown_usd,
+      average_trade_profit, average_win, average_loss, risk_reward_ratio,
+      trades_json, equity_curve_json, evaluated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  try {
+    stmt.run(safeParams([
+      result.id,
+      result.strategyId,
+      result.strategyName,
+      result.symbol ? result.symbol.trim() : 'EURUSD',
+      result.timeframe ? result.timeframe.trim() : 'M1',
+      result.candleCount,
+      result.startTime,
+      result.startTimeIso || new Date(result.startTime * 1000).toISOString(),
+      result.endTime,
+      result.endTimeIso || new Date(result.endTime * 1000).toISOString(),
+      result.initialDeposit,
+      result.finalEquity,
+      result.netProfit,
+      result.profitFactor,
+      result.winRatePct,
+      result.totalTrades,
+      result.winningTrades,
+      result.losingTrades,
+      result.maxDrawdownPct,
+      result.maxDrawdownUsd,
+      result.averageTradeProfit,
+      result.averageWin,
+      result.averageLoss,
+      result.riskRewardRatio,
+      JSON.stringify(result.trades || []),
+      JSON.stringify(result.equityCurve || []),
+      result.evaluatedAt || Date.now(),
+    ]));
+  } finally {
+    stmt.free();
+  }
+  persistDatabase();
+}
+
+export async function dbGetBacktestResults(strategyId?: string, limit = 50): Promise<any[]> {
+  const db = await getDatabase();
+  let sql = 'SELECT * FROM backtest_results';
+  if (strategyId) {
+    sql += ` WHERE strategy_id = '${strategyId}'`;
+  }
+  sql += ` ORDER BY evaluated_at DESC LIMIT ${limit}`;
+
+  const res = db.exec(sql);
+  if (res.length === 0) return [];
+
+  const cols = res[0].columns;
+  return res[0].values.map((row) => {
+    const item: Record<string, any> = {};
+    cols.forEach((col, idx) => (item[col] = row[idx]));
+    return {
+      id: item.id,
+      strategyId: item.strategy_id,
+      strategyName: item.strategy_name,
+      symbol: item.symbol,
+      timeframe: item.timeframe,
+      candleCount: item.candle_count,
+      startTime: item.start_time,
+      startTimeIso: item.start_time_iso,
+      endTime: item.end_time,
+      endTimeIso: item.end_time_iso,
+      initialDeposit: item.initial_deposit,
+      finalEquity: item.final_equity,
+      netProfit: item.net_profit,
+      profitFactor: item.profit_factor,
+      winRatePct: item.win_rate_pct,
+      totalTrades: item.total_trades,
+      winningTrades: item.winning_trades,
+      losingTrades: item.losing_trades,
+      maxDrawdownPct: item.max_drawdown_pct,
+      maxDrawdownUsd: item.max_drawdown_usd,
+      averageTradeProfit: item.average_trade_profit,
+      averageWin: item.average_win,
+      averageLoss: item.average_loss,
+      riskRewardRatio: item.risk_reward_ratio,
+      trades: item.trades_json ? JSON.parse(item.trades_json) : [],
+      equityCurve: item.equity_curve_json ? JSON.parse(item.equity_curve_json) : [],
+      evaluatedAt: item.evaluated_at,
+    };
+  });
+}
+
+export async function dbGetBacktestById(id: string): Promise<any | null> {
+  const db = await getDatabase();
+  const res = db.exec(`SELECT * FROM backtest_results WHERE id = '${id}' LIMIT 1`);
+  if (res.length === 0 || res[0].values.length === 0) return null;
+  const cols = res[0].columns;
+  const row = res[0].values[0];
+  const item: Record<string, any> = {};
+  cols.forEach((col, idx) => (item[col] = row[idx]));
+  return {
+    id: item.id,
+    strategyId: item.strategy_id,
+    strategyName: item.strategy_name,
+    symbol: item.symbol,
+    timeframe: item.timeframe,
+    candleCount: item.candle_count,
+    startTime: item.start_time,
+    startTimeIso: item.start_time_iso,
+    endTime: item.end_time,
+    endTimeIso: item.end_time_iso,
+    initialDeposit: item.initial_deposit,
+    finalEquity: item.final_equity,
+    netProfit: item.net_profit,
+    profitFactor: item.profit_factor,
+    winRatePct: item.win_rate_pct,
+    totalTrades: item.total_trades,
+    winningTrades: item.winning_trades,
+    losingTrades: item.losing_trades,
+    maxDrawdownPct: item.max_drawdown_pct,
+    maxDrawdownUsd: item.max_drawdown_usd,
+    averageTradeProfit: item.average_trade_profit,
+    averageWin: item.average_win,
+    averageLoss: item.average_loss,
+    riskRewardRatio: item.risk_reward_ratio,
+    trades: item.trades_json ? JSON.parse(item.trades_json) : [],
+    equityCurve: item.equity_curve_json ? JSON.parse(item.equity_curve_json) : [],
+    evaluatedAt: item.evaluated_at,
+  };
+}
+

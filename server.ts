@@ -7,6 +7,9 @@ import { createServer as createViteServer } from 'vite';
 import { setupWebSocketServer } from './backend/services/websocketServer.js';
 import { mt5Router } from './backend/routes/mt5Routes.js';
 import { apiRouter } from './backend/routes/apiRoutes.js';
+import { corsMiddleware, requestLogger, errorHandler } from './backend/middleware/index.js';
+import { connectorManager } from './backend/lib/ConnectorManager.js';
+import { logger } from './backend/utils/logger.js';
 
 dotenv.config();
 
@@ -19,32 +22,32 @@ const MT5_PORT = 7777;
 async function startServer() {
   const app = express();
 
-  // Middleware
+  // Core Express Middleware
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
+  app.use(corsMiddleware);
+  app.use(requestLogger);
 
-  // CORS headers for local MT5 and external AI agents
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(200);
-    }
-    next();
-  });
-
-  // Mount MT5 direct routes for http://127.0.0.1:7777 and http://127.0.0.1:3000
+  // Mount API & MT5 routes
+  app.use('/api', apiRouter);
   app.use('/', mt5Router);
   app.use('/api/mt5', mt5Router);
 
-  // Mount API & MCP routes
-  app.use('/api', apiRouter);
+  // Error handling middleware
+  app.use(errorHandler);
 
   const server = http.createServer(app);
 
   // Attach WebSocket server for real-time tick streaming and order events
   setupWebSocketServer(server);
+
+  // Initialize Peron Python MT5 Connector Provider
+  try {
+    await connectorManager.initialize();
+    logger.info('Server', 'Peron Python MT5 Connector initialized and active');
+  } catch (err: any) {
+    logger.warn('Server', `Connector initialization notice: ${err.message}`);
+  }
 
   // Vite middleware in dev or static files in production
   if (!isProd) {
@@ -62,38 +65,40 @@ async function startServer() {
 
   // Start Main Server on Port 3000
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`[MT5 Bridge Terminal] Web UI & WebSocket Server running at http://localhost:${PORT}`);
+    logger.info('Server', `Web UI & Peron MT5 Terminal running at http://localhost:${PORT}`);
   });
 
-  // Start Dedicated MT5 Listener on Port 7777 (http://127.0.0.1:7777)
+  // Start Dedicated MT5 Listener on Port 7777 (for backward compatibility if needed)
   try {
     const mt5App = express();
     mt5App.use(express.json({ limit: '10mb' }));
-    mt5App.use((req, res, next) => {
-      res.header('Access-Control-Allow-Origin', '*');
-      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-      if (req.method === 'OPTIONS') return res.sendStatus(200);
-      next();
-    });
-
+    mt5App.use(corsMiddleware);
     mt5App.use('/', mt5Router);
     mt5App.use('/api/mt5', mt5Router);
     mt5App.use('/api', apiRouter);
 
     const mt5Server = http.createServer(mt5App);
     mt5Server.listen(MT5_PORT, '0.0.0.0', () => {
-      console.log(`[MT5 Bridge Hub] Dedicated MT5 Endpoint running at http://127.0.0.1:${MT5_PORT}`);
+      logger.info('Server', `Dedicated MT5 Bridge port listening at http://127.0.0.1:${MT5_PORT}`);
     });
     mt5Server.on('error', (err: any) => {
-      console.warn(`[MT5 Bridge Hub] Port ${MT5_PORT} notice: ${err.message}. Port ${PORT} remains fully active for MT5 routing.`);
+      logger.warn('Server', `Port ${MT5_PORT} notice: ${err.message}. Port ${PORT} remains active.`);
     });
   } catch (err: any) {
-    console.warn(`[MT5 Bridge Hub] Could not bind port ${MT5_PORT}: ${err.message}`);
+    logger.warn('Server', `Could not bind port ${MT5_PORT}: ${err.message}`);
   }
+
+  // Clean shutdown
+  const shutdown = async () => {
+    logger.info('Server', 'Shutting down services...');
+    await connectorManager.shutdown();
+    process.exit(0);
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 startServer().catch((err) => {
-  console.error('Failed to start server:', err);
+  logger.error('Server', 'Failed to start server:', err);
   process.exit(1);
 });

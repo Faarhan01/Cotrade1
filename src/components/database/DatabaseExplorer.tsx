@@ -14,6 +14,8 @@ import {
   Trash2,
   ShieldCheck,
   Check,
+  Compass,
+  FlaskConical,
 } from 'lucide-react';
 
 export const DatabaseExplorer: React.FC = () => {
@@ -143,15 +145,15 @@ export const DatabaseExplorer: React.FC = () => {
           </span>
         </div>
         <div className="text-[11px] text-slate-500 shrink-0">
-          Retention: Max 1,000 orders • 5,000 ticks • 2,000 candles
+          Retention: Max 1,000 orders • 5,000 ticks • 2,000 candles • 200 backtests
         </div>
       </div>
 
       {/* Analytics Metric Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 font-mono">
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 font-mono">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 shadow-sm">
           <span className="text-[10px] text-slate-500 uppercase block">Database Storage</span>
-          <div className="text-lg font-bold text-white mt-1 flex items-center gap-1.5">
+          <div className="text-base font-bold text-white mt-1 flex items-center gap-1.5">
             <HardDrive className="h-4 w-4 text-indigo-400" />
             <span>
               {analytics ? `${(analytics.dbSizeBytes / 1024).toFixed(1)} KB` : 'Initializing...'}

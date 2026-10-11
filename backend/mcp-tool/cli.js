@@ -92,6 +92,9 @@ Direct AI Trading & Market Inspection Shortcuts:
   node backend/mcp-tool/cli.js cancel <ticket>              (Cancel pending order ticket)
   node backend/mcp-tool/cli.js indicators <symbol> [tf]     (Precomputed RSI, MACD, EMA, summary)
   node backend/mcp-tool/cli.js candles <symbol> [tf] [cnt]  (Past OHLCV candlestick history)
+  node backend/mcp-tool/cli.js strategies [symbol]          (List quantitative strategies)
+  node backend/mcp-tool/cli.js backtest <stratId> [candles] (Run backtest against stored MT5 data)
+  node backend/mcp-tool/cli.js observations [category]      (List research notes & patterns)
   node backend/mcp-tool/cli.js prune                        (Purge 24h+ unexecuted orders & trim DB)
 
 Standard Model Context Protocol (MCP) Commands:
@@ -141,13 +144,13 @@ try {
     console.log(JSON.stringify({ account, currentChart: chart }, null, 2));
   } else if (cmd === 'quote') {
     if (!arg1) usage();
-    const data = await callTool('mt5_get_market_data', { symbol: arg1.toUpperCase() });
+    const data = await callTool('mt5_get_market_data', { symbol: arg1.trim() });
     console.log(JSON.stringify(data, null, 2));
   } else if (cmd === 'positions') {
-    const pos = await callTool('mt5_get_open_positions', arg1 ? { symbol: arg1.toUpperCase() } : {});
+    const pos = await callTool('mt5_get_open_positions', arg1 ? { symbol: arg1.trim() } : {});
     console.log(JSON.stringify(pos, null, 2));
   } else if (cmd === 'orders') {
-    const orders = await callTool('mt5_get_pending_orders', arg1 ? { symbol: arg1.toUpperCase() } : {});
+    const orders = await callTool('mt5_get_pending_orders', arg1 ? { symbol: arg1.trim() } : {});
     console.log(JSON.stringify(orders, null, 2));
   } else if (cmd === 'buy' || cmd === 'sell') {
     if (!arg1 || !arg2) {
@@ -155,7 +158,7 @@ try {
       process.exit(1);
     }
     const order = await callTool('mt5_execute_trade', {
-      symbol: arg1.toUpperCase(),
+      symbol: arg1.trim(),
       orderType: cmd.toUpperCase(),
       volume: parseFloat(arg2),
       sl: arg3 ? parseFloat(arg3) : undefined,
@@ -184,16 +187,37 @@ try {
     console.log(JSON.stringify(res, null, 2));
   } else if (cmd === 'indicators') {
     const res = await callTool('mt5_get_technical_indicators', {
-      symbol: arg1 ? arg1.toUpperCase() : undefined,
+      symbol: arg1 ? arg1.trim() : undefined,
       timeframe: arg2 || 'M1',
     });
     console.log(JSON.stringify(res, null, 2));
   } else if (cmd === 'candles') {
     const res = await callTool('mt5_get_chart_history', {
-      symbol: arg1 ? arg1.toUpperCase() : undefined,
+      symbol: arg1 ? arg1.trim() : undefined,
       timeframe: arg2 || 'M1',
       limit: arg3 ? parseInt(arg3, 10) : 60,
       includeIndicators: true,
+    });
+    console.log(JSON.stringify(res, null, 2));
+  } else if (cmd === 'strategies') {
+    const res = await callTool('mt5_list_strategies', {
+      symbol: arg1 ? arg1.trim() : undefined,
+    });
+    console.log(JSON.stringify(res, null, 2));
+  } else if (cmd === 'backtest') {
+    if (!arg1) {
+      console.error('Usage: node backend/mcp-tool/cli.js backtest <strategyId> [candleLimit] [deposit]');
+      process.exit(1);
+    }
+    const res = await callTool('mt5_backtest_strategy', {
+      strategyId: arg1,
+      candleLimit: arg2 ? parseInt(arg2, 10) : 300,
+      initialDeposit: arg3 ? parseFloat(arg3) : 10000,
+    });
+    console.log(JSON.stringify(res, null, 2));
+  } else if (cmd === 'observations') {
+    const res = await callTool('mt5_list_observations', {
+      category: arg1 || 'all',
     });
     console.log(JSON.stringify(res, null, 2));
   } else if (cmd === 'prune') {

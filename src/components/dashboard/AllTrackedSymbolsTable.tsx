@@ -48,10 +48,10 @@ export const AllTrackedSymbolsTable: React.FC<AllTrackedSymbolsTableProps> = ({
           <Layers className="h-5 w-5 text-cyan-400" />
           <div>
             <h2 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
-              All Tracked Symbols Sent By MT5 EA ({displaySymbols.length})
+              All Tracked Broker Symbols ({displaySymbols.length})
             </h2>
             <p className="text-xs text-slate-400 font-mono">
-              Full broker market specifications & live quotes transmitted from MetaTrader 5
+              Real-time broker market specifications & quotes discovered via Peron MT5 Python Package
             </p>
           </div>
         </div>
@@ -71,11 +71,10 @@ export const AllTrackedSymbolsTable: React.FC<AllTrackedSymbolsTableProps> = ({
       {displaySymbols.length === 0 ? (
         <div className="border border-dashed border-slate-800 rounded-lg p-8 text-center text-slate-400 font-mono text-xs space-y-2">
           <div className="text-sm font-bold text-slate-300">
-            Awaiting Symbols Transmitted by MT5 EA
+            Awaiting Broker Symbols via Peron MT5 Package
           </div>
           <p className="text-slate-500 max-w-lg mx-auto">
-            Once <code className="text-cyan-400">AIMT5Bridge.mq5</code> connects to <code className="text-cyan-400">http://127.0.0.1:7777</code>,
-            all symbols defined in the EA properties (or Market Watch) will populate here with live broker metrics.
+            Once connected to your local MetaTrader 5 terminal, all market watch symbols will be queried directly via the Python package and populate here with real live quotes and broker specifications.
           </p>
         </div>
       ) : (
@@ -97,9 +96,13 @@ export const AllTrackedSymbolsTable: React.FC<AllTrackedSymbolsTableProps> = ({
             <tbody className="divide-y divide-slate-800/60">
               {filtered.map((item) => {
                 const isSelected = selectedSymbol === item.symbol;
-                const digits = item.digits || (item.symbol.includes('JPY') ? 3 : 5);
+                const digits = item.digits ?? (item.symbol.includes('JPY') ? 3 : 5);
                 const high = item.sessionHigh || item.high24h;
                 const low = item.sessionLow || item.low24h;
+                const contractSizeStr = item.contractSize != null ? item.contractSize.toLocaleString() : '100,000';
+                const minLot = item.minLot ?? 0.01;
+                const maxLot = item.maxLot ?? 100.0;
+                const spread = item.spread ?? (item.ask && item.bid ? Math.round((item.ask - item.bid) * Math.pow(10, digits)) : 0);
 
                 return (
                   <tr
@@ -119,16 +122,16 @@ export const AllTrackedSymbolsTable: React.FC<AllTrackedSymbolsTableProps> = ({
                       </div>
                     </td>
                     <td className="py-2.5 px-3 font-semibold text-emerald-400">
-                      {item.bid > 0 ? item.bid.toFixed(digits) : '—'}
+                      {item.bid != null && item.bid > 0 ? item.bid.toFixed(digits) : '—'}
                     </td>
                     <td className="py-2.5 px-3 text-slate-200">
-                      {item.ask > 0 ? item.ask.toFixed(digits) : '—'}
+                      {item.ask != null && item.ask > 0 ? item.ask.toFixed(digits) : '—'}
                     </td>
                     <td className="py-2.5 px-3 text-cyan-300 font-bold">
-                      {item.spread} pts
+                      {spread} pts
                     </td>
                     <td className="py-2.5 px-3 text-slate-400">
-                      {high && low && high > 0 ? (
+                      {high != null && low != null && high > 0 ? (
                         <div className="text-[11px]">
                           <span className="text-rose-400">{low.toFixed(digits)}</span>
                           <span className="text-slate-600 mx-1">→</span>
@@ -139,10 +142,10 @@ export const AllTrackedSymbolsTable: React.FC<AllTrackedSymbolsTableProps> = ({
                       )}
                     </td>
                     <td className="py-2.5 px-3 text-slate-400">
-                      {item.minLot} - {item.maxLot}
+                      {minLot} - {maxLot}
                     </td>
                     <td className="py-2.5 px-3 text-slate-400">
-                      {item.contractSize.toLocaleString()}
+                      {contractSizeStr}
                     </td>
                     <td className="py-2.5 px-3">
                       {item.tradeAllowed ? (

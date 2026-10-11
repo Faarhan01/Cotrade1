@@ -256,3 +256,92 @@ export interface MCPToolDefinition {
     required?: string[];
   };
 }
+
+export type StrategyType =
+  | 'RSI_REVERSAL'
+  | 'EMA_CROSSOVER'
+  | 'MACD_MOMENTUM'
+  | 'BOLLINGER_BREAKOUT'
+  | 'MULTI_INDICATOR_CONSENSUS'
+  | 'CUSTOM_RULESET';
+
+export interface StrategyDefinition {
+  id: string;
+  name: string;
+  description: string;
+  type: StrategyType;
+  symbol: string;
+  timeframe: string;
+  parameters: Record<string, any>;
+  status: 'active' | 'draft' | 'archived' | 'testing';
+  tags?: string[];
+  author?: string;
+  notes?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Observation {
+  id: string;
+  title: string;
+  content: string;
+  symbol?: string;
+  timeframe?: string;
+  strategyId?: string;
+  category: 'market_insight' | 'pattern' | 'execution_note' | 'anomaly' | 'research';
+  tags: string[];
+  metrics?: Record<string, any>;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface SimulatedTrade {
+  id: string;
+  type: 'BUY' | 'SELL';
+  entryIndex: number;
+  entryTime: number;
+  entryTimeIso: string;
+  entryPrice: number;
+  exitIndex: number;
+  exitTime: number;
+  exitTimeIso: string;
+  exitPrice: number;
+  profitPoints: number;
+  profitUsd: number;
+  returnPct: number;
+  exitReason: 'TAKE_PROFIT' | 'STOP_LOSS' | 'SIGNAL_REVERSAL' | 'MAX_HOLD_BARS' | 'END_OF_DATA';
+  lotSize: number;
+  slPrice?: number;
+  tpPrice?: number;
+}
+
+export interface BacktestResult {
+  id: string;
+  strategyId: string;
+  strategyName: string;
+  symbol: string;
+  timeframe: string;
+  candleCount: number;
+  startTime: number;
+  startTimeIso: string;
+  endTime: number;
+  endTimeIso: string;
+  initialDeposit: number;
+  finalEquity: number;
+  netProfit: number;
+  profitFactor: number;
+  winRatePct: number;
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  maxDrawdownPct: number;
+  maxDrawdownUsd: number;
+  averageTradeProfit: number;
+  averageWin: number;
+  averageLoss: number;
+  riskRewardRatio: number;
+  trades: SimulatedTrade[];
+  equityCurve: { time: number; timeIso: string; equity: number }[];
+  evaluatedAt: number;
+}
+

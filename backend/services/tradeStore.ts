@@ -585,20 +585,119 @@ class TradeStore {
     return this.riskGuard;
   }
 
-  // Request on-demand history from EA via command queue
+  // Request on-demand history from MT5 connector
   public requestHistoryFromEA(symbol: string, timeframe = 'M1', count = 100) {
+    const sym = symbol ? symbol.trim() : 'EURUSD';
     return this.enqueueCommand({
       action: 'FETCH_HISTORY',
-      symbol: symbol.toUpperCase(),
+      symbol: sym,
       comment: JSON.stringify({ timeframe, count }),
       source: 'AI_MCP',
     });
   }
 
+  // Direct sync feeder used by Peron Python connector and real-time feeds
+  public handleDirectSync(data: {
+    account: AccountInfo;
+    positions: Position[];
+    pendingOrders: PendingOrder[];
+    ticks: TickData[];
+    symbols: DetailedSymbolInfo[];
+  }) {
+    const isRealAccountConnected = Boolean(data.account && data.account.login > 0);
+    this.eaConnected = isRealAccountConnected;
+    this.lastEaSync = Date.now();
+    this.terminalName = isRealAccountConnected ? 'Peron MT5 Engine' : '';
+    this.terminalCompany = isRealAccountConnected ? 'MetaTrader 5 Python Bridge' : '';
+
+    if (data.account && data.account.login > 0) {
+      this.account = {
+        ...data.account,
+        lastUpdate: Date.now(),
+      };
+      dbInsertAccountSnapshot(this.account).catch((e) =>
+        console.error('DB account snapshot error:', e)
+      );
+    } else {
+      this.account = {
+        login: 0,
+        tradeMode: 'PENDING_MT5',
+        balance: 0,
+        equity: 0,
+        margin: 0,
+        freeMargin: 0,
+        marginLevel: 0,
+        leverage: 0,
+        currency: 'USD',
+        server: 'Awaiting MetaTrader 5 Terminal',
+        company: 'MetaQuotes Ltd.',
+        profit: 0,
+        lastUpdate: Date.now(),
+      };
+    }
+
+    if (Array.isArray(data.positions) && isRealAccountConnected) {
+      this.positions.clear();
+      for (const pos of data.positions) {
+        this.positions.set(pos.ticket, pos);
+      }
+    } else {
+      this.positions.clear();
+    }
+
+    if (Array.isArray(data.pendingOrders) && isRealAccountConnected) {
+      this.pendingOrders.clear();
+      for (const po of data.pendingOrders) {
+        this.pendingOrders.set(po.ticket, po);
+      }
+    } else {
+      this.pendingOrders.clear();
+    }
+
+    if (Array.isArray(data.symbols) && data.symbols.length > 0 && isRealAccountConnected) {
+      this.allSymbols = data.symbols;
+      if (!this.currentChart && data.symbols[0]) {
+        this.currentChart = {
+          symbol: data.symbols[0].symbol,
+          timeframe: 'M1',
+          digits: data.symbols[0].digits,
+          point: data.symbols[0].point,
+          bid: data.symbols[0].bid || 0,
+          ask: data.symbols[0].ask || 0,
+          spread: data.symbols[0].spread || 0,
+          minLot: data.symbols[0].minLot || 0.01,
+          maxLot: data.symbols[0].maxLot || 100,
+          lotStep: data.symbols[0].lotStep || 0.01,
+          contractSize: data.symbols[0].contractSize || 100000,
+          tickValue: 1,
+          tradeAllowed: data.symbols[0].tradeAllowed ?? true,
+        };
+      }
+    } else if (!isRealAccountConnected) {
+      this.allSymbols = [];
+      this.currentChart = null;
+    }
+
+    if (Array.isArray(data.ticks) && data.ticks.length > 0 && isRealAccountConnected) {
+      dbInsertTicks(data.ticks).catch((e) => console.error('DB insert ticks error:', e));
+      for (const tick of data.ticks) {
+        const existing = this.ticks.get(tick.symbol);
+        const updated: TickData = {
+          ...tick,
+          high24h: existing ? Math.max(existing.high24h || tick.ask, tick.ask) : tick.ask,
+          low24h: existing ? Math.min(existing.low24h || tick.bid, tick.bid) : tick.bid,
+        };
+        this.ticks.set(tick.symbol, updated);
+      }
+    } else if (!isRealAccountConnected) {
+      this.ticks.clear();
+    }
+  }
+
   // Seed synthetic candles for instant testing and AI model validation
   public async seedCandles(symbol: string, timeframe = 'M1', count = 60, basePrice = 1.085) {
-    const sym = symbol.toUpperCase();
-    const tf = timeframe.toUpperCase();
+    const sym = symbol ? symbol.trim() : 'EURUSD';
+    const tf = timeframe ? timeframe.trim() : 'M1';
     const nowSec = Math.floor(Date.now() / 1000);
     const intervalSec = tf === 'M5' ? 300 : tf === 'M15' ? 900 : tf === 'H1' ? 3600 : 60;
     const generated: CandleData[] = [];

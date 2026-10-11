@@ -1,5 +1,6 @@
 import { tradeStore } from './tradeStore.js';
 import { OrderType } from '../types/mt5.js';
+import { normalizeSymbol, symbolsMatch } from '../utils/symbolUtils.js';
 
 export interface MCPToolDefinition {
   name: string;
@@ -371,6 +372,160 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
       },
     },
   },
+  {
+    name: 'mt5_list_strategies',
+    description: 'List quantitative trading strategies stored in the persistent SQLite knowledge base. Filterable by symbol.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbol: {
+          type: 'string',
+          description: 'Filter by symbol (e.g. EURUSD, XAUUSD), or leave empty for all.',
+        },
+      },
+    },
+  },
+  {
+    name: 'mt5_create_strategy',
+    description: 'Create or update a quantitative trading strategy in the site knowledge base (e.g. RSI_REVERSAL, EMA_CROSSOVER, MACD_MOMENTUM, MULTI_INDICATOR_CONSENSUS). Strategies can then be backtested against stored MT5 candle history.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Descriptive strategy name',
+        },
+        description: {
+          type: 'string',
+          description: 'Strategy thesis and rules',
+        },
+        type: {
+          type: 'string',
+          enum: ['RSI_REVERSAL', 'EMA_CROSSOVER', 'MACD_MOMENTUM', 'BOLLINGER_BREAKOUT', 'MULTI_INDICATOR_CONSENSUS', 'CUSTOM_RULESET'],
+          description: 'Strategy algorithmic type',
+        },
+        symbol: {
+          type: 'string',
+          description: 'Target symbol (e.g. EURUSD, XAUUSD)',
+        },
+        timeframe: {
+          type: 'string',
+          description: 'Target timeframe (M1, M5, M15, H1, H4, D1)',
+        },
+        parameters: {
+          type: 'object',
+          description: 'Indicator parameters (e.g. rsiOversold: 30, rsiOverbought: 70, fastEmaPeriod: 9, slowEmaPeriod: 21, stopLossPoints: 300, takeProfitPoints: 600, lotSize: 0.1)',
+        },
+        tags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Keywords and tags',
+        },
+        author: {
+          type: 'string',
+          description: 'Author / Agent attribution (e.g. Claude, AI Agent, Quant)',
+        },
+        notes: {
+          type: 'string',
+          description: 'Execution conditions or market insights',
+        },
+      },
+      required: ['name', 'symbol'],
+    },
+  },
+  {
+    name: 'mt5_backtest_strategy',
+    description: 'Run an algorithmic backtest of a strategy against stored historical MT5 candlestick data. Evaluates trades, win rate, net profit, maximum drawdown, and return equity curve on the site server.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        strategyId: {
+          type: 'string',
+          description: 'ID of strategy to test (e.g. strat-rsi-reversal-eurusd)',
+        },
+        candleLimit: {
+          type: 'number',
+          description: 'Number of historical candles to run backtest across (default: 300)',
+        },
+        initialDeposit: {
+          type: 'number',
+          description: 'Initial deposit capital in USD (default: 10000)',
+        },
+      },
+      required: ['strategyId'],
+    },
+  },
+  {
+    name: 'mt5_list_observations',
+    description: 'Retrieve observations, market patterns, and research insights stored in the knowledge base.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        category: {
+          type: 'string',
+          enum: ['all', 'market_insight', 'pattern', 'execution_note', 'anomaly', 'research'],
+          description: 'Filter by category (default: all)',
+        },
+      },
+    },
+  },
+  {
+    name: 'mt5_record_observation',
+    description: 'Store a market observation, empirical pattern discovery, or execution insight in the persistent knowledge base for future review and algorithmic strategy design.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: {
+          type: 'string',
+          description: 'Observation headline or pattern name',
+        },
+        content: {
+          type: 'string',
+          description: 'Detailed analysis, notes, or empirical finding',
+        },
+        symbol: {
+          type: 'string',
+          description: 'Associated ticker symbol (optional)',
+        },
+        timeframe: {
+          type: 'string',
+          description: 'Associated timeframe (optional)',
+        },
+        category: {
+          type: 'string',
+          enum: ['market_insight', 'pattern', 'execution_note', 'anomaly', 'research'],
+          description: 'Category classification',
+        },
+        tags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Categorization tags',
+        },
+        metrics: {
+          type: 'object',
+          description: 'Key metrics observed (e.g. avgSpread, winRateBoost)',
+        },
+      },
+      required: ['title', 'content'],
+    },
+  },
+  {
+    name: 'mt5_get_backtest_history',
+    description: 'Retrieve archived backtest evaluation runs and performance results from SQLite.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        strategyId: {
+          type: 'string',
+          description: 'Filter by strategy ID (optional)',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum backtest reports to return (default: 20)',
+        },
+      },
+    },
+  },
 ];
 
 export async function executeMcpTool(name: string, args: Record<string, any> = {}): Promise<any> {
@@ -429,8 +584,8 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
 
     case 'mt5_get_market_data': {
       const ticks = tradeStore.getTicks();
-      if (args.symbol && args.symbol.toUpperCase() !== 'ALL') {
-        const found = ticks.find((t) => t.symbol.toUpperCase() === args.symbol.toUpperCase());
+      if (args.symbol && String(args.symbol).toLowerCase() !== 'all') {
+        const found = ticks.find((t) => symbolsMatch(t.symbol, String(args.symbol)));
         if (!found) {
           throw new Error(`Symbol ${args.symbol} not found in tracked market feed.`);
         }
@@ -442,7 +597,7 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
     case 'mt5_get_open_positions': {
       let positions = tradeStore.getPositions();
       if (args.symbol) {
-        positions = positions.filter((p) => p.symbol.toUpperCase() === args.symbol.toUpperCase());
+        positions = positions.filter((p) => symbolsMatch(p.symbol, String(args.symbol)));
       }
       return {
         count: positions.length,
@@ -457,9 +612,10 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
         throw new Error('Missing required arguments: symbol, orderType, volume');
       }
 
+      const normSym = normalizeSymbol(String(symbol));
       const res = tradeStore.enqueueCommand({
         action: 'EXECUTE_TRADE',
-        symbol: String(symbol).toUpperCase(),
+        symbol: normSym,
         orderType: String(orderType).toUpperCase() as OrderType,
         volume: Number(volume),
         sl: sl ? Number(sl) : undefined,
@@ -476,7 +632,7 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
       return {
         status: 'queued',
         commandId: res.commandId,
-        message: `Asynchronous order queued for MT5 EA dispatch. Action: ${orderType} ${volume} ${symbol.toUpperCase()}`,
+        message: `Asynchronous order queued for MT5 dispatch. Action: ${orderType} ${volume} ${normSym}`,
         timestamp: Date.now(),
       };
     }
@@ -529,7 +685,7 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
     }
 
     case 'mt5_close_all': {
-      const symbol = args.symbol ? String(args.symbol).toUpperCase() : 'ALL';
+      const symbol = args.symbol ? normalizeSymbol(String(args.symbol)) : 'ALL';
       const res = tradeStore.enqueueCommand({
         action: 'CLOSE_ALL',
         symbol: symbol,
@@ -559,8 +715,8 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
     }
 
     case 'mt5_get_chart_history': {
-      const sym = (args.symbol || tradeStore.getCurrentChart()?.symbol || 'EURUSD').toUpperCase();
-      const tf = (args.timeframe || tradeStore.getCurrentChart()?.timeframe || 'M1').toUpperCase();
+      const sym = normalizeSymbol(args.symbol || tradeStore.getCurrentChart()?.symbol || 'EURUSD');
+      const tf = String(args.timeframe || tradeStore.getCurrentChart()?.timeframe || 'M1').trim();
       const limit = args.limit ? Math.min(Number(args.limit), 500) : 60;
       const includeIndicators = args.includeIndicators !== false;
 
@@ -586,8 +742,8 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
     }
 
     case 'mt5_get_technical_indicators': {
-      const sym = (args.symbol || tradeStore.getCurrentChart()?.symbol || 'EURUSD').toUpperCase();
-      const tf = (args.timeframe || tradeStore.getCurrentChart()?.timeframe || 'M1').toUpperCase();
+      const sym = normalizeSymbol(args.symbol || tradeStore.getCurrentChart()?.symbol || 'EURUSD');
+      const tf = String(args.timeframe || tradeStore.getCurrentChart()?.timeframe || 'M1').trim();
 
       const { dbGetCandles } = await import('../database/db.js');
       let candles = await dbGetCandles(sym, tf, 200);
@@ -611,7 +767,7 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
     case 'mt5_get_pending_orders': {
       let orders = tradeStore.getPendingOrders();
       if (args.symbol) {
-        orders = orders.filter((o) => o.symbol.toUpperCase() === args.symbol.toUpperCase());
+        orders = orders.filter((o) => symbolsMatch(o.symbol, String(args.symbol)));
       }
       return {
         count: orders.length,
@@ -673,6 +829,134 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
       const count = args.count ? Number(args.count) : 60;
       const basePrice = args.basePrice ? Number(args.basePrice) : 1.085;
       return await tradeStore.seedCandles(sym, tf, count, basePrice);
+    }
+
+    case 'mt5_list_strategies': {
+      const { dbGetStrategies } = await import('../database/db.js');
+      const strategies = await dbGetStrategies(args.symbol);
+      return {
+        count: strategies.length,
+        strategies,
+      };
+    }
+
+    case 'mt5_create_strategy': {
+      const { dbSaveStrategy } = await import('../database/db.js');
+      const stratId = args.id || `strat-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const strategyData = {
+        id: stratId,
+        name: args.name,
+        description: args.description || '',
+        type: args.type || 'RSI_REVERSAL',
+        symbol: normalizeSymbol(args.symbol || 'EURUSD'),
+        timeframe: String(args.timeframe || 'M1').trim(),
+        parameters: args.parameters || {},
+        status: args.status || 'active',
+        tags: args.tags || [],
+        author: args.author || 'AI_Agent',
+        notes: args.notes || '',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      await dbSaveStrategy(strategyData);
+      return {
+        success: true,
+        strategy: strategyData,
+        message: `Strategy "${strategyData.name}" created and stored in SQLite knowledge base.`,
+      };
+    }
+
+    case 'mt5_backtest_strategy': {
+      const { dbGetStrategyById, dbGetCandles, dbSaveBacktestResult } = await import('../database/db.js');
+      const { runStrategyBacktest } = await import('../services/strategyEngine.js');
+
+      const strategy = await dbGetStrategyById(args.strategyId);
+      if (!strategy) throw new Error(`Strategy ${args.strategyId} not found`);
+
+      const candleLimit = args.candleLimit ? Number(args.candleLimit) : 300;
+      const initialDeposit = args.initialDeposit ? Number(args.initialDeposit) : 10000;
+
+      let candles = await dbGetCandles(strategy.symbol, strategy.timeframe, candleLimit);
+      if (candles.length < 20) {
+        const live = tradeStore.getChartHistory();
+        if (live && live.length >= 20) {
+          candles = live;
+        } else {
+          // Auto-seed synthetic candles for smooth testing experience
+          const seeded = await tradeStore.seedCandles(strategy.symbol, strategy.timeframe, 100);
+          candles = seeded.candles;
+        }
+      }
+
+      const backtest = runStrategyBacktest(strategy, candles, initialDeposit);
+      await dbSaveBacktestResult(backtest);
+
+      return {
+        success: true,
+        summary: {
+          strategyName: backtest.strategyName,
+          symbol: backtest.symbol,
+          timeframe: backtest.timeframe,
+          candleCount: backtest.candleCount,
+          initialDeposit: backtest.initialDeposit,
+          finalEquity: backtest.finalEquity,
+          netProfit: backtest.netProfit,
+          profitFactor: backtest.profitFactor,
+          winRatePct: `${backtest.winRatePct}%`,
+          totalTrades: backtest.totalTrades,
+          winningTrades: backtest.winningTrades,
+          losingTrades: backtest.losingTrades,
+          maxDrawdownPct: `${backtest.maxDrawdownPct}%`,
+          maxDrawdownUsd: backtest.maxDrawdownUsd,
+          averageTradeProfit: backtest.averageTradeProfit,
+          riskRewardRatio: backtest.riskRewardRatio,
+        },
+        backtestId: backtest.id,
+        trades: backtest.trades,
+      };
+    }
+
+    case 'mt5_list_observations': {
+      const { dbGetObservations } = await import('../database/db.js');
+      const observations = await dbGetObservations(args.category);
+      return {
+        count: observations.length,
+        observations,
+      };
+    }
+
+    case 'mt5_record_observation': {
+      const { dbSaveObservation } = await import('../database/db.js');
+      const obsId = args.id || `obs-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const obs = {
+        id: obsId,
+        title: args.title,
+        content: args.content,
+        symbol: args.symbol ? normalizeSymbol(args.symbol) : null,
+        timeframe: args.timeframe ? String(args.timeframe).trim() : null,
+        strategyId: args.strategyId || null,
+        category: args.category || 'market_insight',
+        tags: args.tags || [],
+        metrics: args.metrics || {},
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      await dbSaveObservation(obs);
+      return {
+        success: true,
+        observation: obs,
+        message: `Market observation "${obs.title}" logged to persistent knowledge base.`,
+      };
+    }
+
+    case 'mt5_get_backtest_history': {
+      const { dbGetBacktestResults } = await import('../database/db.js');
+      const limit = args.limit ? Number(args.limit) : 20;
+      const results = await dbGetBacktestResults(args.strategyId, limit);
+      return {
+        count: results.length,
+        results,
+      };
     }
 
     default:
