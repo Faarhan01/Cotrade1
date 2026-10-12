@@ -1,58 +1,47 @@
 import { request } from './client';
 
 export const strategyApi = {
-  getStrategies(symbol?: string): Promise<{ success: boolean; count: number; strategies: any[] }> {
-    const url = symbol ? `/api/strategies?symbol=${encodeURIComponent(symbol.trim())}` : '/api/strategies';
-    return request(url);
+  async getStrategies(symbol?: string): Promise<{ strategies: any[] }> {
+    const qs = symbol ? `?symbol=${encodeURIComponent(symbol)}` : '';
+    return request(`/api/strategies${qs}`);
   },
 
-  saveStrategy(strategy: any): Promise<{ success: boolean; strategy: any }> {
+  async saveStrategy(strategy: any): Promise<{ success: boolean; strategy: any }> {
     return request('/api/strategies', {
       method: 'POST',
       body: JSON.stringify(strategy),
     });
   },
 
-  deleteStrategy(id: string): Promise<{ success: boolean; message: string }> {
-    return request(`/api/strategies/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
+  async deleteStrategy(id: string): Promise<{ success: boolean }> {
+    return request(`/api/strategies/${id}`, { method: 'DELETE' });
   },
 
-  runBacktest(params: {
-    strategy?: any;
-    symbol?: string;
-    timeframe?: string;
-    candleCount?: number;
-    initialDeposit?: number;
-    fixedLot?: number;
-  }): Promise<{ success: boolean; result: any }> {
+  async runBacktest(params: { strategy: { id: string }; candleCount?: number; initialDeposit?: number }): Promise<{ success: boolean; result: any }> {
     return request('/api/strategies/backtest', {
       method: 'POST',
       body: JSON.stringify(params),
     });
   },
 
-  getBacktestHistory(strategyId?: string): Promise<{ success: boolean; count: number; results: any[] }> {
-    const url = strategyId ? `/api/strategies/backtest/history?strategyId=${encodeURIComponent(strategyId)}` : '/api/strategies/backtest/history';
-    return request(url);
+  async getBacktestHistory(strategyId?: string): Promise<{ results: any[] }> {
+    const qs = strategyId ? `?strategyId=${encodeURIComponent(strategyId)}` : '';
+    return request(`/api/strategies/backtest/history${qs}`);
   },
 
-  getObservations(category?: string): Promise<{ success: boolean; count: number; observations: any[] }> {
-    const url = category && category !== 'all' ? `/api/observations?category=${encodeURIComponent(category)}` : '/api/observations';
-    return request(url);
+  async getObservations(category?: string): Promise<{ observations: any[] }> {
+    const qs = category ? `?category=${encodeURIComponent(category)}` : '';
+    return request(`/api/observations${qs}`);
   },
 
-  saveObservation(obs: any): Promise<{ success: boolean; observation: any }> {
+  async saveObservation(obs: any): Promise<{ success: boolean; observation: any }> {
     return request('/api/observations', {
       method: 'POST',
       body: JSON.stringify(obs),
     });
   },
 
-  deleteObservation(id: string): Promise<{ success: boolean; message: string }> {
-    return request(`/api/observations/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
+  async deleteObservation(id: string): Promise<{ success: boolean }> {
+    return request(`/api/observations/${id}`, { method: 'DELETE' });
   },
 };

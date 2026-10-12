@@ -222,4 +222,195 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
       properties: {},
     },
   },
+  {
+    name: 'mt5_get_technical_indicators',
+    description: 'Precomputed technical indicator suite: RSI (14), EMAs (9, 21, 50, 200), MACD (12,26,9), Bollinger Bands (20,2), ATR (14), and market bias consensus (STRONG_BUY, BUY, NEUTRAL, SELL, STRONG_SELL).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbol: { type: 'string', description: 'Symbol ticker (default: active chart)' },
+        timeframe: { type: 'string', description: 'Timeframe (default: M1)' },
+      },
+    },
+  },
+  {
+    name: 'mt5_get_pending_orders',
+    description: 'Retrieve active pending limit and stop orders in MetaTrader 5.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbol: { type: 'string', description: 'Optional symbol filter' },
+      },
+    },
+  },
+  {
+    name: 'mt5_cancel_pending_order',
+    description: 'Cancel an active pending limit or stop order in MetaTrader 5 by ticket ID.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ticket: { type: 'number', description: 'Order ticket ID to cancel' },
+      },
+      required: ['ticket'],
+    },
+  },
+  {
+    name: 'mt5_request_chart_history',
+    description: 'Trigger on-demand historical candle pull from MetaTrader 5 for any symbol, timeframe, and bar count.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbol: { type: 'string', description: 'Symbol ticker (e.g. EURUSD, GBPUSD, XAUUSD)' },
+        timeframe: { type: 'string', description: 'Timeframe: M1, M5, M15, H1, H4, D1 (default: M1)' },
+        count: { type: 'number', description: 'Number of historical candles to fetch (e.g. 100, 300)' },
+      },
+      required: ['symbol'],
+    },
+  },
+  {
+    name: 'mt5_simulate_candles',
+    description: 'Seed synthetic candlestick data into SQLite and precompute indicators for testing without waiting for live ticks.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbol: { type: 'string', description: 'Symbol (default: EURUSD)' },
+        timeframe: { type: 'string', description: 'Timeframe (default: M1)' },
+        count: { type: 'number', description: 'Number of candles (default: 60)' },
+      },
+    },
+  },
+  {
+    name: 'mt5_list_strategies',
+    description: 'List quantitative trading strategies stored in the persistent knowledge base.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbol: { type: 'string', description: 'Filter by symbol (optional)' },
+      },
+    },
+  },
+  {
+    name: 'mt5_create_strategy',
+    description: 'Create or update a quantitative trading strategy in the site knowledge base (e.g. RSI_REVERSAL, EMA_CROSSOVER, MACD_MOMENTUM, MULTI_INDICATOR_CONSENSUS).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Strategy name' },
+        description: { type: 'string', description: 'Strategy thesis and rules' },
+        type: {
+          type: 'string',
+          enum: ['RSI_REVERSAL', 'EMA_CROSSOVER', 'MACD_MOMENTUM', 'BOLLINGER_BREAKOUT', 'MULTI_INDICATOR_CONSENSUS', 'CUSTOM_RULESET'],
+          description: 'Strategy algorithmic type',
+        },
+        symbol: { type: 'string', description: 'Target symbol (e.g. EURUSD, XAUUSD)' },
+        timeframe: { type: 'string', description: 'Target timeframe (M1, M5, M15, H1, H4, D1)' },
+        parameters: { type: 'object', description: 'Indicator parameters (rsiOversold, stopLossPoints, etc.)' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Keywords' },
+        author: { type: 'string', description: 'Author attribution' },
+      },
+      required: ['name', 'symbol'],
+    },
+  },
+  {
+    name: 'mt5_delete_strategy',
+    description: 'Delete a strategy by ID from the knowledge base.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        strategyId: { type: 'string', description: 'Strategy ID to delete' },
+      },
+      required: ['strategyId'],
+    },
+  },
+  {
+    name: 'mt5_backtest_strategy',
+    description: 'Run backtest of a strategy against stored historical MT5 candles on the site server. Calculates win rate, net profit, drawdown, and equity curve.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        strategyId: { type: 'string', description: 'Strategy ID' },
+        candleLimit: { type: 'number', description: 'Historical candles count (default: 300)' },
+        initialDeposit: { type: 'number', description: 'Deposit in USD (default: 10000)' },
+      },
+      required: ['strategyId'],
+    },
+  },
+  {
+    name: 'mt5_evaluate_strategy_signals',
+    description: 'Evaluate active quantitative strategies against real-time MT5 candlestick data and quotes. Returns BUY/SELL/NEUTRAL signals with rationale and dynamic SL/TP.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        strategyId: { type: 'string', description: 'Optional ID of specific strategy' },
+      },
+    },
+  },
+  {
+    name: 'mt5_execute_strategy_signal',
+    description: 'Execute a strategy signal through the site command queue to MT5. Bridge pushes order for EA execution.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        strategyId: { type: 'string', description: 'ID of strategy to execute' },
+        volume: { type: 'number', description: 'Lot size override (optional)' },
+      },
+      required: ['strategyId'],
+    },
+  },
+  {
+    name: 'mt5_list_observations',
+    description: 'Retrieve observations, empirical market patterns, and research insights from knowledge base.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        category: {
+          type: 'string',
+          enum: ['all', 'market_insight', 'pattern', 'execution_note', 'anomaly', 'research'],
+          description: 'Filter category (default: all)',
+        },
+      },
+    },
+  },
+  {
+    name: 'mt5_record_observation',
+    description: 'Store a market observation or execution insight in the persistent knowledge base.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Observation title' },
+        content: { type: 'string', description: 'Detailed analysis or empirical finding' },
+        symbol: { type: 'string', description: 'Associated symbol (optional)' },
+        timeframe: { type: 'string', description: 'Associated timeframe (optional)' },
+        category: {
+          type: 'string',
+          enum: ['market_insight', 'pattern', 'execution_note', 'anomaly', 'research'],
+          description: 'Classification category',
+        },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Tags' },
+      },
+      required: ['title', 'content'],
+    },
+  },
+  {
+    name: 'mt5_delete_observation',
+    description: 'Delete an observation by ID from the knowledge base.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        observationId: { type: 'string', description: 'Observation ID to delete' },
+      },
+      required: ['observationId'],
+    },
+  },
+  {
+    name: 'mt5_get_backtest_history',
+    description: 'Retrieve archived backtest runs and performance results from SQLite.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        strategyId: { type: 'string', description: 'Filter by strategy ID (optional)' },
+        limit: { type: 'number', description: 'Maximum reports to return (default: 20)' },
+      },
+    },
+  },
 ];

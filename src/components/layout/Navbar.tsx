@@ -60,7 +60,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'mcp', label: 'AI MCP Hub', icon: Cpu },
     { id: 'risk', label: 'Risk & Trailing', icon: ShieldAlert },
     { id: 'database', label: 'Database & SQLite', icon: Database },
-    { id: 'ea', label: 'MT5 EA Setup', icon: FileCode2 },
+    { id: 'ea', label: 'MT5 Connection', icon: FileCode2 },
     { id: 'logs', label: 'Audit Log', icon: Clock },
   ];
 

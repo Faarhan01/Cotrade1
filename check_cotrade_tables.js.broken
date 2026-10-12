@@ -1,0 +1,15 @@
+﻿const SQL = require('sql.js');
+const fs = require('fs');
+const path = require('path');
+const DB_FILE = path.resolve('C:/Users/faarh/Workspaces/Custom-apps/Cotrade/data/mt5_bridge.sqlite');
+const fileBuffer = fs.readFileSync(DB_FILE);
+const SQLInstance = new SQL.Database(fileBuffer);
+const tables = SQLInstance.exec(\
+SELECT
+name
+FROM
+sqlite_master
+WHERE
+type=table\);
+console.log('Cotrade tables:', JSON.stringify(tables, null, 2));
+process.exit(0);

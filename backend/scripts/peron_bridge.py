@@ -13,13 +13,40 @@ import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-# Ensure local peron package is in sys.path
+# Ensure local peron package or custom paths are in sys.path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-PERON_PACKAGE_DIR = os.path.join(PROJECT_ROOT, "peron_package")
+BACKEND_DIR = os.path.dirname(SCRIPT_DIR)
+WORKSPACE_ROOT = os.path.dirname(BACKEND_DIR)
 
-if os.path.exists(PERON_PACKAGE_DIR):
-    sys.path.insert(0, PERON_PACKAGE_DIR)
+candidate_paths = []
+
+# From environment - support both single path and comma-separated
+env_paths = os.environ.get("PERON_PACKAGE_PATH", "").strip()
+if env_paths:
+    for p in env_paths.split(','):
+        p = p.strip()
+        if p:
+            candidate_paths.append(os.path.expanduser(p))
+
+# Additional common locations
+candidate_paths.extend([
+    os.path.join(WORKSPACE_ROOT, "peron_package"),
+    os.path.join(WORKSPACE_ROOT, "metatrader5_package"),
+    os.path.join(BACKEND_DIR, "peron_package"),
+    os.path.join(os.path.dirname(WORKSPACE_ROOT), "peron"),
+    os.path.join(os.path.dirname(WORKSPACE_ROOT), "peron", "metatrader5_package"),
+    os.path.join(os.path.dirname(os.path.dirname(WORKSPACE_ROOT)), "Tools", "peron", "metatrader5_package"),
+    os.path.join(os.path.dirname(os.path.dirname(WORKSPACE_ROOT)), "Tools", "peron"),
+])
+
+# Remove the local backend peron_package (broken numpy) from sys.path to avoid circular import
+BACKEND_LOCAL_PKG = os.path.join(BACKEND_DIR, "peron_package")
+if BACKEND_LOCAL_PKG in sys.path:
+    sys.path.remove(BACKEND_LOCAL_PKG)
+
+for p in candidate_paths:
+    if p and os.path.exists(p) and p not in sys.path:
+        sys.path.insert(0, p)
 
 # Try importing official MetaTrader5 package
 HAVE_NATIVE_MT5 = False
@@ -356,14 +383,15 @@ class MT5Engine:
             }
 
         symbol = params.get("symbol")
-        order_type_str = params.get("orderType", "BUY").upper()
+        order_type_str = str(params.get("orderType", "BUY")).strip()
+        norm_ot = order_type_str.upper()
         volume = float(params.get("volume", 0.01))
         sl = float(params.get("sl", 0.0))
         tp = float(params.get("tp", 0.0))
         comment = params.get("comment", "Peron Trade")
         magic = int(params.get("magic", 123456))
 
-        # Check symbol selected in market watch
+        # Check symbol selected in market watch without forcing casing
         selected = mt5.symbol_select(symbol, True)
         if not selected:
             return {"success": False, "message": f"Symbol '{symbol}' not found in MetaTrader 5"}
@@ -372,11 +400,37 @@ class MT5Engine:
         if not tick:
             return {"success": False, "message": f"No market tick available for symbol '{symbol}'"}
 
-        price = tick.ask if order_type_str == "BUY" else tick.bid
-        order_type_val = mt5.ORDER_TYPE_BUY if order_type_str == "BUY" else mt5.ORDER_TYPE_SELL
+        ORDER_MAPPINGS = {
+            "BUY": (mt5.TRADE_ACTION_DEAL, mt5.ORDER_TYPE_BUY),
+            "SELL": (mt5.TRADE_ACTION_DEAL, mt5.ORDER_TYPE_SELL),
+            "BUY_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_BUY_LIMIT),
+            "SELL_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_SELL_LIMIT),
+            "BUY_STOP": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_BUY_STOP),
+            "SELL_STOP": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_SELL_STOP),
+            "BUY_STOP_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_BUY_STOP_LIMIT),
+            "SELL_STOP_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_SELL_STOP_LIMIT),
+        }
+        trade_action, order_type_val = ORDER_MAPPINGS.get(norm_ot, (mt5.TRADE_ACTION_DEAL, mt5.ORDER_TYPE_BUY))
+
+        if trade_action == mt5.TRADE_ACTION_PENDING and params.get("price") is not None:
+            price = float(params.get("price"))
+        else:
+            price = tick.ask if "BUY" in norm_ot else tick.bid
+
+        # Dynamically determine broker supported filling mode
+        filling_type = mt5.ORDER_FILLING_IOC
+        sym_info = mt5.symbol_info(symbol)
+        if sym_info:
+            mode = getattr(sym_info, "filling_mode", 0)
+            if mode & 2:
+                filling_type = mt5.ORDER_FILLING_IOC
+            elif mode & 1:
+                filling_type = mt5.ORDER_FILLING_FOK
+            elif mode & 4:
+                filling_type = mt5.ORDER_FILLING_RETURN
 
         request = {
-            "action": mt5.TRADE_ACTION_DEAL,
+            "action": trade_action,
             "symbol": symbol,
             "volume": volume,
             "type": order_type_val,
@@ -387,7 +441,7 @@ class MT5Engine:
             "magic": magic,
             "comment": comment,
             "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_IOC,
+            "type_filling": filling_type,
         }
 
         try:
@@ -408,6 +462,31 @@ class MT5Engine:
             }
         except Exception as e:
             return {"success": False, "message": f"Exception executing order: {str(e)}"}
+
+    def cancel_order(self, ticket):
+        if not HAVE_NATIVE_MT5 or mt5 is None:
+            return {"success": False, "message": "MetaTrader 5 terminal is not connected"}
+
+        try:
+            request = {
+                "action": mt5.TRADE_ACTION_REMOVE,
+                "order": int(ticket),
+            }
+            result = mt5.order_send(request)
+            if result is None:
+                err = mt5.last_error()
+                return {"success": False, "message": f"Cancel order returned None: {err}"}
+
+            success = (result.retcode == mt5.TRADE_RETCODE_DONE)
+            return {
+                "success": success,
+                "ticket": result.order,
+                "retcode": result.retcode,
+                "comment": result.comment,
+                "message": f"Order #{ticket} cancelled" if success else f"Failed to cancel order: {result.comment}"
+            }
+        except Exception as e:
+            return {"success": False, "message": f"Exception cancelling order: {str(e)}"}
 
     def close_position(self, ticket, volume=None):
         if not HAVE_NATIVE_MT5 or mt5 is None:
@@ -488,6 +567,234 @@ class MT5Engine:
         except Exception as e:
             return {"success": False, "message": f"Exception modifying position: {str(e)}"}
 
+    def modify_order(self, ticket, price=None, sl=None, tp=None):
+        if not HAVE_NATIVE_MT5 or mt5 is None:
+            return {"success": False, "message": "MetaTrader 5 terminal is not connected"}
+
+        try:
+            orders = mt5.orders_get(ticket=int(ticket))
+            if not orders or len(orders) == 0:
+                return {"success": False, "message": f"Order #{ticket} not found in MT5"}
+
+            order = orders[0]
+            request = {
+                "action": mt5.TRADE_ACTION_MODIFY,
+                "order": int(ticket),
+                "price": float(price) if price is not None else order.price_open,
+                "sl": float(sl) if sl is not None else order.sl,
+                "tp": float(tp) if tp is not None else order.tp,
+            }
+
+            result = mt5.order_send(request)
+            if result is None:
+                err = mt5.last_error()
+                return {"success": False, "message": f"Modify order returned None: {err}"}
+
+            success = (result.retcode == mt5.TRADE_RETCODE_DONE)
+            return {
+                "success": success,
+                "retcode": result.retcode,
+                "comment": result.comment,
+                "message": f"Pending order #{ticket} updated" if success else f"Modify failed: {result.comment}"
+            }
+        except Exception as e:
+            return {"success": False, "message": f"Exception modifying order: {str(e)}"}
+
+    def get_history_deals(self, date_from=None, date_to=None, count=100):
+        if not HAVE_NATIVE_MT5 or mt5 is None:
+            return []
+        try:
+            now_sec = int(time.time())
+            from_sec = int(date_from) if date_from else (now_sec - 30 * 86400)
+            to_sec = int(date_to) if date_to else (now_sec + 86400)
+            deals = mt5.history_deals_get(from_sec, to_sec)
+            if deals:
+                DEAL_TYPE_NAMES = {0: "BUY", 1: "SELL", 2: "BALANCE", 3: "CREDIT"}
+                ENTRY_NAMES = {0: "IN", 1: "OUT", 2: "INOUT"}
+                res = []
+                for d in deals[-int(count):]:
+                    res.append({
+                        "ticket": int(d.ticket),
+                        "order": int(d.order),
+                        "time": int(d.time),
+                        "timeIso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(d.time)),
+                        "type": DEAL_TYPE_NAMES.get(d.type, "DEAL"),
+                        "entry": ENTRY_NAMES.get(d.entry, "IN"),
+                        "symbol": getattr(d, "symbol", "") or "",
+                        "volume": float(d.volume),
+                        "price": float(d.price),
+                        "commission": round(float(getattr(d, "commission", 0.0)), 2),
+                        "swap": round(float(getattr(d, "swap", 0.0)), 2),
+                        "profit": round(float(getattr(d, "profit", 0.0)), 2),
+                        "fee": round(float(getattr(d, "fee", 0.0)), 2),
+                        "magic": int(getattr(d, "magic", 0)),
+                        "comment": getattr(d, "comment", "") or "",
+                    })
+                return res
+        except Exception:
+            pass
+        return []
+
+    def get_history_orders(self, date_from=None, date_to=None, count=100):
+        if not HAVE_NATIVE_MT5 or mt5 is None:
+            return []
+        try:
+            now_sec = int(time.time())
+            from_sec = int(date_from) if date_from else (now_sec - 30 * 86400)
+            to_sec = int(date_to) if date_to else (now_sec + 86400)
+            orders = mt5.history_orders_get(from_sec, to_sec)
+            if orders:
+                STATE_NAMES = {0: "STARTED", 1: "PLACED", 2: "CANCELLED", 3: "PARTIAL", 4: "FILLED", 5: "REJECTED", 6: "EXPIRED"}
+                ORDER_TYPE_NAMES = {0: "BUY", 1: "SELL", 2: "BUY_LIMIT", 3: "SELL_LIMIT", 4: "BUY_STOP", 5: "SELL_STOP"}
+                res = []
+                for o in orders[-int(count):]:
+                    res.append({
+                        "ticket": int(o.ticket),
+                        "symbol": o.symbol,
+                        "type": ORDER_TYPE_NAMES.get(o.type, "ORDER"),
+                        "volumeInitial": float(o.volume_initial),
+                        "volumeCurrent": float(o.volume_current),
+                        "priceOpen": float(o.price_open),
+                        "priceCurrent": float(getattr(o, "price_current", o.price_open)),
+                        "sl": float(o.sl),
+                        "tp": float(o.tp),
+                        "state": STATE_NAMES.get(o.state, "FILLED"),
+                        "timeSetup": int(o.time_setup),
+                        "timeDone": int(getattr(o, "time_done", 0)),
+                        "magic": int(o.magic),
+                        "comment": o.comment or "",
+                    })
+                return res
+        except Exception:
+            pass
+        return []
+
+    def calc_margin(self, action_str, symbol, volume, price=None):
+        if not HAVE_NATIVE_MT5 or mt5 is None:
+            return {"success": False, "margin": 0, "currency": "USD", "message": "MT5 terminal not connected"}
+        try:
+            action_type = mt5.ORDER_TYPE_BUY if "BUY" in str(action_str).upper() else mt5.ORDER_TYPE_SELL
+            if price is None or float(price) <= 0:
+                tick = mt5.symbol_info_tick(symbol)
+                price = (tick.ask if action_type == mt5.ORDER_TYPE_BUY else tick.bid) if tick else 1.0
+            margin = mt5.order_calc_margin(action_type, symbol, float(volume), float(price))
+            acc = mt5.account_info()
+            curr = acc.currency if acc else "USD"
+            if margin is not None:
+                return {"success": True, "margin": round(float(margin), 2), "currency": curr}
+            err = mt5.last_error()
+            return {"success": False, "margin": 0, "currency": curr, "message": f"Margin calc error: {err}"}
+        except Exception as e:
+            return {"success": False, "margin": 0, "currency": "USD", "message": str(e)}
+
+    def calc_profit(self, action_str, symbol, volume, price_open, price_close):
+        if not HAVE_NATIVE_MT5 or mt5 is None:
+            return {"success": False, "profit": 0, "currency": "USD", "message": "MT5 terminal not connected"}
+        try:
+            action_type = mt5.ORDER_TYPE_BUY if "BUY" in str(action_str).upper() else mt5.ORDER_TYPE_SELL
+            profit = mt5.order_calc_profit(action_type, symbol, float(volume), float(price_open), float(price_close))
+            acc = mt5.account_info()
+            curr = acc.currency if acc else "USD"
+            if profit is not None:
+                return {"success": True, "profit": round(float(profit), 2), "currency": curr}
+            err = mt5.last_error()
+            return {"success": False, "profit": 0, "currency": curr, "message": f"Profit calc error: {err}"}
+        except Exception as e:
+            return {"success": False, "profit": 0, "currency": "USD", "message": str(e)}
+
+    def check_order(self, params):
+        if not HAVE_NATIVE_MT5 or mt5 is None:
+            return {"feasible": False, "message": "MT5 terminal not connected"}
+        try:
+            symbol = params.get("symbol")
+            order_type_str = str(params.get("orderType", "BUY")).upper()
+            volume = float(params.get("volume", 0.01))
+            tick = mt5.symbol_info_tick(symbol)
+            if not tick:
+                return {"feasible": False, "message": f"Symbol tick not found for {symbol}"}
+            price = float(params.get("price")) if params.get("price") else (tick.ask if "BUY" in order_type_str else tick.bid)
+            action_val = mt5.ORDER_TYPE_BUY if order_type_str == "BUY" else mt5.ORDER_TYPE_SELL
+
+            request = {
+                "action": mt5.TRADE_ACTION_DEAL,
+                "symbol": symbol,
+                "volume": volume,
+                "type": action_val,
+                "price": price,
+                "deviation": 20,
+            }
+            res = mt5.order_check(request)
+            if res:
+                return {
+                    "feasible": bool(res.retcode == 0),
+                    "retcode": res.retcode,
+                    "margin": round(float(res.margin), 2),
+                    "marginFree": round(float(res.margin_free), 2),
+                    "marginLevel": round(float(res.margin_level), 2),
+                    "balance": round(float(res.balance), 2),
+                    "equity": round(float(res.equity), 2),
+                    "comment": res.comment,
+                    "message": res.comment if res.retcode == 0 else f"Order check failed: {res.comment}"
+                }
+            err = mt5.last_error()
+            return {"feasible": False, "message": f"Order check error: {err}"}
+        except Exception as e:
+            return {"feasible": False, "message": str(e)}
+
+    def get_symbol_info(self, symbol):
+        if not HAVE_NATIVE_MT5 or mt5 is None:
+            return None
+        try:
+            s = mt5.symbol_info(symbol)
+            if s:
+                digits = int(getattr(s, "digits", 5))
+                point = float(getattr(s, "point", 10 ** (-digits)))
+                return {
+                    "symbol": s.name,
+                    "digits": digits,
+                    "point": point,
+                    "spread": int(getattr(s, "spread", 0)),
+                    "description": s.description or s.name,
+                    "minLot": float(getattr(s, "volume_min", 0.01)),
+                    "maxLot": float(getattr(s, "volume_max", 100.0)),
+                    "lotStep": float(getattr(s, "volume_step", 0.01)),
+                    "contractSize": float(getattr(s, "trade_contract_size", 100000.0)),
+                    "stopsLevel": int(getattr(s, "trade_stops_level", 0)),
+                    "freezeLevel": int(getattr(s, "trade_freeze_level", 0)),
+                    "swapLong": float(getattr(s, "swap_long", 0.0)),
+                    "swapShort": float(getattr(s, "swap_short", 0.0)),
+                    "currencyBase": getattr(s, "currency_base", ""),
+                    "currencyProfit": getattr(s, "currency_profit", ""),
+                    "currencyMargin": getattr(s, "currency_margin", ""),
+                    "tradeAllowed": int(getattr(s, "trade_mode", 4)) > 0,
+                    "bid": float(getattr(s, "bid", 0.0)),
+                    "ask": float(getattr(s, "ask", 0.0)),
+                }
+        except Exception:
+            pass
+        return None
+
+    def get_market_depth(self, symbol):
+        if not HAVE_NATIVE_MT5 or mt5 is None:
+            return {"bids": [], "asks": []}
+        try:
+            mt5.market_book_add(symbol)
+            book = mt5.market_book_get(symbol)
+            if book:
+                bids = []
+                asks = []
+                for item in book:
+                    # type 1 = sell/ask, type 2 = buy/bid
+                    entry = {"price": float(item.price), "volume": float(item.volume)}
+                    if item.type == 2:
+                        bids.append(entry)
+                    else:
+                        asks.append(entry)
+                return {"bids": bids, "asks": asks}
+        except Exception:
+            pass
+        return {"bids": [], "asks": []}
+
 
 engine = MT5Engine()
 
@@ -560,6 +867,22 @@ class BridgeHTTPHandler(BaseHTTPRequestHandler):
         elif path == "/orders":
             symbol = qs.get("symbol", [None])[0]
             self._send_json(200, engine.get_orders(symbol))
+        elif path == "/history/deals":
+            date_from = qs.get("from", [None])[0]
+            date_to = qs.get("to", [None])[0]
+            count = int(qs.get("count", [100])[0])
+            self._send_json(200, engine.get_history_deals(date_from, date_to, count))
+        elif path == "/history/orders":
+            date_from = qs.get("from", [None])[0]
+            date_to = qs.get("to", [None])[0]
+            count = int(qs.get("count", [100])[0])
+            self._send_json(200, engine.get_history_orders(date_from, date_to, count))
+        elif path == "/symbol/info":
+            sym = qs.get("symbol", [None])[0]
+            self._send_json(200, engine.get_symbol_info(sym) if sym else None)
+        elif path == "/depth":
+            sym = qs.get("symbol", ["EURUSD"])[0]
+            self._send_json(200, engine.get_market_depth(sym))
         else:
             self._send_json(404, {"error": "Endpoint not found"})
 
@@ -597,6 +920,21 @@ class BridgeHTTPHandler(BaseHTTPRequestHandler):
         elif path == "/modify":
             res = engine.modify_position(body.get("ticket"), body.get("sl"), body.get("tp"))
             self._send_json(200 if res.get("success") else 400, res)
+        elif path == "/order/modify":
+            res = engine.modify_order(body.get("ticket"), body.get("price"), body.get("sl"), body.get("tp"))
+            self._send_json(200 if res.get("success") else 400, res)
+        elif path == "/cancel":
+            res = engine.cancel_order(body.get("ticket"))
+            self._send_json(200 if res.get("success") else 400, res)
+        elif path == "/calc/margin":
+            res = engine.calc_margin(body.get("action", "BUY"), body.get("symbol"), body.get("volume", 0.1), body.get("price"))
+            self._send_json(200 if res.get("success") else 400, res)
+        elif path == "/calc/profit":
+            res = engine.calc_profit(body.get("action", "BUY"), body.get("symbol"), body.get("volume", 0.1), body.get("priceOpen", 0), body.get("priceClose", 0))
+            self._send_json(200 if res.get("success") else 400, res)
+        elif path == "/order/check":
+            res = engine.check_order(body)
+            self._send_json(200 if res.get("feasible") else 400, res)
         else:
             self._send_json(404, {"error": "Endpoint not found"})
 
@@ -607,6 +945,22 @@ def run_server(port=8888, host="127.0.0.1"):
     server_address = (host, port)
     httpd = HTTPServer(server_address, BridgeHTTPHandler)
     print(f"[Peron] MT5 Python Bridge running at http://{host}:{port}")
+
+    # Auto-connect to MT5 terminal on startup (with retries)
+    auto_connect()
+
+    # Background reconnection loop: retry if terminal starts later or disconnects
+    import threading
+
+    def reconnect_loop():
+        while True:
+            time.sleep(10)
+            if not engine.connected:
+                auto_connect()
+
+    reconnect_thread = threading.Thread(target=reconnect_loop, daemon=True)
+    reconnect_thread.start()
+
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
@@ -614,6 +968,56 @@ def run_server(port=8888, host="127.0.0.1"):
     finally:
         httpd.server_close()
         engine.disconnect()
+
+
+def auto_connect():
+    """Attempt to connect to the local MetaTrader 5 terminal automatically."""
+    if not HAVE_NATIVE_MT5 or mt5 is None:
+        return
+    if engine.connected:
+        return
+    try:
+        # Try plain initialize() first - it connects to the already-running MT5 terminal
+        # without forcing a login (uses the terminal's currently logged-in account)
+        init_kwargs = {}
+        env_login = os.environ.get("MT5_LOGIN")
+        env_password = os.environ.get("MT5_PASSWORD")
+        env_server = os.environ.get("MT5_SERVER")
+        env_path = os.environ.get("MT5_TERMINAL_PATH")
+        if env_path:
+            init_kwargs["path"] = env_path
+        if env_login:
+            try:
+                init_kwargs["login"] = int(env_login)
+            except (ValueError, TypeError):
+                pass
+        if env_password:
+            init_kwargs["password"] = env_password
+        if env_server:
+            init_kwargs["server"] = env_server
+        init_kwargs["timeout"] = 3000
+
+        res = mt5.initialize(**init_kwargs)
+        if res:
+            info = mt5.terminal_info()
+            if info:
+                engine.connected = bool(info.connected)
+                engine.terminal_connected = True
+                engine.terminal_name = info.name
+                engine.terminal_company = info.company
+                engine.terminal_build = info.build
+                print(f"[Peron] Auto-connected to MetaTrader 5: {info.name} (build {info.build})")
+                return
+            else:
+                engine.connected = True
+                engine.terminal_connected = True
+                print("[Peron] Auto-connected to MetaTrader 5 Terminal")
+                return
+        else:
+            err = mt5.last_error()
+            print(f"[Peron] Auto-connect retrying... MT5 init failed: code {err[0]}, {err[1]}")
+    except Exception as ex:
+        print(f"[Peron] Auto-connect retrying... exception: {ex}")
 
 if __name__ == "__main__":
     port = 8888

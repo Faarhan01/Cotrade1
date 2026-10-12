@@ -173,8 +173,16 @@ export const KnowledgeBasePage: React.FC = () => {
     }
   };
 
+  const [deletePendingId, setDeletePendingId] = useState<string | null>(null);
+
   const handleDeleteStrategy = async (id: string, name: string) => {
-    if (!confirm(`Delete strategy "${name}" from knowledge base?`)) return;
+    if (deletePendingId !== id) {
+      setDeletePendingId(id);
+      showNotification(`Click delete again to confirm removing "${name}"`, 'error');
+      setTimeout(() => setDeletePendingId(null), 4000);
+      return;
+    }
+    setDeletePendingId(null);
     try {
       await api.deleteStrategy(id);
       showNotification(`Strategy "${name}" deleted.`);
@@ -236,7 +244,13 @@ export const KnowledgeBasePage: React.FC = () => {
   };
 
   const handleDeleteObservation = async (id: string, title: string) => {
-    if (!confirm(`Delete observation "${title}"?`)) return;
+    if (deletePendingId !== id) {
+      setDeletePendingId(id);
+      showNotification(`Click delete again to confirm removing "${title}"`, 'error');
+      setTimeout(() => setDeletePendingId(null), 4000);
+      return;
+    }
+    setDeletePendingId(null);
     try {
       await api.deleteObservation(id);
       showNotification(`Observation deleted.`);

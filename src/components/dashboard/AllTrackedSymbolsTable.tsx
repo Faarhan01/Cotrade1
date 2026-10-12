@@ -95,10 +95,10 @@ export const AllTrackedSymbolsTable: React.FC<AllTrackedSymbolsTableProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {filtered.map((item) => {
-                const isSelected = selectedSymbol === item.symbol;
-                const digits = item.digits ?? (item.symbol.includes('JPY') ? 3 : 5);
-                const high = item.sessionHigh || item.high24h;
-                const low = item.sessionLow || item.low24h;
+                const isSelected = selectedSymbol.toLowerCase() === item.symbol.toLowerCase();
+                const digits = item.digits ?? (item.symbol.toLowerCase().includes('jpy') ? 3 : 5);
+const high = item.sessionHigh || item.high24h || ticks.find(t => t.symbol === item.symbol)?.high24h;
+      const low = item.sessionLow || item.low24h || ticks.find(t => t.symbol === item.symbol)?.low24h;
                 const contractSizeStr = item.contractSize != null ? item.contractSize.toLocaleString() : '100,000';
                 const minLot = item.minLot ?? 0.01;
                 const maxLot = item.maxLot ?? 100.0;

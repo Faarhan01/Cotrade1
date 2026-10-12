@@ -1,30 +1,43 @@
 import { request } from './client';
 
 export const databaseApi = {
-  getAnalytics(): Promise<{ success: boolean; analytics: any }> {
+  async getAnalytics(): Promise<any> {
     return request('/api/database/analytics');
   },
 
-  getOrders(limit = 100): Promise<{ success: boolean; count: number; orders: any[] }> {
+  async getOrders(limit = 100): Promise<{ orders: any[] }> {
     return request(`/api/database/orders?limit=${limit}`);
   },
 
-  getCandles(symbol = 'EURUSD', timeframe = 'M1', limit = 100): Promise<{
-    success: boolean;
-    symbol: string;
-    timeframe: string;
-    count: number;
-    candles: any[];
-  }> {
-    return request(`/api/database/candles?symbol=${encodeURIComponent(symbol.trim())}&timeframe=${encodeURIComponent(timeframe)}&limit=${limit}`);
+  async getCandles(symbol: string, timeframe = 'M1', limit = 100): Promise<any> {
+    return request(`/api/database/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}&limit=${limit}`);
   },
 
-  getTicks(symbol?: string, limit = 100): Promise<{ success: boolean; count: number; ticks: any[] }> {
-    const qs = symbol ? `?symbol=${encodeURIComponent(symbol.trim())}&limit=${limit}` : `?limit=${limit}`;
+  async getTicks(symbol?: string, limit = 100): Promise<any> {
+    const qs = symbol ? `?symbol=${encodeURIComponent(symbol)}&limit=${limit}` : `?limit=${limit}`;
     return request(`/api/database/ticks${qs}`);
   },
 
-  prune(): Promise<{ success: boolean; purgedUnexecutedOrders: number; message: string }> {
+  async getAccountHistory(limit = 100): Promise<any> {
+    return request(`/api/database/account?limit=${limit}`);
+  },
+
+  async getTableData(table: string, limit = 100): Promise<{ columns: string[]; rows: any[]; total: number }> {
+    switch (table) {
+      case 'orders':
+        return this.getOrders(limit);
+      case 'candles_history':
+        return this.getCandles('EURUSD', 'M1', limit);
+      case 'ticks_history':
+        return this.getTicks(undefined, limit);
+      case 'account_history':
+        return this.getAccountHistory(limit);
+      default:
+        return { columns: [], rows: [], total: 0 };
+    }
+  },
+
+  async prune(): Promise<{ success: boolean; purgedUnexecutedOrders: number; message: string }> {
     return request('/api/database/prune', { method: 'POST' });
   },
 };

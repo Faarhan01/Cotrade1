@@ -149,4 +149,90 @@ export class MT5Controller {
       terminal,
     });
   }
+
+  // Get real executed history deals from MT5
+  public static async getHistoryDeals(req: Request, res: Response) {
+    const dateFrom = req.query.from ? Number(req.query.from) : undefined;
+    const dateTo = req.query.to ? Number(req.query.to) : undefined;
+    const count = req.query.count ? Number(req.query.count) : 100;
+    const connector = connectorManager.getConnector();
+    const deals = await connector.getHistoryDeals({ dateFrom, dateTo, count });
+    res.json({
+      success: true,
+      count: deals.length,
+      deals,
+    });
+  }
+
+  // Get historical orders from MT5
+  public static async getHistoryOrders(req: Request, res: Response) {
+    const dateFrom = req.query.from ? Number(req.query.from) : undefined;
+    const dateTo = req.query.to ? Number(req.query.to) : undefined;
+    const count = req.query.count ? Number(req.query.count) : 100;
+    const connector = connectorManager.getConnector();
+    const orders = await connector.getHistoryOrders({ dateFrom, dateTo, count });
+    res.json({
+      success: true,
+      count: orders.length,
+      orders,
+    });
+  }
+
+  // Calculate required margin in account currency
+  public static async calcMargin(req: Request, res: Response) {
+    const { action, orderType, symbol, volume, price } = req.body;
+    const connector = connectorManager.getConnector();
+    const result = await connector.calcMargin(
+      action || orderType || 'BUY',
+      normalizeSymbol(symbol || 'EURUSD'),
+      Number(volume) || 0.1,
+      price ? Number(price) : undefined
+    );
+    res.json(result);
+  }
+
+  // Calculate projected trade profit
+  public static async calcProfit(req: Request, res: Response) {
+    const { action, orderType, symbol, volume, priceOpen, priceClose } = req.body;
+    const connector = connectorManager.getConnector();
+    const result = await connector.calcProfit(
+      action || orderType || 'BUY',
+      normalizeSymbol(symbol || 'EURUSD'),
+      Number(volume) || 0.1,
+      Number(priceOpen) || 0,
+      Number(priceClose) || 0
+    );
+    res.json(result);
+  }
+
+  // Pre-check order feasibility against broker rules and margins
+  public static async checkOrder(req: Request, res: Response) {
+    const connector = connectorManager.getConnector();
+    const result = await connector.checkOrder(req.body);
+    res.json(result);
+  }
+
+  // Get Level 2 Market Depth (Order Book)
+  public static async getMarketDepth(req: Request, res: Response) {
+    const symbol = normalizeSymbol(String(req.query.symbol || 'EURUSD'));
+    const connector = connectorManager.getConnector();
+    const depth = await (connector as any).getMarketDepth(symbol);
+    res.json({
+      success: true,
+      symbol,
+      depth,
+    });
+  }
+
+  // Get comprehensive symbol specifications
+  public static async getDetailedSymbol(req: Request, res: Response) {
+    const symbol = normalizeSymbol(String(req.params.symbol || req.query.symbol || 'EURUSD'));
+    const connector = connectorManager.getConnector();
+    const spec = await (connector as any).getDetailedSymbol(symbol);
+    res.json({
+      success: Boolean(spec),
+      symbol,
+      spec,
+    });
+  }
 }

@@ -1,6 +1,6 @@
 # MT5 AI Copilot & MCP Bridge Terminal
 
-An open-source, full-stack bridge and real-time operational terminal connecting **MetaTrader 5 (MT5)** to **External AI Models** (such as Claude Desktop, Cursor, OpenAI Agents, Gemini, or custom Python agents) via the **Model Context Protocol (MCP)**, REST APIs, and low-latency **WebSockets**.
+An open-source, full-stack bridge and real-time operational terminal connecting **MetaTrader 5 (MT5)** to **External AI Models** (such as Claude Desktop, Cursor, OpenAI Agents, Gemini, or custom Python agents) via the **Model Context Protocol (MCP)**, REST APIs, and low-latency **WebSockets**. The system uses the **Peron Python package** for direct MT5 integration, eliminating the need for Expert Advisors and ensuring reliable, low-latency communication.
 
 Designed for **real account & broker execution** without synthetic or fake simulated trades.
 
@@ -22,23 +22,19 @@ Designed for **real account & broker execution** without synthetic or fake simul
 │  • MCP Server (/api/mcp, /api/mcp/sse)    • WebSocket Broadcaster (/ws)            │
 │  • Async Order Queue & Dispatcher         • Dynamic Risk Guard & Trailing Engine   │
 │  • Persistent SQLite Database (data/mt5_bridge.sqlite via WASM SQL)                │
+│  • Peron Python Package Integration         • MT5 Connection Management            │
 └────────────────────────────────────────┬───────────────────────────────────────────┘
                                          │
-                                         │ High-Frequency WebRequest Polling (500ms)
+                                         │ Direct MT5 Communication via Peron Package
                                          ▼
 ┌────────────────────────────────────────────────────────────────────────────────────┐
-│                   Dedicated MT5 Bridge Tunnel (http://127.0.0.1:7777)              │
-│                     Endpoints: /sync  |  /tick  |  /result  |  /health             │
-└────────────────────────────────────────┬───────────────────────────────────────────┘
-                                         │
-                                         ▼
-┌────────────────────────────────────────────────────────────────────────────────────┐
-│                     MetaTrader 5 Expert Advisor (MQL5)                             │
-│                           AIMT5Bridge.mq5                                          │
+│                     MetaTrader 5 Terminal & Peron Python Package                   │
+│                            (Direct API Integration)                                │
 │                                                                                    │
-│  • Broker Filling Auto-Detection (IOC / FOK / RETURN)                              │
-│  • Lot Size & Digits Normalization       • Active Chart Symbol Inspection          │
-│  • OrderSend Execution & Ticket Return   • Real-Time Market Watch Ticks            │
+│  • Real-time Market Data (Ticks, Symbols, OHLCV)                                   │
+│  • Account & Position Management                                                   │
+│  • Order Execution & Position Modification                                         │
+│  • History & Historical Data Access                                                │
 └────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -46,24 +42,33 @@ Designed for **real account & broker execution** without synthetic or fake simul
 
 ## ✨ Key Features
 
-- **No Fake / Simulated Data**: Initialized with clean states. All ticks, chart trajectories, and positions are populated exclusively from your live MT5 broker.
+- **No Fake / Simulated Data**: Initialized with clean states. All ticks, chart trajectories, and positions are populated exclusively from your live MT5 broker via the Peron Python package.
 - **Model Context Protocol (MCP)**: Native support for both standard HTTP JSON-RPC 2.0 (`/api/mcp`) and Server-Sent Events (`/api/mcp/sse`), enabling any external AI agent to inspect market conditions, execute orders, and modify positions.
 - **Dual-Listener Network**:
   - `http://localhost:3000`: Web UI, WebSocket server, REST API, and MCP endpoints.
-  - `http://127.0.0.1:7777`: Dedicated local tunnel for MT5 `WebRequest` (bypassing localhost restrictions).
+  - `http://127.0.0.1:7777`: Peron Python Bridge for MT5 communication.
 - **Asynchronous Execution Pipeline**: Every order moves through a monitored state machine (`pending` → `dispatched` → `executed` / `failed`), returning deal tickets and broker latency in milliseconds.
-- **Connected Chart Symbol Section**: Automatically detects the exact symbol and timeframe the EA is running on (e.g., `EURUSD M1`), complete with broker contract specifications, min/max lot limits, and live spreads.
-- **All Tracked Symbols Matrix**: Live table displaying real-time quotes, lot step constraints, and trading permissions for all symbols transmitted by the EA.
+- **Connected Chart Symbol Section**: Automatically detects the exact symbol and timeframe the user selects, complete with broker contract specifications, min/max lot limits, and live spreads.
+- **All Tracked Symbols Matrix**: Live table displaying real-time quotes, lot step constraints, and trading permissions for all symbols available from MT5.
 - **Embedded SQLite Database (`data/mt5_bridge.sqlite`)**: Persistent storage for orders, execution logs, account history, and risk settings with 1-click database binary downloads.
 - **Risk Guard & Trailing Stop Engine**: Global portfolio Take Profit ($), Stop Loss ($), maximum position caps, margin call cutoff protection, and emergency kill switch.
+
+## 🛠️ Recent Improvements
+
+- Fixed close position functionality: The close position button in the UI now correctly calls the `/api/positions/:ticket/close` endpoint.
+- Fixed chart data display: The Live Price Chart now correctly shows tick history data from the Peron MT5 connector.
+- Fixed All Tracked Symbols table: The table now falls back to tick data for 24h high/low when symbol data doesn't provide it.
+- Fixed candle endpoints: Added `/api/candles/request` and `/api/candles/simulate` endpoints for the CurrentChartSymbolCard component.
 
 ---
 
 ## 🛠️ Prerequisites
 
 1. **Node.js** (v18.0.0 or higher) and **npm**
-2. **MetaTrader 5 Desktop Terminal** (Windows, or via Wine/CrossOver on macOS/Linux)
-3. Any MT5 broker account (Demo or Live)
+2. **Python 3.7+** (for the Peron Python package)
+3. **MetaTrader 5 Desktop Terminal** (Windows, or via Wine/CrossOver on macOS/Linux)
+4. **MetaTrader5 Python Package** (Faarhan01/peron) - Installed automatically via setup
+5. Any MT5 broker account (Demo or Live)
 
 ---
 
@@ -75,8 +80,12 @@ Designed for **real account & broker execution** without synthetic or fake simul
 git clone https://github.com/your-username/mt5-ai-copilot-mcp.git
 cd mt5-ai-copilot-mcp
 
-# Install dependencies
+# Install Node.js dependencies
 npm install
+
+# The Peron Python package is included in the repository at:
+# Workspaces/Tools/peron/metatrader5_package
+# No separate installation needed - it's bundled with the project
 ```
 
 ### 2. Start the Local Bridge & Web Terminal
@@ -87,47 +96,23 @@ npm run dev
 
 The application will start:
 - **Web Terminal & MCP Hub**: `http://localhost:3000`
-- **MT5 Dedicated Listener**: `http://127.0.0.1:7777`
+- **Peron Python Bridge**: `http://127.0.0.1:8888` (communicates with MT5)
 - **WebSocket Feed**: `ws://localhost:3000/ws`
 
----
+### 3. Configure MetaTrader 5 Terminal
 
-## 📈 MetaTrader 5 Expert Advisor Setup
+The Peron Python package connects directly to your running MT5 terminal:
+1. Ensure MetaTrader 5 is running and logged into your account
+2. The Peron bridge will automatically attempt to connect to the terminal
+3. You should see "Connected to MetaTrader 5 Terminal" in the bridge logs
+4. No Expert Advisor or WebRequest configuration is needed in MT5
 
-### 1. Whitelist Bridge URL in MT5 (**CRITICAL**)
-Because MT5 restricts outbound network connections by default, you must whitelist the local tunnel:
-1. In MetaTrader 5, press `Ctrl + O` or go to **Tools → Options**.
-2. Select the **Expert Advisors** tab.
-3. Check **"Allow WebRequest for listed URL"**.
-4. Click the green `+` icon and add:
-   ```text
-   http://127.0.0.1:7777
-   ```
-5. *(Optional fallback)* Add `http://127.0.0.1:3000`.
-6. Ensure **"Allow Algo Trading"** is checked.
-7. Click **OK**.
+### 4. Verify Connection
 
-### 2. Install the Expert Advisor
-1. In MetaTrader 5, go to **File → Open Data Folder**.
-2. Open `MQL5` → `Experts`.
-3. Copy `backend/ea/AIMT5Bridge.mq5` into this folder (or download it from the **MT5 EA Setup** tab in the web UI).
-4. Return to MT5, press `Ctrl + N` to open the **Navigator** panel.
-5. Right-click on **Expert Advisors** and click **Refresh**.
-6. Drag `AIMT5Bridge` onto any chart (e.g., `EURUSD` or `XAUUSD`).
-
-### 3. Verify EA Inputs
-In the EA properties dialog:
-- **InpBridgeUrl**: `http://127.0.0.1:7777`
-- **InpApiKey**: `mt5_bridge_secret_key`
-- **InpTimerIntervalMs**: `500` (500ms sync loop)
-- **InpMagicNumber**: `889900`
-- **InpSymbolsToTrack**: `EURUSD,GBPUSD,USDJPY,XAUUSD,BTCUSD`
-
-Ensure the **"Algo Trading"** button in MT5's top toolbar is **Green**. You will see:
-```text
-SUCCESS: Connected to AI MT5 Bridge at http://127.0.0.1:7777 (HTTP 200)
-```
-in the MT5 **Experts** log, and the web interface will instantly turn green with **"MT5 EA Live & Running"**.
+Check the bridge status:
+- Visit `http://localhost:3000` - the UI should show connection status
+- Visit `http://localhost:8888/health` - should show connected: true
+- The UI will display real-time data from your MT5 terminal
 
 ---
 
@@ -199,9 +184,9 @@ print("Order Queued:", order)
 | Tool Name | Description |
 | :--- | :--- |
 | `mt5_get_account_info` | Retrieves balance, equity, margin, free margin, margin level %, currency, and floating PnL. |
-| `mt5_get_current_chart` | Returns the active symbol and timeframe the EA is running on, along with broker specifications and session aggregates. |
-| `mt5_get_all_symbols` | Returns quotes, spreads, session range, and broker lot rules for all symbols tracked by the EA. |
-| `mt5_get_market_data` | Live bid, ask, spread, volume, and 24h high/low for tracked symbols. |
+| `mt5_get_current_chart` | Returns the active symbol and timeframe selected in the UI, along with broker specifications. |
+| `mt5_get_all_symbols` | Returns quotes, spreads, and broker lot rules for all symbols available from MT5. |
+| `mt5_get_market_data` | Live bid, ask, spread, volume for tracked symbols. |
 | `mt5_get_open_positions` | Open tickets, volume, open price, SL, TP, floating profit, and magic numbers. |
 | `mt5_execute_trade` | Asynchronously dispatches `BUY`, `SELL`, `BUY_LIMIT`, `SELL_LIMIT`, `BUY_STOP`, `SELL_STOP` orders. |
 | `mt5_modify_position` | Adjusts Stop Loss and Take Profit levels for an open position ticket. |
@@ -231,11 +216,11 @@ print("Order Queued:", order)
 - `GET /api/database/account-history` - Query stored equity/balance snapshots (`?limit=50`)
 - `GET /api/database/orders` - Query order execution audit history
 - `POST /api/candles/simulate` - Seed synthetic candles and indicators for testing
-- `POST /api/candles/request` - Request EA to pull historical bars for a symbol and timeframe
+- `POST /api/candles/request` - Request historical bars for a symbol and timeframe (simulated for testing)
 - `GET /api/mcp/tools` - List all 21 MCP tool schemas
 - `POST /api/mcp` - JSON-RPC 2.0 direct MCP tool execution
 - `GET /api/mcp/sse` - Server-Sent Events transport for Claude Desktop / Cursor
-- `POST /sync` / `POST /api/mt5/sync` - High-frequency MT5 EA synchronization loop (500ms)
+- `GET /api/tick-history` - Get persisted tick history from SQLite database
 
 ---
 
@@ -252,16 +237,20 @@ data/mt5_bridge.sqlite
 
 ## ❓ Troubleshooting
 
-### 1. MT5 WebRequest Error 4060 (`ERR_FUNCTION_NOT_ALLOWED`)
-- You forgot to add `http://127.0.0.1:7777` to MT5's allowed URL list.
-- Open **Tools → Options → Expert Advisors**, check **"Allow WebRequest for listed URL"**, and add `http://127.0.0.1:7777`.
+### 1. Peron Python Bridge Connection Issues
+- Ensure MetaTrader 5 terminal is running and logged in
+- Check that the Peron bridge (`http://localhost:8888/health`) shows `connected: true`
+- Verify Python can import MetaTrader5 package (check bridge logs)
 
-### 2. Trade Execution Error 4756 (`TRADE_RETCODE_AUTO_TRADING_DISABLED`)
-- The **"Algo Trading"** button in MT5's top toolbar is disabled (Red). Click it to turn it **Green**.
-- Also check **"Allow Algo Trading"** in the EA's Common properties tab.
+### 2. UI Not Showing MT5 Data
+- Confirm the Peron bridge is running on port 8888
+- Check browser console for WebSocket connection errors
+- Verify `http://localhost:3000/api/state` returns live data
 
-### 3. Trade Order Error 10030 (`TRADE_RETCODE_UNSUPPORTED_FILLING_MODE`)
-- The EA automatically detects and handles broker filling modes (`IOC`, `FOK`, `RETURN`). Ensure you are using the latest `AIMT5Bridge.mq5`.
+### 3. Order Execution Failures
+- Ensure MT5 terminal is connected and logged in
+- Check that your account has sufficient margin for trades
+- Verify symbol selection is valid in your MT5 market watch
 
 ---
 

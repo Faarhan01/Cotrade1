@@ -1,60 +1,35 @@
 import { request } from './client';
 
-export interface ConnectionStatusResponse {
-  status: string;
-  provider: string;
-  connected: boolean;
-  terminalConnected?: boolean;
-  packageAvailable?: boolean;
-  packageVersion?: string;
-  engine: string;
-  isNative: boolean;
-  server: string;
-  login?: number;
-  lastPingMs: number;
-  message?: string;
-  account: any;
-  terminal: any;
-  timestamp: number;
-}
-
 export const connectionApi = {
-  getStatus(): Promise<ConnectionStatusResponse> {
-    return request<ConnectionStatusResponse>('/api/connection/status');
+  async pingHealth(url = '/health'): Promise<{ ok: boolean; data?: any; latencyMs: number }> {
+    const start = performance.now();
+    try {
+      const data = await request(url);
+      return { ok: true, data, latencyMs: Math.round(performance.now() - start) };
+    } catch (err: any) {
+      return { ok: false, latencyMs: Math.round(performance.now() - start), data: { error: err?.message } };
+    }
   },
 
-  connect(params: { login?: number; password?: string; server?: string; path?: string }) {
-    return request<{ success: boolean; message: string }>('/api/connection/connect', {
+  async getStatus(): Promise<any> {
+    return request('/api/status');
+  },
+
+  async connect(params: { login?: number; password?: string; server?: string; path?: string }): Promise<any> {
+    return request('/api/connection/connect', {
       method: 'POST',
       body: JSON.stringify(params),
     });
   },
 
-  disconnect() {
-    return request<{ success: boolean; message: string }>('/api/connection/disconnect', {
-      method: 'POST',
-    });
+  async disconnect(): Promise<any> {
+    return request('/api/connection/disconnect', { method: 'POST' });
   },
 
-  switchProvider(provider: string, config?: any) {
-    return request<{ success: boolean; provider: string; status: any }>('/api/connection/provider', {
+  async switchProvider(provider: string, config?: any): Promise<any> {
+    return request('/api/connection/provider', {
       method: 'POST',
       body: JSON.stringify({ provider, config }),
     });
-  },
-
-  async pingHealth(url = '/health'): Promise<{ ok: boolean; data?: any; latencyMs: number }> {
-    const start = performance.now();
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
-      const latencyMs = Math.round(performance.now() - start);
-      if (res.ok) {
-        const data = await res.json();
-        return { ok: true, data, latencyMs };
-      }
-      return { ok: false, latencyMs };
-    } catch {
-      return { ok: false, latencyMs: Math.round(performance.now() - start) };
-    }
   },
 };

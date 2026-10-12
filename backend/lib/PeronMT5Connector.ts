@@ -5,8 +5,13 @@ import {
   AccountInfo,
   CandleData,
   DetailedSymbolInfo,
+  HistoryDeal,
+  HistoryOrder,
+  MarginCalcResult,
+  OrderCheckResult,
   PendingOrder,
   Position,
+  ProfitCalcResult,
   TickData,
   TradeCommand,
 } from '../types/mt5.js';
@@ -45,6 +50,14 @@ export class PeronMT5Connector implements IMT5Connector {
     symbols: DetailedSymbolInfo[];
   }) => void;
 
+  private lastSymbolsFetchTime: number = 0;
+  private cachedSymbols: DetailedSymbolInfo[] = [];
+  private cachedAccount: AccountInfo | null = null;
+  private cachedPositions: Position[] = [];
+  private cachedOrders: PendingOrder[] = [];
+  private cachedTicks: TickData[] = [];
+  private consecutiveErrors: number = 0;
+
   constructor(
     private port: number = defaultMT5Config.peronBridgePort,
     private host: string = defaultMT5Config.peronBridgeHost
@@ -66,9 +79,9 @@ export class PeronMT5Connector implements IMT5Connector {
 
   public async initialize(): Promise<boolean> {
     logger.info('PeronConnector', `Initializing connection to Peron MT5 Bridge at ${this.bridgeUrl}`);
-    
+
     // Check if bridge is already running
-    const running = await this.pingBridge();
+    let running = await this.pingBridge();
     if (!running && defaultMT5Config.autoStartBridge) {
       await this.startPythonBridgeProcess();
       // Wait up to 4 seconds for bridge to respond
@@ -78,15 +91,49 @@ export class PeronMT5Connector implements IMT5Connector {
       }
     }
 
-    const connected = await this.pingBridge();
-    if (connected) {
+    running = await this.pingBridge();
+    if (running) {
+      // Trigger auto-connect to the local MT5 terminal via the Python bridge
+      await this.autoConnectToMT5();
       this.startContinuousSync();
       logger.info('PeronConnector', 'Peron MT5 Bridge online and streaming market data');
     } else {
       logger.warn('PeronConnector', 'Could not reach Peron MT5 Bridge yet. Periodic retry active.');
       this.startContinuousSync();
     }
-    return connected;
+    return running;
+  }
+
+  /**
+   * Tell the Python bridge to connect to the local MetaTrader 5 terminal.
+   * Uses credentials from env vars (MT5_LOGIN, MT5_PASSWORD, MT5_SERVER) if set,
+   * otherwise just calls mt5.initialize() to attach to the already-running terminal.
+   */
+  private async autoConnectToMT5(): Promise<void> {
+    try {
+      const payload: Record<string, any> = {};
+      if (defaultMT5Config.login) payload.login = defaultMT5Config.login;
+      if (defaultMT5Config.password) payload.password = defaultMT5Config.password;
+      if (defaultMT5Config.server) payload.server = defaultMT5Config.server;
+
+      const res = await fetch(`${this.bridgeUrl}/connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(15000),
+      });
+      const data = (await res.json()) as any;
+      if (data.success) {
+        this.status.connected = true;
+        this.status.terminalConnected = true;
+        this.status.message = 'Connected to MetaTrader 5 Terminal';
+        logger.info('PeronConnector', `Auto-connected to MT5: ${data.message}`);
+      } else {
+        logger.warn('PeronConnector', `MT5 auto-connect returned: ${data.message}`);
+      }
+    } catch (err: any) {
+      logger.warn('PeronConnector', `MT5 auto-connect request failed: ${err.message}`);
+    }
   }
 
   public async shutdown(): Promise<void> {
@@ -177,60 +224,82 @@ export class PeronMT5Connector implements IMT5Connector {
 
   private async syncCycle(): Promise<void> {
     try {
-      const [accRes, posRes, ordRes, ticksRes, symRes] = await Promise.all([
-        fetch(`${this.bridgeUrl}/account`, { signal: AbortSignal.timeout(2000) }),
-        fetch(`${this.bridgeUrl}/positions`, { signal: AbortSignal.timeout(2000) }),
-        fetch(`${this.bridgeUrl}/orders`, { signal: AbortSignal.timeout(2000) }),
-        fetch(`${this.bridgeUrl}/ticks`, { signal: AbortSignal.timeout(2000) }),
-        fetch(`${this.bridgeUrl}/symbols`, { signal: AbortSignal.timeout(2000) }),
-      ]);
+      const now = Date.now();
+      const shouldFetchSymbols = this.cachedSymbols.length === 0 || now - this.lastSymbolsFetchTime > 30000;
 
-      if (accRes.ok && posRes.ok && ordRes.ok && ticksRes.ok && symRes.ok) {
-        const rawAccount = await accRes.json();
-        const account = rawAccount as AccountInfo | null;
-        const positions = (await posRes.json()) as Position[];
-        const pendingOrders = (await ordRes.json()) as PendingOrder[];
-        const rawTicks = (await ticksRes.json()) as any[];
-        const rawSymbols = (await symRes.json()) as any[];
+      const fetchPromises: Promise<any>[] = [
+        fetch(`${this.bridgeUrl}/account`, { signal: AbortSignal.timeout(2500) }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        fetch(`${this.bridgeUrl}/positions`, { signal: AbortSignal.timeout(2500) }).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+        fetch(`${this.bridgeUrl}/orders`, { signal: AbortSignal.timeout(2500) }).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+        fetch(`${this.bridgeUrl}/ticks`, { signal: AbortSignal.timeout(2500) }).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      ];
 
-        const isTerminalConnected = Boolean(account && account.login > 0);
-        this.status.connected = isTerminalConnected;
-        this.status.terminalConnected = isTerminalConnected;
-        this.status.lastPingMs = Date.now();
-        if (account?.server) this.status.server = account.server;
-        if (account?.login) this.status.login = account.login;
+      if (shouldFetchSymbols) {
+        fetchPromises.push(
+          fetch(`${this.bridgeUrl}/symbols`, { signal: AbortSignal.timeout(3000) }).then((r) => (r.ok ? r.json() : [])).catch(() => [])
+        );
+      }
 
-        const ticks = isTerminalConnected ? this.normalizeTicks(rawTicks) : [];
-        const symbols = isTerminalConnected ? this.normalizeSymbols(rawSymbols) : [];
+      const results = await Promise.all(fetchPromises);
+      const rawAccount = results[0] as AccountInfo | null;
+      const positions = (results[1] || []) as Position[];
+      const pendingOrders = (results[2] || []) as PendingOrder[];
+      const rawTicks = (results[3] || []) as any[];
 
-        if (this.onSyncCallback) {
-          this.onSyncCallback({
-            account: account || {
-              login: 0,
-              tradeMode: 'NOT_CONNECTED',
-              balance: 0,
-              equity: 0,
-              margin: 0,
-              freeMargin: 0,
-              marginLevel: 0,
-              leverage: 0,
-              currency: 'USD',
-              server: 'Awaiting MT5 Terminal',
-              company: 'MetaTrader 5',
-              profit: 0,
-              lastUpdate: Date.now(),
-            },
-            positions: isTerminalConnected && Array.isArray(positions) ? positions : [],
-            pendingOrders: isTerminalConnected && Array.isArray(pendingOrders) ? pendingOrders : [],
-            ticks,
-            symbols,
-          });
+      if (shouldFetchSymbols && results[4]) {
+        const rawSymbols = results[4] as any[];
+        if (Array.isArray(rawSymbols) && rawSymbols.length > 0) {
+          this.cachedSymbols = this.normalizeSymbols(rawSymbols);
+          this.lastSymbolsFetchTime = now;
         }
       }
+
+      const isTerminalConnected = Boolean(rawAccount && rawAccount.login > 0);
+      this.status.connected = isTerminalConnected;
+      this.status.terminalConnected = isTerminalConnected;
+      this.status.lastPingMs = Date.now();
+      this.consecutiveErrors = 0;
+
+      if (rawAccount?.server) this.status.server = rawAccount.server;
+      if (rawAccount?.login) this.status.login = rawAccount.login;
+
+      const ticks = isTerminalConnected ? this.normalizeTicks(rawTicks) : [];
+      const symbols = isTerminalConnected ? this.cachedSymbols : [];
+
+      // Auto-connect to MT5 if the bridge is up but terminal isn't connected yet
+      if (!isTerminalConnected) {
+        await this.autoConnectToMT5();
+      }
+
+      if (this.onSyncCallback) {
+        this.onSyncCallback({
+          account: rawAccount || {
+            login: 0,
+            tradeMode: 'NOT_CONNECTED',
+            balance: 0,
+            equity: 0,
+            margin: 0,
+            freeMargin: 0,
+            marginLevel: 0,
+            leverage: 0,
+            currency: 'USD',
+            server: 'Awaiting MT5 Terminal',
+            company: 'MetaTrader 5',
+            profit: 0,
+            lastUpdate: Date.now(),
+          },
+          positions: isTerminalConnected && Array.isArray(positions) ? positions : [],
+          pendingOrders: isTerminalConnected && Array.isArray(pendingOrders) ? pendingOrders : [],
+          ticks,
+          symbols,
+        });
+      }
     } catch {
-      // Transient error or bridge restarting
-      this.status.connected = false;
-      this.status.terminalConnected = false;
+      this.consecutiveErrors++;
+      if (this.consecutiveErrors > 3) {
+        this.status.connected = false;
+        this.status.terminalConnected = false;
+      }
     }
   }
 
@@ -437,6 +506,21 @@ export class PeronMT5Connector implements IMT5Connector {
     }
   }
 
+  public async modifyOrder(ticket: number, price?: number, sl?: number, tp?: number): Promise<ExecutionResult> {
+    try {
+      const res = await fetch(`${this.bridgeUrl}/order/modify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket, price, sl, tp }),
+      });
+      const data = (await res.json()) as ExecutionResult;
+      setTimeout(() => this.syncCycle(), 100);
+      return data;
+    } catch (err: any) {
+      return { success: false, message: `Modify order failed: ${err.message}` };
+    }
+  }
+
   public async cancelOrder(ticket: number): Promise<ExecutionResult> {
     try {
       const res = await fetch(`${this.bridgeUrl}/cancel`, {
@@ -450,5 +534,91 @@ export class PeronMT5Connector implements IMT5Connector {
     } catch (err: any) {
       return { success: false, message: `Cancel order failed: ${err.message}` };
     }
+  }
+
+  public async getHistoryDeals(params?: { dateFrom?: number; dateTo?: number; count?: number }): Promise<HistoryDeal[]> {
+    try {
+      const qs = new URLSearchParams();
+      if (params?.dateFrom) qs.set('from', String(params.dateFrom));
+      if (params?.dateTo) qs.set('to', String(params.dateTo));
+      if (params?.count) qs.set('count', String(params.count));
+      const res = await fetch(`${this.bridgeUrl}/history/deals?${qs.toString()}`);
+      if (res.ok) return (await res.json()) as HistoryDeal[];
+    } catch {}
+    return [];
+  }
+
+  public async getHistoryOrders(params?: { dateFrom?: number; dateTo?: number; count?: number }): Promise<HistoryOrder[]> {
+    try {
+      const qs = new URLSearchParams();
+      if (params?.dateFrom) qs.set('from', String(params.dateFrom));
+      if (params?.dateTo) qs.set('to', String(params.dateTo));
+      if (params?.count) qs.set('count', String(params.count));
+      const res = await fetch(`${this.bridgeUrl}/history/orders?${qs.toString()}`);
+      if (res.ok) return (await res.json()) as HistoryOrder[];
+    } catch {}
+    return [];
+  }
+
+  public async calcMargin(orderType: string, symbol: string, volume: number, price?: number): Promise<MarginCalcResult> {
+    try {
+      const res = await fetch(`${this.bridgeUrl}/calc/margin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: orderType, symbol: normalizeSymbol(symbol), volume, price }),
+      });
+      if (res.ok) return (await res.json()) as MarginCalcResult;
+    } catch (err: any) {
+      return { success: false, margin: 0, currency: 'USD', message: err.message };
+    }
+    return { success: false, margin: 0, currency: 'USD', message: 'Failed to calculate margin' };
+  }
+
+  public async calcProfit(orderType: string, symbol: string, volume: number, priceOpen: number, priceClose: number): Promise<ProfitCalcResult> {
+    try {
+      const res = await fetch(`${this.bridgeUrl}/calc/profit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: orderType, symbol: normalizeSymbol(symbol), volume, priceOpen, priceClose }),
+      });
+      if (res.ok) return (await res.json()) as ProfitCalcResult;
+    } catch (err: any) {
+      return { success: false, profit: 0, currency: 'USD', message: err.message };
+    }
+    return { success: false, profit: 0, currency: 'USD', message: 'Failed to calculate profit' };
+  }
+
+  public async checkOrder(cmd: Partial<TradeCommand>): Promise<OrderCheckResult> {
+    try {
+      const res = await fetch(`${this.bridgeUrl}/order/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol: normalizeSymbol(cmd.symbol),
+          orderType: cmd.orderType || 'BUY',
+          volume: cmd.volume || 0.1,
+          price: cmd.price,
+        }),
+      });
+      return (await res.json()) as OrderCheckResult;
+    } catch (err: any) {
+      return { feasible: false, message: `Pre-check failed: ${err.message}` };
+    }
+  }
+
+  public async getMarketDepth(symbol: string): Promise<{ bids: any[]; asks: any[] }> {
+    try {
+      const res = await fetch(`${this.bridgeUrl}/depth?symbol=${encodeURIComponent(normalizeSymbol(symbol))}`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return { bids: [], asks: [] };
+  }
+
+  public async getDetailedSymbol(symbol: string): Promise<DetailedSymbolInfo | null> {
+    try {
+      const res = await fetch(`${this.bridgeUrl}/symbol/info?symbol=${encodeURIComponent(normalizeSymbol(symbol))}`);
+      if (res.ok) return (await res.json()) as DetailedSymbolInfo;
+    } catch {}
+    return this.getSymbolInfo(symbol);
   }
 }

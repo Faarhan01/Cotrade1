@@ -41,9 +41,9 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-500">
           <div className="flex items-center gap-2">
             <span className="flex h-2 w-2 rounded-full bg-cyan-400"></span>
-            <span>MT5 Bridge Tunnel: <code className="text-slate-400">http://127.0.0.1:7777</code></span>
+            <span>MT5 Direct Bridge: <code className="text-slate-400">http://127.0.0.1:8888</code></span>
             <span>•</span>
-            <span>EA File: <code className="text-slate-400">backend/ea/AIMT5Bridge.mq5</code></span>
+            <span>Provider: <code className="text-slate-400">Peron Python MT5 Connector</code></span>
           </div>
 
           <div className="flex items-center gap-4">
@@ -53,7 +53,7 @@ export default function App() {
               onClick={() => setActiveTab('ea')}
               className="text-cyan-400 hover:underline"
             >
-              EA Configuration Guide
+              MT5 Connection Guide
             </button>
           </div>
         </div>

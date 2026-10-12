@@ -1,9 +1,29 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Server } from 'http';
-import { tradeStore } from './tradeStore.js';
+import { tradeStore } from '../services/tradeStore.js';
+import { appendEvent } from '../helpers/daemon/eventBuffer.ts';
 
 let wss: WebSocketServer | null = null;
 const clients: Set<WebSocket> = new Set();
+const sseClients: Set<any> = new Set();
+
+let totalEventsBroadcasted = 0;
+
+export function addSseClient(res: any) {
+  sseClients.add(res);
+}
+
+export function removeSseClient(res: any) {
+  sseClients.delete(res);
+}
+
+export function getStreamStats() {
+  return {
+    wsClientsCount: clients.size,
+    sseClientsCount: sseClients.size,
+    totalEventsBroadcasted,
+  };
+}
 
 export function setupWebSocketServer(server: Server) {
   wss = new WebSocketServer({ server, path: '/ws' });
@@ -42,11 +62,29 @@ export function setupWebSocketServer(server: Server) {
 }
 
 export function broadcast(message: { type: string; payload: any }) {
-  if (!wss || clients.size === 0) return;
+  totalEventsBroadcasted++;
   const raw = JSON.stringify(message);
-  for (const client of clients) {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(raw);
+
+  // 1. Also buffer the event to file for persistence and querying
+  appendEvent(message);
+
+  // 2. Broadcast to WebSockets
+  if (wss && clients.size > 0) {
+    for (const client of clients) {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(raw);
+      }
+    }
+  }
+
+  // 3. Broadcast to Server-Sent Events (SSE) streams (External AI Agents)
+  if (sseClients.size > 0) {
+    for (const res of sseClients) {
+      try {
+        res.write(`event: ${message.type}\ndata: ${raw}\n\n`);
+      } catch (e) {
+        sseClients.delete(res);
+      }
     }
   }
 }

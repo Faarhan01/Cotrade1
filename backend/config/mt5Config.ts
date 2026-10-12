@@ -21,7 +21,7 @@ export interface MT5Config {
 
 export const defaultMT5Config: MT5Config = {
   provider: (process.env.MT5_PROVIDER as MT5ProviderType) || 'peron',
-  pythonPath: process.env.PYTHON_PATH || 'python3',
+  pythonPath: process.env.PYTHON_PATH || 'python',
   peronBridgePort: Number(process.env.PERON_PORT) || 8888,
   peronBridgeHost: process.env.PERON_HOST || '127.0.0.1',
   autoStartBridge: process.env.AUTO_START_PERON !== 'false',

@@ -18,12 +18,14 @@ interface CurrentChartSymbolCardProps {
   currentChart: ChartSymbolInfo | null;
   onSelectSymbol?: (symbol: string) => void;
   onRefresh?: () => void;
+  onNavigateTab?: (tab: string) => void;
 }
 
 export const CurrentChartSymbolCard: React.FC<CurrentChartSymbolCardProps> = ({
   currentChart,
   onSelectSymbol,
   onRefresh,
+  onNavigateTab,
 }) => {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -38,11 +40,32 @@ export const CurrentChartSymbolCard: React.FC<CurrentChartSymbolCardProps> = ({
       });
       const data = await res.json();
       if (data.success) {
-        setFeedback(`Requested 100 ${timeframe} candles from EA for ${symbol}`);
+        setFeedback(`Requested 100 ${timeframe} candles via direct API for ${symbol}`);
         onRefresh?.();
       }
     } catch {
-      setFeedback('Failed to request candles from EA');
+      setFeedback('Failed to request candles via direct API');
+    } finally {
+      setLoadingAction(null);
+      setTimeout(() => setFeedback(null), 3500);
+    }
+  };
+
+  const handleSimulateCandles = async (symbol: string) => {
+    try {
+      setLoadingAction('simulate');
+      const res = await fetch('/api/candles/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol, timeframe: 'M1', count: 80, basePrice: currentChart?.bid || 1.085 }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedback(`Generated ${data.count} test candles & indicators for ${symbol}`);
+        onRefresh?.();
+      }
+    } catch {
+      setFeedback('Simulation failed');
     } finally {
       setLoadingAction(null);
       setTimeout(() => setFeedback(null), 3500);
@@ -59,18 +82,29 @@ export const CurrentChartSymbolCard: React.FC<CurrentChartSymbolCardProps> = ({
               Current Connected Chart Symbol
             </h2>
           </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-            Awaiting MT5 Feed
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/60">
+            Awaiting Chart
           </span>
         </div>
 
-        <div className="border border-dashed border-slate-800 rounded-lg p-6 text-center text-slate-400 font-mono text-xs space-y-2">
+        <div className="border border-dashed border-slate-800 rounded-lg p-6 text-center text-slate-400 font-mono text-xs space-y-3">
           <p className="text-sm font-semibold text-slate-300">
-            No Active MT5 Symbol Feed Connected Yet
+            No Active MT5 Chart Connected Yet
           </p>
           <p className="text-slate-500 max-w-md mx-auto text-[11px] leading-relaxed">
-            Connect to your local MetaTrader 5 terminal application via the Peron Python package. Once connected, real broker specifications, live quotes, and session metrics will stream here automatically.
+            The MT5 terminal is connected via the direct API. This section displays the active symbol specifications, live quotes, and session boundaries from the connected chart.
           </p>
+
+          <div className="pt-2 flex items-center justify-center gap-3">
+            <button
+              onClick={() => handleSimulateCandles('EURUSD')}
+              disabled={loadingAction === 'simulate'}
+              className="px-3.5 py-1.5 rounded-lg bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-2 transition-all shadow-sm"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>{loadingAction === 'simulate' ? 'Seeding...' : 'Test With Synthetic Candles'}</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -95,20 +129,34 @@ export const CurrentChartSymbolCard: React.FC<CurrentChartSymbolCardProps> = ({
               </span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
-                Active EA Chart
+                Active Chart (Direct API)
               </span>
             </div>
             <p className="text-xs text-slate-400 font-mono mt-0.5">
-              {currentChart.description || 'MetaTrader 5 Connected Chart'}
+              {currentChart.description || 'MetaTrader 5 Connected Chart via Direct API'}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {onNavigateTab && (
+            <button
+              onClick={() => {
+                onSelectSymbol?.(currentChart.symbol);
+                onNavigateTab('strategies');
+              }}
+              title="View quantitative strategies and backtests for this active chart"
+              className="px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-cyan-300 font-mono text-xs border border-cyan-800/60 transition-colors flex items-center gap-1.5"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+              <span>Strategies & Backtest</span>
+            </button>
+          )}
+
           <button
             onClick={() => handleRequestCandles(currentChart.symbol, currentChart.timeframe)}
             disabled={loadingAction === 'request'}
-            title="Request historical candles directly from MT5"
+            title="Request historical candles directly from MT5 via API"
             className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-mono text-xs border border-slate-700 transition-colors flex items-center gap-1.5"
           >
             <Download className="h-3.5 w-3.5 text-cyan-400" />
@@ -177,7 +225,7 @@ export const CurrentChartSymbolCard: React.FC<CurrentChartSymbolCardProps> = ({
         <div className="bg-slate-950/70 border border-slate-800/80 p-2.5 rounded-lg">
           <span className="text-[10px] text-slate-500 block uppercase">Contract Size</span>
           <div className="text-slate-300 mt-0.5 font-bold">
-            {currentChart.contractSize?.toLocaleString() || '100,000'}
+            {currentChart.contractSize.toLocaleString()}
           </div>
         </div>
       </div>

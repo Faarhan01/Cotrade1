@@ -256,3 +256,64 @@ export interface EASyncResponse {
   riskGuard: RiskGuardConfig;
   message?: string;
 }
+
+export interface HistoryDeal {
+  ticket: number;
+  order: number;
+  time: number;
+  timeIso?: string;
+  type: 'BUY' | 'SELL' | 'BALANCE' | 'CREDIT';
+  entry: 'IN' | 'OUT' | 'INOUT';
+  symbol: string;
+  volume: number;
+  price: number;
+  commission: number;
+  swap: number;
+  profit: number;
+  fee?: number;
+  magic: number;
+  comment: string;
+}
+
+export interface HistoryOrder {
+  ticket: number;
+  symbol: string;
+  type: string;
+  volumeInitial: number;
+  volumeCurrent: number;
+  priceOpen: number;
+  priceCurrent?: number;
+  sl: number;
+  tp: number;
+  state: 'FILLED' | 'CANCELLED' | 'REJECTED' | 'EXPIRED' | string;
+  timeSetup: number;
+  timeDone?: number;
+  magic: number;
+  comment: string;
+}
+
+export interface MarginCalcResult {
+  margin: number;
+  currency: string;
+  success: boolean;
+  message?: string;
+}
+
+export interface ProfitCalcResult {
+  profit: number;
+  currency: string;
+  success: boolean;
+  message?: string;
+}
+
+export interface OrderCheckResult {
+  feasible: boolean;
+  margin?: number;
+  marginFree?: number;
+  marginLevel?: number;
+  balance?: number;
+  equity?: number;
+  retcode?: number;
+  comment?: string;
+  message?: string;
+}

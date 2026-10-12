@@ -1,7 +1,7 @@
-export * from './client';
-export * from './connectionApi';
-export * from './marketApi';
-export * from './tradeApi';
-export * from './strategyApi';
-export * from './databaseApi';
-export * from './mcpApi';
+export { connectionApi } from './connectionApi.js';
+export { marketApi } from './marketApi.js';
+export { tradeApi } from './tradeApi.js';
+export { strategyApi } from './strategyApi.js';
+export { databaseApi } from './databaseApi.js';
+export { mcpApi } from './mcpApi.js';
+export { eventApi } from './eventApi.js';

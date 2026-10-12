@@ -158,6 +158,32 @@ export class TradeController {
     });
   }
 
+  // Modify a pending limit/stop order
+  public static async modifyOrder(req: Request, res: Response) {
+    const ticket = Number(req.params.ticket || req.body.ticket);
+    const price = req.body.price !== undefined ? Number(req.body.price) : undefined;
+    const sl = req.body.sl !== undefined ? Number(req.body.sl) : undefined;
+    const tp = req.body.tp !== undefined ? Number(req.body.tp) : undefined;
+
+    if (!ticket) {
+      return res.status(400).json({ success: false, message: 'Invalid order ticket' });
+    }
+
+    const connector = connectorManager.getConnector();
+    const result = await connector.modifyOrder(ticket, price, sl, tp);
+
+    if (result.success) {
+      tradeStore.addLog(
+        'info',
+        `Modified Pending Order #${ticket}`,
+        `Price: ${price ?? 'same'} | SL: ${sl ?? 'none'} | TP: ${tp ?? 'none'}`,
+        'PERON_CONNECTOR'
+      );
+    }
+
+    res.json(result);
+  }
+
   // Cancel a pending order
   public static async cancelOrder(req: Request, res: Response) {
     const ticket = Number(req.params.ticket || req.body.ticket);
@@ -186,19 +212,33 @@ export class TradeController {
     });
   }
 
-  // Emergency Kill Switch
-  public static async toggleKillSwitch(req: Request, res: Response) {
-    const { active } = req.body;
-    tradeStore.triggerKillSwitch(Boolean(active));
+   // Emergency Kill Switch
+   public static async toggleKillSwitch(req: Request, res: Response) {
+     const { active } = req.body;
+     tradeStore.triggerKillSwitch(Boolean(active));
 
-    broadcast({
-      type: 'risk:kill_switch',
-      payload: { active: Boolean(active) },
-    });
+     broadcast({
+       type: 'risk:kill_switch',
+       payload: { active: Boolean(active) },
+     });
 
-    res.json({
-      status: 'ok',
-      killSwitch: tradeStore.getRiskGuard().emergencyKillSwitch,
-    });
-  }
-}
+     res.json({
+       status: 'ok',
+       killSwitch: tradeStore.getRiskGuard().emergencyKillSwitch,
+     });
+   }
+
+   // Request historical candles from EA
+   public static async requestHistoryFromEA(req: Request, res: Response) {
+     const { symbol, timeframe, count } = req.body;
+     const result = tradeStore.requestHistoryFromEA(symbol || 'EURUSD', timeframe || 'M1', count || 100);
+     res.json({ success: true, commandId: result.commandId });
+   }
+
+   // Seed synthetic candles for testing
+   public static async seedCandles(req: Request, res: Response) {
+     const { symbol, timeframe, count, basePrice } = req.body;
+     const result = await tradeStore.seedCandles(symbol || 'EURUSD', timeframe || 'M1', count || 60, basePrice || 1.085);
+     res.json(result);
+   }
+ }

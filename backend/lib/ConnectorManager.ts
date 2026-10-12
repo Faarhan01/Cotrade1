@@ -26,6 +26,29 @@ class ConnectorManager {
           symbols: data.symbols,
         });
 
+        // Check for risk guard or trailing stop commands that need execution
+        const pendingRiskCommands = tradeStore.getState().commandQueue.filter(
+          (c) => c.status === 'pending' && c.source === 'RISK_GUARD'
+        );
+        for (const cmd of pendingRiskCommands) {
+          cmd.status = 'dispatched';
+          if (cmd.action === 'MODIFY_POSITION' && cmd.ticket) {
+            this.activeConnector.modifyPosition(cmd.ticket, cmd.sl, cmd.tp).then((res) => {
+              tradeStore.resolveExecutionResult({
+                commandId: cmd.id,
+                success: res.success,
+                errorMessage: res.message,
+              });
+            });
+          } else if (cmd.action === 'CLOSE_ALL') {
+            for (const pos of data.positions) {
+              this.activeConnector.closePosition(pos.ticket).then((res) => {
+                tradeStore.addLog('warn', `Liquidated Position #${pos.ticket}`, res.message || '', 'RISK_GUARD');
+              });
+            }
+          }
+        }
+
         // Broadcast to frontend terminal clients
         broadcast({
           type: 'ea:sync',
@@ -37,6 +60,7 @@ class ConnectorManager {
             allSymbols: data.symbols,
             currentChart: tradeStore.getCurrentChart(),
             chartHistory: tradeStore.getChartHistory(),
+            tickHistory: tradeStore.getTickHistory(),
             connection: tradeStore.getState().connection,
             isEaConnected: true,
             provider: this.activeConnector.name,

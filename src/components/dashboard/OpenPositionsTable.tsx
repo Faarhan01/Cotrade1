@@ -26,6 +26,7 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
   const [isModifying, setIsModifying] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ text: string; error?: boolean } | null>(null);
   const [closingTickets, setClosingTickets] = useState<Record<number, boolean>>({});
+  const [confirmingCloseAll, setConfirmingCloseAll] = useState(false);
 
   const handleOpenModifyModal = (pos: Position) => {
     setSelectedPosition(pos);
@@ -38,19 +39,17 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
     if (!selectedPosition) return;
     try {
       setIsModifying(true);
-      const res = await api.sendCommand({
-        action: 'MODIFY_POSITION',
-        ticket: selectedPosition.ticket,
-        sl: modifySL ? parseFloat(modifySL) : undefined,
-        tp: modifyTP ? parseFloat(modifyTP) : undefined,
-        source: 'MANUAL_UI',
-      });
+      const res = await api.modifyPosition(
+        selectedPosition.ticket,
+        modifySL ? parseFloat(modifySL) : undefined,
+        modifyTP ? parseFloat(modifyTP) : undefined
+      );
 
       if (res.success) {
-        setActionMessage({ text: `Modify order queued for #${selectedPosition.ticket}!` });
+        setActionMessage({ text: `Position #${selectedPosition.ticket} modified!` });
         setTimeout(() => setSelectedPosition(null), 1200);
       } else {
-        setActionMessage({ text: res.error || 'Failed to modify', error: true });
+        setActionMessage({ text: res.message || 'Failed to modify', error: true });
       }
     } catch (e: any) {
       setActionMessage({ text: e.message || 'Error sending modification', error: true });
@@ -62,11 +61,10 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
   const handleClosePosition = async (ticket: number) => {
     try {
       setClosingTickets((prev) => ({ ...prev, [ticket]: true }));
-      await api.sendCommand({
-        action: 'CLOSE_POSITION',
-        ticket,
-        source: 'MANUAL_UI',
-      });
+      const res = await api.closePosition(ticket);
+      if (!res.success) {
+        console.error('Close position failed:', res.message);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -77,11 +75,18 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
   };
 
   const handleCloseAll = async () => {
-    if (confirm('Are you sure you want to close ALL open positions?')) {
-      await api.sendCommand({
-        action: 'CLOSE_ALL',
-        source: 'MANUAL_UI',
-      });
+    if (!confirmingCloseAll) {
+      setConfirmingCloseAll(true);
+      setTimeout(() => setConfirmingCloseAll(false), 4000);
+      return;
+    }
+    setConfirmingCloseAll(false);
+    for (const pos of positions) {
+      try {
+        await api.closePosition(pos.ticket);
+      } catch (e) {
+        console.error(`Failed to close position #${pos.ticket}`, e);
+      }
     }
   };
 
@@ -113,10 +118,14 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
         {positions.length > 0 && (
           <button
             onClick={handleCloseAll}
-            className="self-start sm:self-auto px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/80 transition-colors flex items-center gap-1.5"
+            className={`self-start sm:self-auto px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              confirmingCloseAll
+                ? 'bg-rose-600 hover:bg-rose-700 text-white border border-rose-500 animate-pulse'
+                : 'bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/80'
+            }`}
           >
             <XCircle className="h-3.5 w-3.5" />
-            Close All Positions
+            {confirmingCloseAll ? 'Confirm Close All (Click Again)' : 'Close All Positions'}
           </button>
         )}
       </div>

@@ -132,11 +132,12 @@ export function runStrategyBacktest(
   const maxHoldBars = Number(params.maxHoldBars) || 50;
 
   // Adapt point value for JPY or Crypto / Metals
-  const sym = (strategy.symbol || 'EURUSD').toUpperCase();
+  const sym = strategy.symbol || 'EURUSD';
+  const symUpper = sym.toUpperCase();
   let effectivePoint = pointValue;
-  if (sym.includes('JPY')) effectivePoint = 0.01;
-  else if (sym.includes('XAU') || sym.includes('GOLD')) effectivePoint = 0.01;
-  else if (sym.includes('BTC') || sym.includes('ETH')) effectivePoint = 0.1;
+  if (symUpper.includes('JPY')) effectivePoint = 0.01;
+  else if (symUpper.includes('XAU') || symUpper.includes('GOLD')) effectivePoint = 0.01;
+  else if (symUpper.includes('BTC') || symUpper.includes('ETH')) effectivePoint = 0.1;
 
   const trades: SimulatedTrade[] = [];
   const equityCurve: { time: number; timeIso: string; equity: number }[] = [];

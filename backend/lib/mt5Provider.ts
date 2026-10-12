@@ -2,8 +2,13 @@ import {
   AccountInfo,
   CandleData,
   DetailedSymbolInfo,
+  HistoryDeal,
+  HistoryOrder,
+  MarginCalcResult,
+  OrderCheckResult,
   PendingOrder,
   Position,
+  ProfitCalcResult,
   TickData,
   TradeCommand,
 } from '../types/mt5.js';
@@ -62,5 +67,13 @@ export interface IMT5Connector {
   executeOrder(cmd: TradeCommand): Promise<ExecutionResult>;
   closePosition(ticket: number, volume?: number): Promise<ExecutionResult>;
   modifyPosition(ticket: number, sl?: number, tp?: number): Promise<ExecutionResult>;
+  modifyOrder(ticket: number, price?: number, sl?: number, tp?: number): Promise<ExecutionResult>;
   cancelOrder(ticket: number): Promise<ExecutionResult>;
+  getHistoryDeals(params?: { dateFrom?: number; dateTo?: number; count?: number }): Promise<HistoryDeal[]>;
+  getHistoryOrders(params?: { dateFrom?: number; dateTo?: number; count?: number }): Promise<HistoryOrder[]>;
+  calcMargin(orderType: string, symbol: string, volume: number, price?: number): Promise<MarginCalcResult>;
+  calcProfit(orderType: string, symbol: string, volume: number, priceOpen: number, priceClose: number): Promise<ProfitCalcResult>;
+  checkOrder(cmd: Partial<TradeCommand>): Promise<OrderCheckResult>;
+  getMarketDepth(symbol: string): Promise<{ bids: any[]; asks: any[] }>;
+  getDetailedSymbol(symbol: string): Promise<DetailedSymbolInfo | null>;
 }

@@ -30,6 +30,7 @@ import {
   pruneDatabase,
 } from '../database/db.js';
 import { calculateIndicators } from './indicatorEngine.js';
+import { symbolsMatch } from '../utils/symbolUtils.js';
 
 class TradeStore {
   private account: AccountInfo = {
@@ -42,13 +43,13 @@ class TradeStore {
     marginLevel: 0,
     leverage: 0,
     currency: 'USD',
-    server: 'Awaiting MT5 EA Connection',
+    server: 'Awaiting MT5 Terminal',
     company: 'MetaTrader 5',
     profit: 0,
     lastUpdate: 0,
   };
 
-  // Open positions received purely from real MT5 EA (NO fake simulated positions)
+  // Open positions received purely from real MT5 (NO fake simulated positions)
   private positions: Map<number, Position> = new Map();
 
   private ticks: Map<string, TickData> = new Map();
@@ -60,7 +61,7 @@ class TradeStore {
       timestamp: Date.now(),
       level: 'info',
       title: 'MT5 Bridge Hub Initialized',
-      details: 'Bridge endpoint listening at http://127.0.0.1:7777 and MCP endpoint at /api/mcp. Awaiting MetaTrader 5 EA connection.',
+      details: 'Bridge connector initialized. Awaiting MetaTrader 5 application connection.',
       source: 'SYSTEM',
     },
   ];
@@ -75,7 +76,7 @@ class TradeStore {
     trailingStopStepPoints: 30,
     maxLotSizePerTrade: 2.0,
     maxOpenPositions: 5,
-    allowedSymbols: ['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD', 'BTCUSD', 'AUDUSD'],
+    allowedSymbols: [], // Empty permits all symbols discovered from the broker
     autoCloseOnMarginLevelBelow: 100, // 100% margin call safety
   };
 
@@ -98,11 +99,13 @@ class TradeStore {
 
   constructor() {
     // Initialize SQLite Database asynchronously
-    getDatabase().catch((err) => console.error('Failed to init SQLite DB:', err));
+    Database.initialize().catch(err => {
+      console.error("Database initialization failed:", err);
+    });
   }
 
   // Handle EA sync from MT5 WebRequest
-  public handleEASync(payload: EASyncPayload): TradeCommand[] {
+  public async handleEASync(payload: EASyncPayload): Promise<TradeCommand[]> {
     const wasConnected = this.eaConnected && Date.now() - this.lastEaSync < 5000;
     this.eaConnected = true;
     this.lastEaSync = Date.now();
@@ -305,7 +308,10 @@ class TradeStore {
         };
       }
       if (params.symbol && this.riskGuard.allowedSymbols.length > 0) {
-        if (!this.riskGuard.allowedSymbols.includes(params.symbol)) {
+        const isPermitted = this.riskGuard.allowedSymbols.some(
+          (s) => s === '*' || symbolsMatch(s, params.symbol)
+        );
+        if (!isPermitted) {
           return {
             success: false,
             error: `Symbol ${params.symbol} is not permitted by Risk Guard policy.`,
@@ -456,6 +462,68 @@ class TradeStore {
         comment: 'MARGIN_LEVEL_SAFETY',
       });
     }
+
+    // 4. Dynamic Trailing Stop Loss Engine
+    if (this.riskGuard.trailingStopEnabled && this.riskGuard.trailingStopDistancePoints > 0) {
+      for (const pos of this.positions.values()) {
+        const tick = this.ticks.get(pos.symbol);
+        if (!tick) continue;
+
+        const symInfo = this.allSymbols.find((s) => s.symbol.toLowerCase() === pos.symbol.toLowerCase());
+        const digits = symInfo?.digits ?? (pos.symbol.toLowerCase().includes('jpy') ? 3 : 5);
+        const point = symInfo?.point ?? Math.pow(10, -digits);
+        const distPoints = this.riskGuard.trailingStopDistancePoints;
+        const stepPoints = this.riskGuard.trailingStopStepPoints || 10;
+        const distPrice = distPoints * point;
+        const stepPrice = stepPoints * point;
+
+        if (pos.type === 'BUY') {
+          if (tick.bid - pos.openPrice > distPrice) {
+            const proposedSL = Number((tick.bid - distPrice).toFixed(digits));
+            if (proposedSL > (pos.sl || pos.openPrice) + stepPrice) {
+              pos.sl = proposedSL;
+              this.enqueueCommand({
+                action: 'MODIFY_POSITION',
+                ticket: pos.ticket,
+                sl: proposedSL,
+                tp: pos.tp,
+                source: 'RISK_GUARD',
+                comment: 'TRAILING_SL_BUY',
+              });
+              this.addLog(
+                'info',
+                `Trailing Stop Moved (${pos.symbol})`,
+                `Ticket #${pos.ticket} SL raised to ${proposedSL} (Market: ${tick.bid})`,
+                'RISK_GUARD',
+                pos.ticket
+              );
+            }
+          }
+        } else if (pos.type === 'SELL') {
+          if (pos.openPrice - tick.ask > distPrice) {
+            const proposedSL = Number((tick.ask + distPrice).toFixed(digits));
+            if (pos.sl === 0 || proposedSL < pos.sl - stepPrice) {
+              pos.sl = proposedSL;
+              this.enqueueCommand({
+                action: 'MODIFY_POSITION',
+                ticket: pos.ticket,
+                sl: proposedSL,
+                tp: pos.tp,
+                source: 'RISK_GUARD',
+                comment: 'TRAILING_SL_SELL',
+              });
+              this.addLog(
+                'info',
+                `Trailing Stop Moved (${pos.symbol})`,
+                `Ticket #${pos.ticket} SL lowered to ${proposedSL} (Market: ${tick.ask})`,
+                'RISK_GUARD',
+                pos.ticket
+              );
+            }
+          }
+        }
+      }
+    }
   }
 
   public updateRiskGuard(updated: Partial<RiskGuardConfig>) {
@@ -573,6 +641,10 @@ class TradeStore {
     return Array.from(this.ticks.values());
   }
 
+  public getTickHistory() {
+    return Object.fromEntries(this.tickHistory.entries());
+  }
+
   public getPositions() {
     return Array.from(this.positions.values());
   }
@@ -688,9 +760,23 @@ class TradeStore {
           low24h: existing ? Math.min(existing.low24h || tick.bid, tick.bid) : tick.bid,
         };
         this.ticks.set(tick.symbol, updated);
+
+        // Update tick history for charts
+        let hist = this.tickHistory.get(tick.symbol);
+        if (!hist) {
+          hist = [];
+          this.tickHistory.set(tick.symbol, hist);
+        }
+        hist.push({ time: Date.now(), bid: tick.bid, ask: tick.ask });
+        if (hist.length > 100) hist.shift();
       }
     } else if (!isRealAccountConnected) {
       this.ticks.clear();
+      this.tickHistory.clear();
+    }
+
+    if (isRealAccountConnected) {
+      this.evaluateRiskGuard();
     }
   }
 

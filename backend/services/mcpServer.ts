@@ -1,6 +1,7 @@
 import { tradeStore } from './tradeStore.js';
 import { OrderType } from '../types/mt5.js';
 import { normalizeSymbol, symbolsMatch } from '../utils/symbolUtils.js';
+import { connectorManager } from '../lib/ConnectorManager.js';
 
 export interface MCPToolDefinition {
   name: string;
@@ -526,6 +527,216 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
       },
     },
   },
+  {
+    name: 'mt5_get_history_deals',
+    description: 'Retrieve real historical deals executed on the MetaTrader 5 account directly from the broker (deal ticket, order ticket, symbol, volume, entry/exit price, profit, commission, swap, fee, time).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        dateFrom: {
+          type: 'number',
+          description: 'Unix timestamp in seconds for starting date filter (optional)',
+        },
+        dateTo: {
+          type: 'number',
+          description: 'Unix timestamp in seconds for ending date filter (optional)',
+        },
+        count: {
+          type: 'number',
+          description: 'Maximum historical deals to return (default: 50)',
+        },
+      },
+    },
+  },
+  {
+    name: 'mt5_get_history_orders',
+    description: 'Retrieve historical filled, expired, or canceled orders from MetaTrader 5 terminal.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        dateFrom: {
+          type: 'number',
+          description: 'Unix timestamp in seconds for starting date filter (optional)',
+        },
+        dateTo: {
+          type: 'number',
+          description: 'Unix timestamp in seconds for ending date filter (optional)',
+        },
+        count: {
+          type: 'number',
+          description: 'Maximum historical orders to return (default: 50)',
+        },
+      },
+    },
+  },
+  {
+    name: 'mt5_modify_pending_order',
+    description: 'Modify price level, stop loss (SL), or take profit (TP) of an active pending order (BUY_LIMIT, SELL_LIMIT, BUY_STOP, SELL_STOP) in MetaTrader 5.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ticket: {
+          type: 'number',
+          description: 'Order ticket ID to modify',
+        },
+        price: {
+          type: 'number',
+          description: 'New pending order trigger price',
+        },
+        sl: {
+          type: 'number',
+          description: 'New Stop Loss absolute price level',
+        },
+        tp: {
+          type: 'number',
+          description: 'New Take Profit absolute price level',
+        },
+      },
+      required: ['ticket'],
+    },
+  },
+  {
+    name: 'mt5_calc_margin',
+    description: 'Calculate the margin requirement in the account currency for a specified trade order before execution.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        orderType: {
+          type: 'string',
+          enum: ['BUY', 'SELL', 'BUY_LIMIT', 'SELL_LIMIT', 'BUY_STOP', 'SELL_STOP'],
+          description: 'Order type',
+        },
+        symbol: {
+          type: 'string',
+          description: 'Symbol ticker (e.g. EURUSD, XAUUSD)',
+        },
+        volume: {
+          type: 'number',
+          description: 'Volume in lots (e.g. 0.1, 1.0)',
+        },
+        price: {
+          type: 'number',
+          description: 'Open price (optional, uses current ask/bid if omitted)',
+        },
+      },
+      required: ['symbol', 'volume'],
+    },
+  },
+  {
+    name: 'mt5_calc_profit',
+    description: 'Calculate the potential floating or realized profit in account currency for an order based on open and close target prices.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        orderType: {
+          type: 'string',
+          enum: ['BUY', 'SELL'],
+          description: 'Order type',
+        },
+        symbol: {
+          type: 'string',
+          description: 'Symbol ticker (e.g. EURUSD)',
+        },
+        volume: {
+          type: 'number',
+          description: 'Volume in lots',
+        },
+        priceOpen: {
+          type: 'number',
+          description: 'Opening price level',
+        },
+        priceClose: {
+          type: 'number',
+          description: 'Closing target price level',
+        },
+      },
+      required: ['symbol', 'volume', 'priceOpen', 'priceClose'],
+    },
+  },
+  {
+    name: 'mt5_check_order',
+    description: 'Pre-validate order feasibility against MetaTrader 5 broker specifications, lot limits, margins, and account balance without placing the trade.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbol: {
+          type: 'string',
+          description: 'Symbol ticker',
+        },
+        orderType: {
+          type: 'string',
+          enum: ['BUY', 'SELL', 'BUY_LIMIT', 'SELL_LIMIT', 'BUY_STOP', 'SELL_STOP'],
+          description: 'Order type',
+        },
+        volume: {
+          type: 'number',
+          description: 'Volume in lots',
+        },
+        price: {
+          type: 'number',
+          description: 'Order price',
+        },
+      },
+      required: ['symbol', 'volume'],
+    },
+  },
+  {
+    name: 'mt5_get_market_depth',
+    description: 'Retrieve Level 2 Market Depth (DOM / Order Book) bids and asks for any broker symbol directly from MetaTrader 5.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbol: {
+          type: 'string',
+          description: 'Symbol ticker (e.g. EURUSD)',
+        },
+      },
+      required: ['symbol'],
+    },
+  },
+  {
+    name: 'mt5_get_symbol_info',
+    description: 'Retrieve comprehensive broker symbol specifications: tick size, point value, digits, contract size, swap long/short, margin rate, min/max lot size.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbol: {
+          type: 'string',
+          description: 'Symbol ticker (e.g. EURUSD)',
+        },
+      },
+      required: ['symbol'],
+    },
+  },
+  {
+    name: 'mt5_set_trailing_stop',
+    description: 'Configure or adjust dynamic trailing stop loss parameters (enabled, distance points, step points) in real-time.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        trailingStopEnabled: {
+          type: 'boolean',
+          description: 'Enable or disable dynamic trailing stop',
+        },
+        trailingStopDistancePoints: {
+          type: 'number',
+          description: 'Trailing stop distance in points (e.g. 150 points = 15 pips)',
+        },
+        trailingStopStepPoints: {
+          type: 'number',
+          description: 'Trailing step in points (e.g. 30 points = 3 pips)',
+        },
+      },
+    },
+  },
+  {
+    name: 'mt5_get_live_stream_info',
+    description: 'Retrieve connection information and endpoints for external AI agents to stream live market ticks, position events, and order execution updates in real-time (SSE & WebSockets).',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
 ];
 
 export async function executeMcpTool(name: string, args: Record<string, any> = {}): Promise<any> {
@@ -613,10 +824,11 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
       }
 
       const normSym = normalizeSymbol(String(symbol));
+      const normOrderType = String(orderType).trim().toUpperCase() as OrderType;
       const res = tradeStore.enqueueCommand({
         action: 'EXECUTE_TRADE',
         symbol: normSym,
-        orderType: String(orderType).toUpperCase() as OrderType,
+        orderType: normOrderType,
         volume: Number(volume),
         sl: sl ? Number(sl) : undefined,
         tp: tp ? Number(tp) : undefined,
@@ -627,6 +839,47 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
 
       if (!res.success) {
         throw new Error(`Execution rejected by Risk Engine: ${res.error}`);
+      }
+
+      // If active connector is connected, execute directly
+      const connector = connectorManager.getConnector();
+      const status = connector.getStatus();
+      if (status.connected || status.terminalConnected) {
+        const execRes = await connector.executeOrder({
+          id: res.commandId || `cmd-${Date.now()}`,
+          action: 'EXECUTE_TRADE',
+          symbol: normSym,
+          orderType: normOrderType,
+          volume: Number(volume),
+          sl: sl ? Number(sl) : undefined,
+          tp: tp ? Number(tp) : undefined,
+          comment: comment || 'AI_MCP_TRADE',
+          magic: magic ? Number(magic) : 889900,
+          source: 'AI_MCP',
+          status: 'pending',
+          createdAt: Date.now(),
+        });
+
+        if (execRes.success) {
+          tradeStore.resolveExecutionResult({
+            commandId: res.commandId || `cmd-${Date.now()}`,
+            success: true,
+            dealTicket: execRes.dealTicket || execRes.ticket,
+            orderTicket: execRes.ticket,
+            executionPrice: execRes.price,
+            executionTimeMs: 40,
+          });
+
+          return {
+            status: 'executed',
+            commandId: res.commandId,
+            ticket: execRes.ticket,
+            dealTicket: execRes.dealTicket,
+            price: execRes.price,
+            message: execRes.message || `Order executed in MT5: ${normOrderType} ${volume} ${normSym}`,
+            timestamp: Date.now(),
+          };
+        }
       }
 
       return {
@@ -654,6 +907,23 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
         throw new Error(`Modify rejected: ${res.error}`);
       }
 
+      const connector = connectorManager.getConnector();
+      const status = connector.getStatus();
+      if (status.connected || status.terminalConnected) {
+        const execRes = await connector.modifyPosition(
+          Number(ticket),
+          sl !== undefined ? Number(sl) : undefined,
+          tp !== undefined ? Number(tp) : undefined
+        );
+        if (execRes.success) {
+          return {
+            status: 'executed',
+            commandId: res.commandId,
+            message: execRes.message || `Position #${ticket} modified`,
+          };
+        }
+      }
+
       return {
         status: 'queued',
         commandId: res.commandId,
@@ -675,6 +945,22 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
 
       if (!res.success) {
         throw new Error(`Close rejected: ${res.error}`);
+      }
+
+      const connector = connectorManager.getConnector();
+      const status = connector.getStatus();
+      if (status.connected || status.terminalConnected) {
+        const execRes = await connector.closePosition(
+          Number(ticket),
+          volume ? Number(volume) : undefined
+        );
+        if (execRes.success) {
+          return {
+            status: 'executed',
+            commandId: res.commandId,
+            message: execRes.message || `Position #${ticket} closed`,
+          };
+        }
       }
 
       return {
@@ -778,6 +1064,20 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
     case 'mt5_cancel_pending_order': {
       const ticket = Number(args.ticket);
       if (!ticket) throw new Error('Missing ticket parameter');
+
+      const connector = connectorManager.getConnector();
+      const status = connector.getStatus();
+      if (status.connected || status.terminalConnected) {
+        const execRes = await connector.cancelOrder(ticket);
+        if (execRes.success) {
+          return {
+            status: 'executed',
+            ticket,
+            message: execRes.message || `Order #${ticket} cancelled in MT5`,
+          };
+        }
+      }
+
       const res = tradeStore.enqueueCommand({
         action: 'CANCEL_PENDING',
         ticket,
@@ -792,14 +1092,14 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
     }
 
     case 'mt5_request_chart_history': {
-      const sym = String(args.symbol).toUpperCase();
-      const tf = args.timeframe ? String(args.timeframe).toUpperCase() : 'M1';
+      const sym = normalizeSymbol(String(args.symbol));
+      const tf = args.timeframe ? String(args.timeframe).trim() : 'M1';
       const count = args.count ? Number(args.count) : 100;
       const res = tradeStore.requestHistoryFromEA(sym, tf, count);
       return {
-        status: 'dispatched_to_ea',
+        status: 'dispatched',
         commandId: res.commandId,
-        message: `Requested ${count} candles for ${sym} [${tf}] from MT5 EA. Data will populate on next sync.`,
+        message: `Requested ${count} candles for ${sym} [${tf}] from MT5 connector. Data will populate on next sync.`,
       };
     }
 
@@ -956,6 +1256,117 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
       return {
         count: results.length,
         results,
+      };
+    }
+
+    case 'mt5_get_history_deals': {
+      const dateFrom = args.dateFrom ? Number(args.dateFrom) : undefined;
+      const dateTo = args.dateTo ? Number(args.dateTo) : undefined;
+      const count = args.count ? Number(args.count) : 50;
+      const connector = connectorManager.getConnector();
+      const deals = await connector.getHistoryDeals({ dateFrom, dateTo, count });
+      return {
+        count: deals.length,
+        deals,
+      };
+    }
+
+    case 'mt5_get_history_orders': {
+      const dateFrom = args.dateFrom ? Number(args.dateFrom) : undefined;
+      const dateTo = args.dateTo ? Number(args.dateTo) : undefined;
+      const count = args.count ? Number(args.count) : 50;
+      const connector = connectorManager.getConnector();
+      const orders = await connector.getHistoryOrders({ dateFrom, dateTo, count });
+      return {
+        count: orders.length,
+        orders,
+      };
+    }
+
+    case 'mt5_modify_pending_order': {
+      const ticket = Number(args.ticket);
+      const price = args.price !== undefined ? Number(args.price) : undefined;
+      const sl = args.sl !== undefined ? Number(args.sl) : undefined;
+      const tp = args.tp !== undefined ? Number(args.tp) : undefined;
+      if (!ticket) throw new Error('Missing ticket parameter');
+
+      const connector = connectorManager.getConnector();
+      const result = await connector.modifyOrder(ticket, price, sl, tp);
+      return {
+        ticket,
+        success: result.success,
+        message: result.message || `Pending order #${ticket} modification dispatched`,
+      };
+    }
+
+    case 'mt5_calc_margin': {
+      const connector = connectorManager.getConnector();
+      return await connector.calcMargin(
+        args.orderType || 'BUY',
+        normalizeSymbol(args.symbol || 'EURUSD'),
+        Number(args.volume) || 0.1,
+        args.price ? Number(args.price) : undefined
+      );
+    }
+
+    case 'mt5_calc_profit': {
+      const connector = connectorManager.getConnector();
+      return await connector.calcProfit(
+        args.orderType || 'BUY',
+        normalizeSymbol(args.symbol || 'EURUSD'),
+        Number(args.volume) || 0.1,
+        Number(args.priceOpen) || 0,
+        Number(args.priceClose) || 0
+      );
+    }
+
+    case 'mt5_check_order': {
+      const connector = connectorManager.getConnector();
+      return await connector.checkOrder({
+        symbol: normalizeSymbol(args.symbol || 'EURUSD'),
+        orderType: (args.orderType || 'BUY') as OrderType,
+        volume: Number(args.volume) || 0.1,
+        price: args.price ? Number(args.price) : undefined,
+      });
+    }
+
+    case 'mt5_get_market_depth': {
+      const symbol = normalizeSymbol(args.symbol || 'EURUSD');
+      const connector = connectorManager.getConnector();
+      const depth = await connector.getMarketDepth(symbol);
+      return { symbol, depth };
+    }
+
+    case 'mt5_get_symbol_info': {
+      const symbol = normalizeSymbol(args.symbol || 'EURUSD');
+      const connector = connectorManager.getConnector();
+      const spec = await connector.getDetailedSymbol(symbol);
+      return { symbol, spec };
+    }
+
+    case 'mt5_set_trailing_stop': {
+      const { trailingStopEnabled, trailingStopDistancePoints, trailingStopStepPoints } = args;
+      tradeStore.updateRiskGuard({
+        trailingStopEnabled: trailingStopEnabled !== undefined ? Boolean(trailingStopEnabled) : true,
+        trailingStopDistancePoints: trailingStopDistancePoints ? Number(trailingStopDistancePoints) : 150,
+        trailingStopStepPoints: trailingStopStepPoints ? Number(trailingStopStepPoints) : 30,
+      });
+      return {
+        status: 'updated',
+        riskGuard: tradeStore.getRiskGuard(),
+        message: `Trailing stop configured: ${trailingStopDistancePoints || 150} points distance, step ${trailingStopStepPoints || 30} points`,
+      };
+    }
+
+    case 'mt5_get_live_stream_info': {
+      const { getStreamStats } = await import('./websocketServer.js');
+      return {
+        protocol: 'SSE & WebSocket',
+        sseUrl: '/api/stream/live',
+        websocketUrl: '/ws',
+        description: 'Real-time live streaming channel for external AI agents to intercept live market ticks, positions, balances, and trade events.',
+        stats: getStreamStats(),
+        exampleCurl: 'curl -N -H "Accept: text/event-stream" http://localhost:3000/api/stream/live',
       };
     }
 

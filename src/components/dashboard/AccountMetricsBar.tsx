@@ -23,18 +23,18 @@ export const AccountMetricsBar: React.FC<AccountMetricsBarProps> = ({ account })
   return (
     <div className="space-y-3">
       {!isConnected && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
+        <div className="bg-cyan-950/40 border border-cyan-800/60 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-amber-400" />
-            <span className="text-amber-300 font-bold">
-              MetaTrader 5 Terminal App Disconnected:
+            <span className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
+            <span className="text-cyan-300 font-bold">
+              MetaTrader 5 Bridge Tunnel Ready:
             </span>
             <span className="text-slate-300">
-              Open your local MetaTrader 5 application to stream real broker balance and metrics.
+              Awaiting EA heartbeat at <code className="text-cyan-400 bg-slate-900 px-1.5 py-0.5 rounded">http://127.0.0.1:7777</code>
             </span>
           </div>
-          <span className="text-[11px] text-cyan-400">
-            Peron Python Package (No Fake Data)
+          <span className="text-[11px] text-slate-400">
+            Real broker account data will sync automatically upon EA attachment
           </span>
         </div>
       )}
@@ -47,10 +47,10 @@ export const AccountMetricsBar: React.FC<AccountMetricsBarProps> = ({ account })
           <Wallet className="h-3.5 w-3.5 text-slate-500" />
         </div>
         <div className="text-xl font-bold font-mono text-white tracking-tight">
-          ${(account.balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          ${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
         <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-          {account.currency || 'USD'} • {account.server || 'Server'}
+          {account.currency} • {account.server}
         </div>
       </div>
 
@@ -61,7 +61,7 @@ export const AccountMetricsBar: React.FC<AccountMetricsBarProps> = ({ account })
           <TrendingUp className="h-3.5 w-3.5 text-cyan-400" />
         </div>
         <div className="text-xl font-bold font-mono text-cyan-300 tracking-tight">
-          ${(account.equity ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          ${account.equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
         <div className="text-[11px] text-slate-400 font-mono mt-0.5">
           Net Assets
@@ -79,7 +79,7 @@ export const AccountMetricsBar: React.FC<AccountMetricsBarProps> = ({ account })
             isProfitPositive ? 'text-emerald-400' : 'text-rose-400'
           }`}
         >
-          {isProfitPositive ? '+' : ''}${(account.profit ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {isProfitPositive ? '+' : ''}${account.profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
         <div className="text-[11px] text-slate-400 font-mono mt-0.5">
           Live MT5 Unrealized
@@ -93,7 +93,7 @@ export const AccountMetricsBar: React.FC<AccountMetricsBarProps> = ({ account })
           <ShieldCheck className="h-3.5 w-3.5 text-slate-500" />
         </div>
         <div className="text-xl font-bold font-mono text-slate-200 tracking-tight">
-          ${(account.freeMargin ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          ${account.freeMargin.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
         <div className="text-[11px] text-slate-500 font-mono mt-0.5">
           Available to Trade
@@ -107,7 +107,7 @@ export const AccountMetricsBar: React.FC<AccountMetricsBarProps> = ({ account })
           <Layers className="h-3.5 w-3.5 text-slate-500" />
         </div>
         <div className="text-xl font-bold font-mono text-slate-300 tracking-tight">
-          ${(account.margin ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          ${account.margin.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
         <div className="text-[11px] text-slate-500 font-mono mt-0.5">
           Leverage 1:{account.leverage}

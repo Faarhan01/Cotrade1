@@ -16,7 +16,7 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const isProd = process.env.NODE_ENV === 'production';
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = 3000;
 const MT5_PORT = 7777;
 
 async function startServer() {
@@ -40,6 +40,14 @@ async function startServer() {
 
   // Attach WebSocket server for real-time tick streaming and order events
   setupWebSocketServer(server);
+
+  // Initialize Database
+  try {
+    await Database.initialize();
+    logger.info("Server", "Database initialized");
+  } catch (err: any) {
+    logger.warn("Server", `Database initialization notice: ${err.message}`);
+  }
 
   // Initialize Peron Python MT5 Connector Provider
   try {

@@ -34,4 +34,19 @@ export const marketApi = {
   getTerminal(): Promise<{ success: boolean; terminal: any }> {
     return request('/api/terminal');
   },
+
+  // Level 2 Market Depth (Order Book)
+  getMarketDepth(symbol: string): Promise<{ success: boolean; symbol: string; depth: { bids: any[]; asks: any[] } }> {
+    return request(`/api/market-depth?symbol=${encodeURIComponent(symbol)}`);
+  },
+
+  // Detailed Symbol Specifications
+  getDetailedSymbol(symbol: string): Promise<{ success: boolean; symbol: string; spec: DetailedSymbolInfo | null }> {
+    return request(`/api/symbols/${encodeURIComponent(symbol)}`);
+  },
+
+  // External AI Stream Statistics
+  getStreamStats(): Promise<{ status: string; wsClientsCount: number; sseClientsCount: number; totalEventsBroadcasted: number }> {
+    return request('/api/stream/stats');
+  },
 };

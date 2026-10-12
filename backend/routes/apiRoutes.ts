@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { tradeStore } from '../services/tradeStore.js';
 import { handleMcpJsonRpc } from '../services/mcpServer.js';
+import { addSseClient, removeSseClient, getStreamStats } from '../services/websocketServer.js';
+import { readEvents } from '../helpers/daemon/eventBuffer.ts';
 import {
   MT5Controller,
   TradeController,
@@ -26,12 +28,19 @@ apiRouter.post('/connection/provider', MT5Controller.switchProvider);
 
 // Symbols, Ticks, Candles, Terminal & Account
 apiRouter.get('/symbols', MT5Controller.getSymbols);
+apiRouter.get('/symbols/:symbol', MT5Controller.getDetailedSymbol);
 apiRouter.get('/ticks', MT5Controller.getTicks);
+apiRouter.get('/tick-history', (req, res) => {
+  res.json({ success: true, history: tradeStore.getTickHistory() });
+});
 apiRouter.get('/candles', MT5Controller.getCandles);
 apiRouter.get('/account', MT5Controller.getAccount);
 apiRouter.get('/terminal', MT5Controller.getTerminal);
 apiRouter.get('/positions', MT5Controller.getPositions);
 apiRouter.get('/orders', MT5Controller.getOrders);
+apiRouter.get('/history/deals', MT5Controller.getHistoryDeals);
+apiRouter.get('/history/orders', MT5Controller.getHistoryOrders);
+apiRouter.get('/market-depth', MT5Controller.getMarketDepth);
 
 // ==========================================
 // 2. Trading Operations Endpoints
@@ -40,13 +49,50 @@ apiRouter.post('/commands', TradeController.executeTrade);
 apiRouter.post('/trades/execute', TradeController.executeTrade);
 apiRouter.post('/positions/:ticket/close', TradeController.closePosition);
 apiRouter.post('/positions/:ticket/modify', TradeController.modifyPosition);
+apiRouter.post('/orders/:ticket/modify', TradeController.modifyOrder);
 apiRouter.post('/orders/:ticket/cancel', TradeController.cancelOrder);
+
+// Candle management endpoints (for testing/debug)
+apiRouter.post('/candles/request', TradeController.requestHistoryFromEA);
+apiRouter.post('/candles/simulate', TradeController.seedCandles);
+
+apiRouter.post('/orders/check', MT5Controller.checkOrder);
+apiRouter.post('/tools/calc-margin', MT5Controller.calcMargin);
+apiRouter.post('/tools/calc-profit', MT5Controller.calcProfit);
 
 apiRouter.post('/risk', TradeController.updateRisk);
 apiRouter.post('/kill-switch', TradeController.toggleKillSwitch);
 
 // ==========================================
-// 3. MCP Endpoints (JSON-RPC & SSE)
+// 3. External AI Live Intercept Stream (SSE)
+// ==========================================
+apiRouter.get('/stream/live', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.flushHeaders?.();
+
+  // Send initial snapshot event
+  const snapshot = tradeStore.getState();
+  res.write(`event: snapshot\ndata: ${JSON.stringify(snapshot)}\n\n`);
+
+  addSseClient(res);
+
+  req.on('close', () => {
+    removeSseClient(res);
+  });
+});
+
+apiRouter.get('/stream/stats', (req, res) => {
+  res.json({
+    status: 'ok',
+    ...getStreamStats(),
+  });
+});
+
+// ==========================================
+// 4. MCP Endpoints (JSON-RPC & SSE)
 // ==========================================
 const mcpSseClients = new Map<string, any>();
 
@@ -114,9 +160,37 @@ apiRouter.delete('/observations/:id', StrategyController.deleteObservation);
 // ==========================================
 // 5. Database & Audit Endpoints
 // ==========================================
-apiRouter.get('/database/analytics', DatabaseController.getAnalytics);
-apiRouter.post('/database/prune', DatabaseController.pruneDatabase);
-apiRouter.get('/database/orders', DatabaseController.getOrders);
-apiRouter.get('/database/candles', DatabaseController.getCandles);
-apiRouter.get('/database/ticks', DatabaseController.getTicks);
-apiRouter.get('/database/account', DatabaseController.getAccountHistory);
+apiRouter.get('/database/analytics', DatabaseController.getAnalytics.bind(DatabaseController));
+apiRouter.post('/database/prune', DatabaseController.pruneDatabase.bind(DatabaseController));
+apiRouter.get('/database/orders', DatabaseController.getOrders.bind(DatabaseController));
+apiRouter.get('/database/candles', DatabaseController.getCandles.bind(DatabaseController));
+apiRouter.get('/database/ticks', DatabaseController.getTicks.bind(DatabaseController));
+apiRouter.get('/database/account', DatabaseController.getAccountHistory.bind(DatabaseController));
+
+// ==========================================
+// 6. Event Buffering Endpoints
+// ==========================================
+apiRouter.get('/events', (req, res) => {
+  try {
+    const options = {
+      limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
+      type: req.query.type as string | undefined,
+      startTime: req.query.startTime ? parseInt(req.query.startTime as string, 10) : undefined,
+      endTime: req.query.endTime ? parseInt(req.query.endTime as string, 10) : undefined,
+    };
+    
+    const events = readEvents(options);
+    res.json({
+      success: true,
+      events,
+      count: events.length,
+      filtersApplied: options,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve events',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});

@@ -159,4 +159,55 @@ export const api = {
     const res = await strategyApi.getBacktestHistory(strategyId);
     return { results: res.results || [] };
   },
+
+  // MT5 Historical Deals & Orders
+  async getHistoryDeals(params?: { from?: number; to?: number; count?: number }) {
+    return tradeApi.getHistoryDeals(params);
+  },
+
+  async getHistoryOrders(params?: { from?: number; to?: number; count?: number }) {
+    return tradeApi.getHistoryOrders(params);
+  },
+
+  async closePosition(ticket: number, volume?: number) {
+    return tradeApi.closePosition(ticket, volume);
+  },
+
+  async modifyPosition(ticket: number, sl?: number, tp?: number) {
+    return tradeApi.modifyPosition(ticket, sl, tp);
+  },
+
+  async modifyPendingOrder(ticket: number, price?: number, sl?: number, tp?: number) {
+    return tradeApi.modifyOrder(ticket, price, sl, tp);
+  },
+
+  async checkOrder(order: any) {
+    return tradeApi.checkOrder(order);
+  },
+
+  async calcMargin(data: { action?: string; orderType?: string; symbol: string; volume: number; price?: number }) {
+    return tradeApi.calcMargin(data);
+  },
+
+  async calcProfit(data: { action?: string; orderType?: string; symbol: string; volume: number; priceOpen: number; priceClose: number }) {
+    return tradeApi.calcProfit(data);
+  },
+
+  async getMarketDepth(symbol: string) {
+    return marketApi.getMarketDepth(symbol);
+  },
+
+  async getDetailedSymbol(symbol: string) {
+    return marketApi.getDetailedSymbol(symbol);
+  },
+
+  async getTickHistory(): Promise<{ success: boolean; history: Record<string, { time: number; bid: number; ask: number }[]> }> {
+    const res = await fetch('/api/tick-history');
+    if (!res.ok) throw new Error('Failed to fetch tick history');
+    return res.json();
+  },
+
+  async getStreamStats() {
+    return marketApi.getStreamStats();
+  },
 };

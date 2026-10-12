@@ -35,6 +35,7 @@ mt5Router.post(['/sync', '/api/mt5/sync'], (req, res) => {
       account: tradeStore.getAccount(),
       positions: tradeStore.getPositions(),
       ticks: tradeStore.getTicks(),
+      tickHistory: tradeStore.getTickHistory(),
       currentChart: tradeStore.getCurrentChart(),
       allSymbols: tradeStore.getAllSymbols(),
       chartHistory: tradeStore.getChartHistory(),

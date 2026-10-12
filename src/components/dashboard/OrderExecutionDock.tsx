@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { OrderType, TickData, RiskGuardConfig } from '../../types';
+import { OrderType, TickData, RiskGuardConfig, DetailedSymbolInfo } from '../../types';
 import { api } from '../../services/api';
-import { Send, ArrowUp, ArrowDown, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Send, ArrowUp, ArrowDown, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 
 interface OrderExecutionDockProps {
   selectedSymbol: string;
   ticks: TickData[];
+  allSymbols?: DetailedSymbolInfo[];
   riskGuard: RiskGuardConfig | null;
   onSelectSymbol: (symbol: string) => void;
 }
@@ -13,6 +14,7 @@ interface OrderExecutionDockProps {
 export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
   selectedSymbol,
   ticks,
+  allSymbols = [],
   riskGuard,
   onSelectSymbol,
 }) => {
@@ -24,7 +26,9 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<{ message: string; error?: boolean } | null>(null);
 
-  const activeTick = ticks.find((t) => t.symbol === selectedSymbol);
+  const activeTick = ticks.find((t) => t.symbol.toLowerCase() === selectedSymbol.toLowerCase());
+  const symbolSpec = allSymbols.find((s) => s.symbol.toLowerCase() === selectedSymbol.toLowerCase());
+
   const maxLots = riskGuard?.maxLotSizePerTrade || 2.0;
   const isKillSwitch = riskGuard?.emergencyKillSwitch || false;
 
@@ -104,7 +108,10 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
                 />
                 <datalist id="symbol-options">
                   {ticks.map((t) => (
-                    <option key={t.symbol} value={t.symbol} />
+                    <option key={`tick-${t.symbol}`} value={t.symbol} />
+                  ))}
+                  {allSymbols.map((s) => (
+                    <option key={`sym-${s.symbol}`} value={s.symbol} />
                   ))}
                 </datalist>
               </div>
@@ -140,6 +147,14 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
               </div>
             </div>
           </div>
+
+          {symbolSpec && (
+            <div className="flex items-center justify-between text-[11px] text-slate-400 bg-slate-950/60 px-2 py-1.5 rounded border border-slate-800">
+              <span>Lot: <strong className="text-slate-200">{symbolSpec.minLot}</strong> - <strong className="text-slate-200">{symbolSpec.maxLot}</strong></span>
+              <span>Step: <strong className="text-slate-200">{symbolSpec.lotStep}</strong></span>
+              <span>Digits: <strong className="text-cyan-300">{symbolSpec.digits}</strong></span>
+            </div>
+          )}
 
           {/* Volume / Lot Size */}
           <div>
