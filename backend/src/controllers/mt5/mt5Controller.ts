@@ -61,8 +61,9 @@ export class MT5Controller {
 
   // Get dynamic broker symbols directly from MT5 package (preserving casing)
   public static async getSymbols(req: Request, res: Response) {
+    const group = req.query.group ? String(req.query.group).trim() : undefined;
     const connector = connectorManager.getConnector();
-    const symbols = await connector.getSymbols();
+    const symbols = await connector.getSymbols(group);
     // Fall back to tradeStore's cached symbols if needed
     const allSymbols = symbols.length > 0 ? symbols : tradeStore.getAllSymbols();
     res.json({
@@ -70,6 +71,20 @@ export class MT5Controller {
       count: allSymbols.length,
       symbols: allSymbols,
     });
+  }
+
+  // Select or unselect symbol in MT5 MarketWatch
+  public static async selectSymbol(req: Request, res: Response) {
+    const { symbol, enable = true } = req.body;
+    if (!symbol) {
+      return res.status(400).json({ success: false, message: 'Symbol is required' });
+    }
+    const connector = connectorManager.getConnector();
+    if (connector.selectSymbol) {
+      const result = await connector.selectSymbol(normalizeSymbol(symbol), Boolean(enable));
+      return res.json(result);
+    }
+    res.json({ success: true, symbol: normalizeSymbol(symbol), selected: Boolean(enable) });
   }
 
   // Get market ticks
@@ -85,16 +100,54 @@ export class MT5Controller {
     });
   }
 
-  // Get OHLCV candlestick chart data
+  // Get deep tick-level historical data from MT5
+  public static async getTicksHistory(req: Request, res: Response) {
+    const symbol = normalizeSymbol(String(req.query.symbol || 'EURUSD'));
+    const count = Number(req.query.count) || 500;
+    const dateFrom = req.query.from ? Number(req.query.from) : undefined;
+    const dateTo = req.query.to ? Number(req.query.to) : undefined;
+    const connector = connectorManager.getConnector();
+    let ticks: any[] = [];
+    if (connector.getTicksHistory) {
+      ticks = await connector.getTicksHistory(symbol, dateFrom, dateTo, count);
+    }
+    if (!ticks || ticks.length === 0) {
+      const { dbGetTicksHistory } = await import('@core/database/db.ts');
+      ticks = await dbGetTicksHistory(symbol, count);
+    }
+    res.json({
+      success: true,
+      symbol,
+      count: ticks.length,
+      ticks,
+    });
+  }
+
+  // Get OHLCV candlestick chart data (supports count or date range)
   public static async getCandles(req: Request, res: Response) {
     const symbol = normalizeSymbol(String(req.query.symbol || tradeStore.getCurrentChart()?.symbol || 'EURUSD'));
     const timeframe = String(req.query.timeframe || 'M1');
     const count = Number(req.query.count) || 100;
+    const dateFrom = req.query.from ? Number(req.query.from) : undefined;
+    const dateTo = req.query.to ? Number(req.query.to) : undefined;
 
     const connector = connectorManager.getConnector();
-    let candles = await connector.getCandles(symbol, timeframe, count);
-    if (!candles || candles.length === 0) {
-      candles = tradeStore.getChartHistory();
+    let candles = await connector.getCandles(symbol, timeframe, count, dateFrom, dateTo);
+
+    // If fetched from connector, cache asynchronously in SQLite
+    if (candles && candles.length > 0) {
+      import('@core/database/db.ts').then(({ dbInsertCandles }) => {
+        dbInsertCandles(symbol, timeframe, candles).catch(() => {});
+      }).catch(() => {});
+    } else {
+      // Try local database cache if connector didn't return candles
+      const { dbGetCandles } = await import('@core/database/db.ts');
+      const dbCandles = await dbGetCandles(symbol, timeframe, count);
+      if (dbCandles && dbCandles.length > 0) {
+        candles = dbCandles;
+      } else {
+        candles = tradeStore.getChartHistory();
+      }
     }
 
     res.json({

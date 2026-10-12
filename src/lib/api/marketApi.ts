@@ -3,8 +3,17 @@ import { CandleData, DetailedSymbolInfo, TickData } from '@/types';
 
 export const marketApi = {
   // Discovered broker symbols directly from MT5 Python package
-  getSymbols(): Promise<{ success: boolean; count: number; symbols: DetailedSymbolInfo[] }> {
-    return request('/api/symbols');
+  getSymbols(group?: string): Promise<{ success: boolean; count: number; symbols: DetailedSymbolInfo[] }> {
+    const qs = group ? `?group=${encodeURIComponent(group)}` : '';
+    return request(`/api/symbols${qs}`);
+  },
+
+  // Select/Unselect symbol in MarketWatch
+  selectSymbol(symbol: string, enable = true): Promise<{ success: boolean; symbol: string; selected: boolean; message?: string }> {
+    return request('/api/symbols/select', {
+      method: 'POST',
+      body: JSON.stringify({ symbol: symbol.trim(), enable }),
+    });
   },
 
   // Live ticks (preserving symbol casing)
@@ -13,16 +22,36 @@ export const marketApi = {
     return request(`/api/ticks${qs}`);
   },
 
-  // OHLCV Candlesticks
-  getCandles(symbol: string, timeframe = 'M1', count = 100): Promise<{
+  // Deep tick-level historical data from MT5
+  getTicksHistory(symbol: string, from?: number, to?: number, count = 500): Promise<{
+    success: boolean;
+    symbol: string;
+    count: number;
+    ticks: TickData[];
+  }> {
+    const qs = new URLSearchParams();
+    qs.set('symbol', symbol ? symbol.trim() : 'EURUSD');
+    qs.set('count', String(count));
+    if (from) qs.set('from', String(from));
+    if (to) qs.set('to', String(to));
+    return request(`/api/ticks/history?${qs.toString()}`);
+  },
+
+  // OHLCV Candlesticks (supports count and optional date range)
+  getCandles(symbol: string, timeframe = 'M1', count = 100, from?: number, to?: number): Promise<{
     success: boolean;
     symbol: string;
     timeframe: string;
     count: number;
     candles: CandleData[];
   }> {
-    const sym = symbol ? symbol.trim() : 'EURUSD';
-    return request(`/api/candles?symbol=${encodeURIComponent(sym)}&timeframe=${encodeURIComponent(timeframe)}&count=${count}`);
+    const qs = new URLSearchParams();
+    qs.set('symbol', symbol ? symbol.trim() : 'EURUSD');
+    qs.set('timeframe', timeframe);
+    qs.set('count', String(count));
+    if (from) qs.set('from', String(from));
+    if (to) qs.set('to', String(to));
+    return request(`/api/candles?${qs.toString()}`);
   },
 
   // Account Snapshot

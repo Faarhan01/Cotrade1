@@ -210,8 +210,24 @@ export const api = {
     return marketApi.getMarketDepth(symbol);
   },
 
+  async getSymbols(group?: string) {
+    return marketApi.getSymbols(group);
+  },
+
   async getDetailedSymbol(symbol: string) {
     return marketApi.getDetailedSymbol(symbol);
+  },
+
+  async getCandles(symbol: string, timeframe = 'M1', count = 100, from?: number, to?: number) {
+    return marketApi.getCandles(symbol, timeframe, count, from, to);
+  },
+
+  async getTicksHistory(symbol: string, from?: number, to?: number, count = 500) {
+    return marketApi.getTicksHistory(symbol, from, to, count);
+  },
+
+  async selectSymbol(symbol: string, enable = true) {
+    return marketApi.selectSymbol(symbol, enable);
   },
 
   async getTickHistory(): Promise<{ success: boolean; history: Record<string, { time: number; bid: number; ask: number }[]> }> {

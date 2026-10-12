@@ -409,9 +409,92 @@ export function runStrategyBacktest(
      averageWin,
      averageLoss,
      riskRewardRatio,
-      sharpeRatio: undefined,
+     sharpeRatio:
+       trades.length >= 3
+         ? (() => {
+             const returns = trades.map((t) => t.profitUsd);
+             const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
+             const variance =
+               returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / (returns.length - 1);
+             const stdDev = Math.sqrt(variance);
+             return stdDev > 0 ? Math.round((mean / stdDev) * Math.sqrt(trades.length) * 100) / 100 : 0;
+           })()
+         : undefined,
      trades,
      equityCurve,
      evaluatedAt: Date.now(),
    };
+}
+
+/**
+ * Generates realistic benchmark candles for offline simulation or when terminal is not streaming.
+ */
+export function generateBenchmarkCandles(
+  symbol: string,
+  timeframe: string = 'M1',
+  count: number = 300
+): CandleData[] {
+  const symLower = (symbol || 'EURUSD').toLowerCase();
+  let basePrice = 1.085;
+  let volatility = 0.0003;
+
+  if (symLower.includes('jpy')) {
+    basePrice = 154.5;
+    volatility = 0.05;
+  } else if (symLower.includes('xau') || symLower.includes('gold')) {
+    basePrice = 2650.0;
+    volatility = 0.8;
+  } else if (symLower.includes('btc')) {
+    basePrice = 68000.0;
+    volatility = 40.0;
+  } else if (symLower.includes('eth')) {
+    basePrice = 3400.0;
+    volatility = 4.0;
+  } else if (symLower.includes('index') || symLower.includes('1000') || symLower.includes('500')) {
+    basePrice = 5000.0;
+    volatility = 3.0;
+  }
+
+  const tfSecondsMap: Record<string, number> = {
+    M1: 60,
+    M5: 300,
+    M15: 900,
+    M30: 1800,
+    H1: 3600,
+    H4: 14400,
+    D1: 86400,
+  };
+  const tfSec = tfSecondsMap[timeframe.toUpperCase()] || 60;
+  const nowSec = Math.floor(Date.now() / 1000);
+  const startSec = nowSec - count * tfSec;
+
+  const candles: CandleData[] = [];
+  let currentClose = basePrice;
+
+  for (let i = 0; i < count; i++) {
+    const time = startSec + i * tfSec;
+    const wave = Math.sin(i / 15) * volatility * 1.5;
+    const trend = (i / count - 0.5) * volatility * 2.0;
+    const shock = (Math.random() - 0.5) * volatility;
+
+    const open = currentClose;
+    const change = wave * 0.3 + trend * 0.2 + shock;
+    const close = open + change;
+    const high = Math.max(open, close) + Math.random() * volatility * 0.8;
+    const low = Math.min(open, close) - Math.random() * volatility * 0.8;
+    const volume = Math.floor(50 + Math.random() * 200);
+
+    candles.push({
+      time,
+      timeIso: new Date(time * 1000).toISOString(),
+      open: Number(open.toFixed(basePrice > 100 ? 2 : 5)),
+      high: Number(high.toFixed(basePrice > 100 ? 2 : 5)),
+      low: Number(low.toFixed(basePrice > 100 ? 2 : 5)),
+      close: Number(close.toFixed(basePrice > 100 ? 2 : 5)),
+      volume,
+    });
+    currentClose = close;
+  }
+
+  return candles;
 }

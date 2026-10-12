@@ -416,9 +416,10 @@ export class PeronMT5Connector implements IMT5Connector {
     return null;
   }
 
-  public async getSymbols(): Promise<DetailedSymbolInfo[]> {
+  public async getSymbols(group?: string): Promise<DetailedSymbolInfo[]> {
     try {
-      const res = await fetch(`${this.bridgeUrl}/symbols`);
+      const qs = group ? `?group=${encodeURIComponent(group)}` : '';
+      const res = await fetch(`${this.bridgeUrl}/symbols${qs}`);
       if (res.ok) {
         const raw = (await res.json()) as any[];
         return this.normalizeSymbols(raw);
@@ -430,6 +431,19 @@ export class PeronMT5Connector implements IMT5Connector {
   public async getSymbolInfo(symbol: string): Promise<DetailedSymbolInfo | null> {
     const list = await this.getSymbols();
     return list.find((s) => symbolsMatch(s.symbol, symbol)) || null;
+  }
+
+  public async selectSymbol(symbol: string, enable: boolean = true): Promise<{ success: boolean; message?: string }> {
+    try {
+      const res = await fetch(`${this.bridgeUrl}/symbols/select`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol: normalizeSymbol(symbol), enable }),
+      });
+      return (await res.json()) as any;
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
   }
 
   public async getTicks(symbols?: string[]): Promise<TickData[]> {
@@ -444,12 +458,33 @@ export class PeronMT5Connector implements IMT5Connector {
     return [];
   }
 
-  public async getCandles(symbol: string, timeframe: string, count: number): Promise<CandleData[]> {
+  public async getTicksHistory(symbol: string, dateFrom?: number, dateTo?: number, count?: number): Promise<TickData[]> {
+    try {
+      const qs = new URLSearchParams();
+      qs.set('symbol', normalizeSymbol(symbol));
+      if (dateFrom) qs.set('from', String(dateFrom));
+      if (dateTo) qs.set('to', String(dateTo));
+      if (count) qs.set('count', String(count));
+      const res = await fetch(`${this.bridgeUrl}/ticks/history?${qs.toString()}`);
+      if (res.ok) {
+        const raw = (await res.json()) as any[];
+        return this.normalizeTicks(raw);
+      }
+    } catch {}
+    return [];
+  }
+
+  public async getCandles(symbol: string, timeframe: string, count: number, dateFrom?: number, dateTo?: number): Promise<CandleData[]> {
     try {
       const normSym = normalizeSymbol(symbol);
-      const res = await fetch(
-        `${this.bridgeUrl}/candles?symbol=${encodeURIComponent(normSym)}&timeframe=${encodeURIComponent(timeframe)}&count=${count}`
-      );
+      const qs = new URLSearchParams();
+      qs.set('symbol', normSym);
+      qs.set('timeframe', timeframe);
+      qs.set('count', String(count));
+      if (dateFrom) qs.set('from', String(dateFrom));
+      if (dateTo) qs.set('to', String(dateTo));
+
+      const res = await fetch(`${this.bridgeUrl}/candles?${qs.toString()}`);
       if (res.ok) return (await res.json()) as CandleData[];
     } catch {}
     return [];

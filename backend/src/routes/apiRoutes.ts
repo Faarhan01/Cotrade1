@@ -33,8 +33,10 @@ apiRouter.post('/connection/provider', MT5Controller.switchProvider);
 
 // Symbols, Ticks, Candles, Terminal & Account
 apiRouter.get('/symbols', MT5Controller.getSymbols);
+apiRouter.post('/symbols/select', MT5Controller.selectSymbol);
 apiRouter.get('/symbols/:symbol', MT5Controller.getDetailedSymbol);
 apiRouter.get('/ticks', MT5Controller.getTicks);
+apiRouter.get('/ticks/history', MT5Controller.getTicksHistory);
 apiRouter.get('/tick-history', (req, res) => {
   res.json({ success: true, history: tradeStore.getTickHistory() });
 });

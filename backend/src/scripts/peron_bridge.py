@@ -221,10 +221,10 @@ class MT5Engine:
         # No MT5 connection -> Return None (NO fake data)
         return None
 
-    def get_symbols(self):
+    def get_symbols(self, group=None):
         if HAVE_NATIVE_MT5 and mt5 is not None:
             try:
-                symbols = mt5.symbols_get()
+                symbols = mt5.symbols_get(group=group) if group else mt5.symbols_get()
                 if symbols:
                     res = []
                     for s in symbols:
@@ -291,11 +291,24 @@ class MT5Engine:
         # Disconnected -> Return empty list (NO fake ticks)
         return []
 
-    def get_candles(self, symbol, timeframe="M1", count=100):
+    def get_candles(self, symbol, timeframe="M1", count=100, date_from=None, date_to=None):
         if HAVE_NATIVE_MT5 and mt5 is not None:
             try:
                 tf_code = TIMEFRAMES.get(timeframe, 1)
-                rates = mt5.copy_rates_from_pos(symbol, tf_code, 0, count)
+                rates = None
+                # Ensure symbol is active in terminal
+                try:
+                    mt5.symbol_select(symbol, True)
+                except Exception:
+                    pass
+
+                if date_from and date_to:
+                    rates = mt5.copy_rates_range(symbol, tf_code, int(date_from), int(date_to))
+                elif date_from:
+                    rates = mt5.copy_rates_from(symbol, tf_code, int(date_from), int(count))
+                else:
+                    rates = mt5.copy_rates_from_pos(symbol, tf_code, 0, int(count))
+
                 if rates is not None and len(rates) > 0:
                     candles = []
                     for r in rates:
@@ -314,6 +327,54 @@ class MT5Engine:
                 pass
         # Disconnected -> Return empty list (NO fake candles)
         return []
+
+    def get_ticks_history(self, symbol, date_from=None, date_to=None, count=1000):
+        if HAVE_NATIVE_MT5 and mt5 is not None:
+            try:
+                try:
+                    mt5.symbol_select(symbol, True)
+                except Exception:
+                    pass
+                ticks = None
+                flag_all = getattr(mt5, "COPY_TICKS_ALL", -1)
+                if date_from and date_to:
+                    ticks = mt5.copy_ticks_range(symbol, int(date_from), int(date_to), flag_all)
+                elif date_from:
+                    ticks = mt5.copy_ticks_from(symbol, int(date_from), int(count), flag_all)
+                else:
+                    now_sec = int(time.time())
+                    from_sec = now_sec - 86400  # past 24 hours
+                    ticks = mt5.copy_ticks_from(symbol, from_sec, int(count), flag_all)
+
+                if ticks is not None and len(ticks) > 0:
+                    res = []
+                    for t in ticks:
+                        time_sec = int(t["time"])
+                        time_msc = int(t["time_msc"] if "time_msc" in t.dtype.names else time_sec * 1000)
+                        res.append({
+                            "symbol": symbol,
+                            "time": time_sec,
+                            "timeMsc": time_msc,
+                            "timeIso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time_sec)),
+                            "bid": float(t["bid"]),
+                            "ask": float(t["ask"]),
+                            "last": float(t["last"]),
+                            "volume": float(t["volume"]),
+                            "flags": int(t["flags"]),
+                        })
+                    return res
+            except Exception:
+                pass
+        return []
+
+    def select_symbol(self, symbol, enable=True):
+        if HAVE_NATIVE_MT5 and mt5 is not None:
+            try:
+                res = mt5.symbol_select(symbol, bool(enable))
+                return {"success": bool(res), "symbol": symbol, "selected": bool(enable)}
+            except Exception as e:
+                return {"success": False, "message": str(e)}
+        return {"success": False, "message": "MetaTrader 5 terminal not connected"}
 
     def get_positions(self, symbol=None):
         if HAVE_NATIVE_MT5 and mt5 is not None:
@@ -851,16 +912,25 @@ class BridgeHTTPHandler(BaseHTTPRequestHandler):
         elif path == "/terminal":
             self._send_json(200, engine.get_terminal_info())
         elif path == "/symbols":
-            self._send_json(200, engine.get_symbols())
+            group = qs.get("group", [None])[0]
+            self._send_json(200, engine.get_symbols(group))
         elif path == "/ticks":
             symbols = qs.get("symbols", [None])[0]
             sym_list = [s.strip() for s in symbols.split(",")] if symbols else None
             self._send_json(200, engine.get_ticks(sym_list))
+        elif path == "/ticks/history":
+            symbol = qs.get("symbol", ["EURUSD"])[0]
+            date_from = qs.get("from", [None])[0]
+            date_to = qs.get("to", [None])[0]
+            count = int(qs.get("count", [1000])[0])
+            self._send_json(200, engine.get_ticks_history(symbol, date_from, date_to, count))
         elif path == "/candles":
             symbol = qs.get("symbol", ["EURUSD"])[0]
             timeframe = qs.get("timeframe", ["M1"])[0]
             count = int(qs.get("count", [100])[0])
-            self._send_json(200, engine.get_candles(symbol, timeframe, count))
+            date_from = qs.get("from", [None])[0]
+            date_to = qs.get("to", [None])[0]
+            self._send_json(200, engine.get_candles(symbol, timeframe, count, date_from, date_to))
         elif path == "/positions":
             symbol = qs.get("symbol", [None])[0]
             self._send_json(200, engine.get_positions(symbol))
@@ -898,6 +968,10 @@ class BridgeHTTPHandler(BaseHTTPRequestHandler):
                 body = json.loads(raw)
             except Exception as e:
                 return self._send_json(400, {"error": f"Invalid JSON payload: {e}"})
+
+        if path == "/symbols/select":
+            res = engine.select_symbol(body.get("symbol"), body.get("enable", True))
+            self._send_json(200 if res.get("success") else 400, res)
 
         if path == "/connect":
             success, msg = engine.connect(

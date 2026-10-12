@@ -674,7 +674,7 @@ export class DaemonService {
   }
 
   public updateWatchlist(symbols: string[]): string[] {
-    this.watchlist = symbols.map((s) => s.trim().toUpperCase());
+    this.watchlist = symbols.map((s) => s.trim()).filter(Boolean);
     this.notify('DAEMON_WATCHLIST_UPDATED', { watchlist: this.watchlist });
     return this.watchlist;
   }

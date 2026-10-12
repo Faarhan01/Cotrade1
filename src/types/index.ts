@@ -384,6 +384,8 @@ export interface BacktestResult {
   averageWin: number;
   averageLoss: number;
   riskRewardRatio: number;
+  sharpeRatio?: number;
+  dataSource?: string;
   trades: SimulatedTrade[];
   equityCurve: { time: number; timeIso: string; equity: number }[];
   evaluatedAt: number;

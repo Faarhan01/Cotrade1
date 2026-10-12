@@ -170,11 +170,11 @@ export const DaemonPage: React.FC = () => {
   };
 
   const handleAddWatchlist = async () => {
-    if (!newSymbolInput.trim()) return;
+    const sym = newSymbolInput.trim();
+    if (!sym) return;
     const current = status?.watchlist || [];
-    const upper = newSymbolInput.trim().toUpperCase();
-    if (!current.includes(upper)) {
-      const updated = [...current, upper];
+    if (!current.some((s: string) => s.toLowerCase() === sym.toLowerCase())) {
+      const updated = [...current, sym];
       await api.updateDaemonWatchlist(updated);
       setNewSymbolInput('');
       fetchDaemonData();
@@ -491,7 +491,7 @@ print("Knowledge Base:", strat.json())`;
                     <input
                       type="text"
                       value={dispatchForm.symbol}
-                      onChange={(e) => setDispatchForm({ ...dispatchForm, symbol: e.target.value.toUpperCase() })}
+                      onChange={(e) => setDispatchForm({ ...dispatchForm, symbol: e.target.value })}
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
                     />
                   </div>

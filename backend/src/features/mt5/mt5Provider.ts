@@ -58,10 +58,12 @@ export interface IMT5Connector {
   disconnect(): Promise<{ success: boolean; message: string }>;
   getAccountInfo(): Promise<AccountInfo | null>;
   getTerminalInfo(): Promise<any>;
-  getSymbols(): Promise<DetailedSymbolInfo[]>;
+  getSymbols(group?: string): Promise<DetailedSymbolInfo[]>;
   getSymbolInfo(symbol: string): Promise<DetailedSymbolInfo | null>;
   getTicks(symbols?: string[]): Promise<TickData[]>;
-  getCandles(symbol: string, timeframe: string, count: number): Promise<CandleData[]>;
+  getCandles(symbol: string, timeframe: string, count: number, dateFrom?: number, dateTo?: number): Promise<CandleData[]>;
+  getTicksHistory?(symbol: string, dateFrom?: number, dateTo?: number, count?: number): Promise<TickData[]>;
+  selectSymbol?(symbol: string, enable?: boolean): Promise<{ success: boolean; message?: string }>;
   getPositions(symbol?: string): Promise<Position[]>;
   getOrders(symbol?: string): Promise<PendingOrder[]>;
   executeOrder(cmd: TradeCommand): Promise<ExecutionResult>;
