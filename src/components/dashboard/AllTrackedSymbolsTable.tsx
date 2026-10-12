@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DetailedSymbolInfo, TickData } from '../../types';
+import { DetailedSymbolInfo, TickData } from '@/types';
 import { Layers, Search, Zap, ExternalLink, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 interface AllTrackedSymbolsTableProps {

@@ -1,2 +1,2 @@
-export * from '../../../services/mcpServer.js';
-export * from '../../../controllers/mcpController.js';
+export { MCP_TOOLS, executeMcpTool, handleMcpJsonRpc } from '@/services/mcpServer';
+export * from '@/controllers/mcp';

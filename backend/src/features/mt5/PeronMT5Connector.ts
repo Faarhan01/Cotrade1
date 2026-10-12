@@ -20,7 +20,7 @@ import {
   ConnectionStatus,
   ExecutionResult,
   IMT5Connector,
-} from './mt5Provider.js';
+} from './mt5Provider.ts';
 import { defaultMT5Config } from '@core/config';
 import { logger } from '@core/utils';
 import { normalizeSymbol, symbolsMatch } from '@core/utils';

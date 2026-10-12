@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { PendingOrder } from '../../types';
-import { api } from '../../services/api';
+import { PendingOrder } from '@/types';
+import { api } from '../../lib/api';
 import {
   Clock,
   XCircle,

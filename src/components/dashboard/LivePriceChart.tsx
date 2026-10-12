@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Position, TickData } from '../../types';
+import { Position, TickData } from '@/types';
 import { BarChart3, TrendingUp } from 'lucide-react';
 
 interface LivePriceChartProps {

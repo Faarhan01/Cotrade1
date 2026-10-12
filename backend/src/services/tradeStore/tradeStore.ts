@@ -30,7 +30,7 @@ import {
   pruneDatabase,
 } from '@features/database';
 import { Database } from '@core/database';
-import { calculateIndicators } from './indicatorEngine.js';
+import { calculateIndicators } from '../indicatorEngine/indicatorEngine.ts';
 import { symbolsMatch } from '@core/utils';
 
 class TradeStore {

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { TickData } from '../../types';
+import { TickData } from '@/types';
 import { ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
 
 interface LiveTickStreamProps {

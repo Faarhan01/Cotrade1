@@ -4,13 +4,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
-import { setupWebSocketServer } from './backend/services/websocketServer.js';
-import { mt5Router } from './backend/routes/mt5Routes.js';
-import { apiRouter } from './backend/routes/apiRoutes.js';
-import { corsMiddleware, requestLogger, errorHandler } from './backend/middleware/index.js';
-import { connectorManager } from './backend/lib/ConnectorManager.js';
-import { logger } from './backend/utils/logger.js';
-import { Database } from './src/core/database/database.ts';
+import { setupWebSocketServer } from './backend/src/services/websocketServer/websocketServer.ts';
+import { mt5Router } from './backend/src/routes/mt5Routes.ts';
+import { apiRouter } from './backend/src/routes/apiRoutes.ts';
+import { corsMiddleware, requestLogger, errorHandler } from './backend/src/middleware/index.ts';
+import { connectorManager } from './backend/src/features/mt5/ConnectorManager.ts';
+import { logger } from './backend/src/core/utils/logger.ts';
+import { Database } from './backend/src/core/database/database.ts';
 
 dotenv.config();
 

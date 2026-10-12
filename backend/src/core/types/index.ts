@@ -1,1 +1,1 @@
-export * from '../../../types/mt5.js';
+export * from './mt5';

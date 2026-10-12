@@ -131,9 +131,9 @@ export class Mt5DirectService {
             if (result && result.success !== undefined) {
                 return {
                     success: result.success,
-                    dealTicket: result.dealTicket;
-                    orderTicket: result.orderTicket;
-                    executionPrice: result.executionPrice;
+                    dealTicket: result.dealTicket,
+                    orderTicket: result.orderTicket,
+                    executionPrice: result.executionPrice,
                     error: result.errorMessage ? `${result.errorCode}: ${result.errorMessage}` : undefined
                 };
             }
@@ -149,10 +149,10 @@ export class Mt5DirectService {
             const result = await this.runPythonCommand('close_position', [ticket.toString()]);
             if (result && result.success !== undefined) {
                 return {
-                    success: result.success;
-                    dealTicket: result.dealTicket;
-                    orderTicket: result.orderTicket;
-                    executionPrice: result.executionPrice;
+                    success: result.success,
+                    dealTicket: result.dealTicket,
+                    orderTicket: result.orderTicket,
+                    executionPrice: result.executionPrice,
                     error: result.errorMessage ? `${result.errorCode}: ${result.errorMessage}` : undefined
                 };
             }
@@ -168,10 +168,10 @@ export class Mt5DirectService {
             const result = await this.runPythonCommand('modify_position', [ticket.toString(), sl.toString(), tp.toString()]);
             if (result && result.success !== undefined) {
                 return {
-                    success: result.success;
-                    dealTicket: result.dealTicket;
-                    orderTicket: result.orderTicket;
-                    executionPrice: result.executionPrice;
+                    success: result.success,
+                    dealTicket: result.dealTicket,
+                    orderTicket: result.orderTicket,
+                    executionPrice: result.executionPrice,
                     error: result.errorMessage ? `${result.errorCode}: ${result.errorMessage}` : undefined
                 };
             }

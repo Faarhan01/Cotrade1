@@ -1,1 +1,1 @@
-export * from '../../../services/mt5DirectService.js';
+export * from '../mt5DirectService';

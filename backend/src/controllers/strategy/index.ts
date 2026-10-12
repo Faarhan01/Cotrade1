@@ -1,1 +1,1 @@
-export * from '../../../controllers/strategyController.js';
+export * from './strategyController';

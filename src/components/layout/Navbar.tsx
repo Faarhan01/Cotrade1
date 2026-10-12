@@ -13,8 +13,8 @@ import {
   Database,
   Compass,
 } from 'lucide-react';
-import { AppState } from '../../types';
-import { api } from '../../services/api';
+import { AppState } from '@/types';
+import { api } from '../../lib/api';
 
 interface NavbarProps {
   activeTab: string;
@@ -66,7 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="container-custom">
         <div className="flex items-center justify-between h-16">
           {/* Brand */}
           <div className="flex items-center gap-3">

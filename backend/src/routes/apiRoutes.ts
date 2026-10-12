@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { tradeStore } from '@services/tradeStore';
-import { handleMcpJsonRpc } from '@services/mcpServer';
-import { addSseClient, removeSseClient, getStreamStats } from '@services/websocketServer';
+import { handleMcpJsonRpc } from '@/services/mcpServer';
+import { addSseClient, removeSseClient, getStreamStats } from '@/services/websocketServer';
 import { readEvents } from '@services/eventBuffer';
 import {
   MT5Controller,
@@ -179,7 +179,7 @@ apiRouter.get('/events', (req, res) => {
       endTime: req.query.endTime ? parseInt(req.query.endTime as string, 10) : undefined,
     };
     
-    const events = readEvent(options);
+    const events = readEvents(options);
     res.json({
       success: true,
       events,

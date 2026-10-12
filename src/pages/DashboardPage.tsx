@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AppState } from '../types';
+import { AppState } from '@/types';
 import { EaConnectionRadar } from '../components/dashboard/EaConnectionRadar';
 import { CurrentChartSymbolCard } from '../components/dashboard/CurrentChartSymbolCard';
 import { AccountMetricsBar } from '../components/dashboard/AccountMetricsBar';

@@ -1,5 +1,5 @@
 import React from 'react';
-import { AccountInfo } from '../../types';
+import { AccountInfo } from '@/types';
 import { Wallet, TrendingUp, ShieldCheck, DollarSign, Layers } from 'lucide-react';
 
 interface AccountMetricsBarProps {

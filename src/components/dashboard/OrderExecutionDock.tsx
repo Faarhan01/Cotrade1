@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { OrderType, TickData, RiskGuardConfig, DetailedSymbolInfo } from '../../types';
-import { api } from '../../services/api';
+import { OrderType, TickData, RiskGuardConfig, DetailedSymbolInfo } from '@/types';
+import { api } from '../../lib/api';
 import { Send, ArrowUp, ArrowDown, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 
 interface OrderExecutionDockProps {

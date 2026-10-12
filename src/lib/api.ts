@@ -1,4 +1,4 @@
-import { AppState, MCPToolDefinition, RiskGuardConfig, TradeCommand } from '../types';
+import { AppState, MCPToolDefinition, RiskGuardConfig, TradeCommand } from '@/types';
 import {
   connectionApi,
   marketApi,

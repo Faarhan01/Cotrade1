@@ -28,8 +28,8 @@ import {
   DollarSign,
   Calendar,
 } from 'lucide-react';
-import { api } from '../../services/api';
-import { StrategyDefinition, Observation, BacktestResult } from '../../types';
+import { api } from '../lib/api';
+import { StrategyDefinition, Observation, BacktestResult } from '@/types';
 
 export const KnowledgeBasePage: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'strategies' | 'observations' | 'backtests'>('strategies');

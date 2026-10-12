@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useBridgeData } from './services/websocket';
+import { useBridgeData } from './hooks/useBridgeData';
 import { Navbar } from './components/layout/Navbar';
 import { DashboardPage } from './pages/DashboardPage';
 import { McpConsole } from './components/mcp/McpConsole';
@@ -7,7 +7,7 @@ import { RiskManagementPage } from './pages/RiskManagementPage';
 import { EaSetupGuide } from './components/ea/EaSetupGuide';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { DatabaseExplorer } from './components/database/DatabaseExplorer';
-import { KnowledgeBasePage } from './components/knowledge/KnowledgeBasePage';
+import { KnowledgeBasePage } from './pages/KnowledgeBasePage';
 import { Activity, ShieldCheck, Terminal, Cpu } from 'lucide-react';
 
 export default function App() {
@@ -15,7 +15,7 @@ export default function App() {
   const { state, wsStatus, lastPingMs, reloadState } = useBridgeData();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
+    <>
       {/* Top Navigation */}
       <Navbar
         activeTab={activeTab}
@@ -26,7 +26,7 @@ export default function App() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 container-custom py-6">
         {activeTab === 'dashboard' && <DashboardPage state={state} onRefresh={reloadState} />}
         {activeTab === 'strategies' && <KnowledgeBasePage />}
         {activeTab === 'mcp' && <McpConsole />}
@@ -38,7 +38,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="border-t border-slate-900 bg-slate-950/80 py-4 mt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-500">
+        <div className="container-custom flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-500">
           <div className="flex items-center gap-2">
             <span className="flex h-2 w-2 rounded-full bg-cyan-400"></span>
             <span>MT5 Direct Bridge: <code className="text-slate-400">http://127.0.0.1:8888</code></span>
@@ -58,6 +58,6 @@ export default function App() {
           </div>
         </div>
       </footer>
-    </div>
+    </>
   );
 }

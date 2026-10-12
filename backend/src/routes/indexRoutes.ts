@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { mt5Router } from '../../routes/mt5Routes.js';
-import { apiRouter } from '../../routes/apiRoutes.js';
+import { mt5Router } from './mt5Routes';
+import { apiRouter } from './apiRoutes';
 
 const indexRouter = Router();
 indexRouter.use('/', mt5Router);

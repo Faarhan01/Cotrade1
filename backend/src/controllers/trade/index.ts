@@ -1,2 +1,2 @@
-export * from '../../../controllers/tradeController.js';
-export * from '../../../controllers/mt5Controller.js';
+export * from './tradeController';
+export * from '../mt5/mt5Controller';

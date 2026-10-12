@@ -1,3 +1,3 @@
-export * from '../../../services/strategyEngine.js';
-export * from '../../../services/indicatorEngine.js';
-export * from '../../../controllers/strategyController.js';
+export { runStrategyBacktest } from '@/services/strategyEngine';
+export * from '@/services/indicatorEngine';
+export * from '@/controllers/strategy';

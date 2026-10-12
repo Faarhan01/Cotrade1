@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Position } from '../../types';
-import { api } from '../../services/api';
+import { Position } from '@/types';
+import { api } from '../../lib/api';
 import {
   SlidersHorizontal,
   XCircle,

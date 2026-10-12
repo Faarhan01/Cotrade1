@@ -1,1 +1,1 @@
-export * from '../../../services/tradeStore.js';
+export { tradeStore } from './tradeStore';

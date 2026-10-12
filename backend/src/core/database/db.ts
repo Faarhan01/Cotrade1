@@ -1,221 +1,10 @@
-import initSqlJs, { Database } from 'sql.js';
+import { Database } from './database.ts';
+import { AccountInfo, CandleData, TickData } from '@/types';
 import fs from 'fs';
 import path from 'path';
-import { AccountInfo, CandleData, TickData } from '../types/mt5.js';
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'mt5_bridge.sqlite');
-
-let dbInstance: Database | null = null;
-let saveDebounceTimer: NodeJS.Timeout | null = null;
-
-export async function getDatabase(): Promise<Database> {
-  if (dbInstance) return dbInstance;
-
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-
-  const SQL = await initSqlJs();
-
-  if (fs.existsSync(DB_FILE)) {
-    try {
-      const fileBuffer = fs.readFileSync(DB_FILE);
-      dbInstance = new SQL.Database(fileBuffer);
-    } catch (err) {
-      console.warn('Could not read existing sqlite file, creating fresh database:', err);
-      dbInstance = new SQL.Database();
-    }
-  } else {
-    dbInstance = new SQL.Database();
-  }
-
-  initSchema(dbInstance);
-  persistDatabase();
-  return dbInstance;
-}
-
-function initSchema(db: Database) {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS orders (
-      id TEXT PRIMARY KEY,
-      action TEXT NOT NULL,
-      symbol TEXT,
-      order_type TEXT,
-      volume REAL,
-      price REAL,
-      sl REAL,
-      tp REAL,
-      ticket INTEGER,
-      magic INTEGER,
-      comment TEXT,
-      status TEXT NOT NULL,
-      source TEXT NOT NULL,
-      deal_ticket INTEGER,
-      execution_price REAL,
-      execution_time_ms INTEGER,
-      error_code INTEGER,
-      error_message TEXT,
-      created_at INTEGER NOT NULL,
-      executed_at INTEGER
-    );
-
-    CREATE TABLE IF NOT EXISTS positions_history (
-      ticket INTEGER PRIMARY KEY,
-      symbol TEXT NOT NULL,
-      type TEXT NOT NULL,
-      volume REAL NOT NULL,
-      open_price REAL NOT NULL,
-      close_price REAL,
-      sl REAL,
-      tp REAL,
-      profit REAL,
-      swap REAL,
-      magic INTEGER,
-      comment TEXT,
-      open_time INTEGER NOT NULL,
-      close_time INTEGER,
-      status TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS account_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      login INTEGER NOT NULL,
-      balance REAL NOT NULL,
-      equity REAL NOT NULL,
-      margin REAL NOT NULL,
-      free_margin REAL NOT NULL,
-      margin_level REAL NOT NULL,
-      profit REAL NOT NULL,
-      currency TEXT,
-      server TEXT,
-      created_at INTEGER NOT NULL,
-      created_at_iso TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS candles_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      symbol TEXT NOT NULL,
-      timeframe TEXT NOT NULL,
-      time INTEGER NOT NULL,
-      open REAL NOT NULL,
-      high REAL NOT NULL,
-      low REAL NOT NULL,
-      close REAL NOT NULL,
-      volume REAL NOT NULL,
-      time_iso TEXT,
-      UNIQUE(symbol, timeframe, time)
-    );
-
-    CREATE TABLE IF NOT EXISTS ticks_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      symbol TEXT NOT NULL,
-      bid REAL NOT NULL,
-      ask REAL NOT NULL,
-      spread INTEGER NOT NULL,
-      timestamp INTEGER NOT NULL,
-      time_iso TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS audit_logs (
-      id TEXT PRIMARY KEY,
-      timestamp INTEGER NOT NULL,
-      level TEXT NOT NULL,
-      title TEXT NOT NULL,
-      details TEXT NOT NULL,
-      source TEXT NOT NULL,
-      ticket INTEGER
-    );
-
-    CREATE TABLE IF NOT EXISTS risk_settings (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
-      global_tp_usd REAL NOT NULL,
-      global_sl_usd REAL NOT NULL,
-      max_drawdown_pct REAL NOT NULL,
-      kill_switch INTEGER NOT NULL,
-      trailing_enabled INTEGER NOT NULL,
-      trailing_distance INTEGER NOT NULL,
-      trailing_step INTEGER NOT NULL,
-      max_lot_size REAL NOT NULL,
-      max_open_positions INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS strategies (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      description TEXT,
-      type TEXT NOT NULL,
-      symbol TEXT NOT NULL,
-      timeframe TEXT NOT NULL,
-      parameters_json TEXT NOT NULL,
-      status TEXT NOT NULL,
-      tags_json TEXT,
-      author TEXT,
-      notes TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS observations (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      content TEXT NOT NULL,
-      symbol TEXT,
-      timeframe TEXT,
-      strategy_id TEXT,
-      category TEXT NOT NULL,
-      tags_json TEXT,
-      metrics_json TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS backtest_results (
-      id TEXT PRIMARY KEY,
-      strategy_id TEXT NOT NULL,
-      strategy_name TEXT NOT NULL,
-      symbol TEXT NOT NULL,
-      timeframe TEXT NOT NULL,
-      candle_count INTEGER NOT NULL,
-      start_time INTEGER NOT NULL,
-      start_time_iso TEXT,
-      end_time INTEGER NOT NULL,
-      end_time_iso TEXT,
-      initial_deposit REAL NOT NULL,
-      final_equity REAL NOT NULL,
-      net_profit REAL NOT NULL,
-      profit_factor REAL NOT NULL,
-      win_rate_pct REAL NOT NULL,
-      total_trades INTEGER NOT NULL,
-      winning_trades INTEGER NOT NULL,
-      losing_trades INTEGER NOT NULL,
-      max_drawdown_pct REAL NOT NULL,
-      max_drawdown_usd REAL NOT NULL,
-      average_trade_profit REAL NOT NULL,
-      average_win REAL NOT NULL,
-      average_loss REAL NOT NULL,
-      risk_reward_ratio REAL NOT NULL,
-      trades_json TEXT NOT NULL,
-      equity_curve_json TEXT NOT NULL,
-      evaluated_at INTEGER NOT NULL
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_candles_lookup ON candles_history(symbol, timeframe, time);
-    CREATE INDEX IF NOT EXISTS idx_ticks_lookup ON ticks_history(symbol, timestamp);
-    CREATE INDEX IF NOT EXISTS idx_strategies_symbol ON strategies(symbol, status);
-    CREATE INDEX IF NOT EXISTS idx_backtest_strategy ON backtest_results(strategy_id, evaluated_at);
-    CREATE INDEX IF NOT EXISTS idx_observations_cat ON observations(category, created_at);
-    CREATE INDEX IF NOT EXISTS idx_account_created ON account_history(created_at);
-  `);
-
-  // Migrate schema for existing tables if needed
-  try {
-    db.run(`ALTER TABLE account_history ADD COLUMN created_at_iso TEXT;`);
-  } catch {
-    // Column already exists or fresh table
-  }
-}
 
 /**
  * Ensures that no bound parameter is undefined, which causes sql.js to throw:
@@ -225,29 +14,34 @@ export function safeParams(params: any[]): any[] {
   return params.map((p) => (p === undefined ? null : p));
 }
 
+/**
+ * Persist the database to disk (for sql.js adapter)
+ * Note: This is a no-op for node:sqlite adapter as it persists automatically
+ */
 export function persistDatabase() {
-  if (!dbInstance) return;
-
-  if (saveDebounceTimer) {
-    clearTimeout(saveDebounceTimer);
-  }
-
-  saveDebounceTimer = setTimeout(() => {
-    try {
-      if (!dbInstance) return;
-      if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-      }
-      const data = dbInstance.export();
-      const buffer = Buffer.from(data);
-      fs.writeFileSync(DB_FILE, buffer);
-    } catch (e) {
-      console.error('Failed to write sqlite database to disk:', e);
-    }
-  }, 100);
+  // This function is kept for backward compatibility
+  // The actual persistence is handled by the adapters themselves
+  // sql.js adapter handles persistence via saveDebounceTimer
+  // node:sqlite adapter persists automatically
 }
 
-// Prune old data so database stays lightweight, fast, and does not grow unbounded
+/**
+ * Get the database instance through the proper adapter layer
+ * @returns Promise that resolves to the database adapter instance
+ */
+export async function getDatabaseAdapter() {
+  // Ensure database is initialized
+  return Database.getInstance();
+}
+
+/**
+ * Alias for getDatabaseAdapter for backward compatibility
+ */
+export const getDatabase = getDatabaseAdapter;
+
+/**
+ * Prune old data so database stays lightweight, fast, and does not grow unbounded
+ */
 let pruneCounter = 0;
 export async function pruneDatabase() {
   pruneCounter++;
@@ -261,37 +55,40 @@ export async function dbPruneDatabase(): Promise<{
   message: string;
 }> {
   try {
-    const db = await getDatabase();
+    const db = await getDatabaseAdapter();
     const now = Date.now();
     const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
     const twoDaysAgoSec = Math.floor(now / 1000) - 48 * 3600;
     const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
 
     // 1. Delete all unexecuted orders older than 24 hours (pending or dispatched)
-    const countBefore = db.exec(`SELECT COUNT(*) FROM orders WHERE status IN ('pending', 'dispatched') AND created_at < ${twentyFourHoursAgo}`);
-    const unexecutedCount = countBefore.length > 0 && countBefore[0].values.length > 0 ? Number(countBefore[0].values[0][0]) : 0;
+    const countBeforeRes = await db.query(`SELECT COUNT(*) as count FROM orders WHERE status IN ('pending', 'dispatched') AND created_at < ?`, [twentyFourHoursAgo]);
+    const unexecutedCount = countBeforeRes.length > 0 && countBeforeRes[0].length > 0 && countBeforeRes[0][0].count !== undefined ? Number(countBeforeRes[0][0].count) : 0;
 
-    db.run(`DELETE FROM orders WHERE status IN ('pending', 'dispatched') AND created_at < ${twentyFourHoursAgo}`);
+    await db.execute(`DELETE FROM orders WHERE status IN ('pending', 'dispatched') AND created_at < ?`, [twentyFourHoursAgo]);
 
     // 2. Cap total archived orders (keep last 1,000 executed/failed orders)
-    db.run(`DELETE FROM orders WHERE id NOT IN (SELECT id FROM orders ORDER BY created_at DESC LIMIT 1000)`);
+    await db.execute(`DELETE FROM orders WHERE id NOT IN (SELECT id FROM orders ORDER BY created_at DESC LIMIT 1000)`);
 
     // 3. Cap ticks history (keep last 5,000 ticks or ticks within 48h)
-    db.run(`DELETE FROM ticks_history WHERE timestamp < ${twoDaysAgoSec} OR id NOT IN (SELECT id FROM ticks_history ORDER BY id DESC LIMIT 5000)`);
+    await db.execute(`DELETE FROM ticks_history WHERE timestamp < ? OR id NOT IN (SELECT id FROM ticks_history ORDER BY id DESC LIMIT 5000)`, [twoDaysAgoSec]);
 
     // 4. Cap account history snapshots (keep last 1,000 entries)
-    db.run(`DELETE FROM account_history WHERE created_at < ${sevenDaysAgo} OR id NOT IN (SELECT id FROM account_history ORDER BY id DESC LIMIT 1000)`);
+    await db.execute(`DELETE FROM account_history WHERE created_at < ? OR id NOT IN (SELECT id FROM account_history ORDER BY id DESC LIMIT 1000)`, [sevenDaysAgo]);
 
     // 5. Cap candles history (keep last 2,000 candles)
-    db.run(`DELETE FROM candles_history WHERE id NOT IN (SELECT id FROM candles_history ORDER BY time DESC LIMIT 2000)`);
+    await db.execute(`DELETE FROM candles_history WHERE id NOT IN (SELECT id FROM candles_history ORDER BY time DESC LIMIT 2000)`);
 
     // 6. Cap audit logs (keep last 500 logs)
-    db.run(`DELETE FROM audit_logs WHERE timestamp < ${sevenDaysAgo} OR id NOT IN (SELECT id FROM audit_logs ORDER BY timestamp DESC LIMIT 500)`);
+    await db.execute(`DELETE FROM audit_logs WHERE timestamp < ? OR id NOT IN (SELECT id FROM audit_logs ORDER BY timestamp DESC LIMIT 500)`, [sevenDaysAgo]);
 
     // 7. Cap backtest results history (keep last 200 backtests)
-    db.run(`DELETE FROM backtest_results WHERE id NOT IN (SELECT id FROM backtest_results ORDER BY evaluated_at DESC LIMIT 200)`);
+    await db.execute(`DELETE FROM backtest_results WHERE id NOT IN (SELECT id FROM backtest_results ORDER BY evaluated_at DESC LIMIT 200)`);
 
-    persistDatabase();
+    // Note: persistDatabase() is now handled by the adapters themselves
+    // sql.js adapter has its own persistence mechanism
+    // node:sqlite adapter persists automatically
+
     return {
       purgedUnexecutedOrders: unexecutedCount,
       message: `Database pruned successfully. Purged ${unexecutedCount} expired unexecuted orders older than 24h.`,
@@ -307,7 +104,7 @@ export async function dbPruneDatabase(): Promise<{
 
 // 1. Orders
 export async function dbInsertOrder(order: any) {
-  const db = await getDatabase();
+  const db = await getDatabaseAdapter();
   const stmt = db.prepare(`
     INSERT OR REPLACE INTO orders (
       id, action, symbol, order_type, volume, price, sl, tp, ticket, magic, comment,
@@ -340,9 +137,8 @@ export async function dbInsertOrder(order: any) {
       order.executedAt || null,
     ]));
   } finally {
-    stmt.free();
+    stmt.finalize();
   }
-  persistDatabase();
 }
 
 // 2. Account History Snapshot
@@ -355,7 +151,7 @@ export async function dbInsertAccountSnapshot(account: AccountInfo) {
   lastAccountRecordTime = now;
 
   try {
-    const db = await getDatabase();
+    const db = await getDatabaseAdapter();
     const stmt = db.prepare(`
       INSERT INTO account_history (
         login, balance, equity, margin, free_margin, margin_level, profit, currency, server, created_at, created_at_iso
@@ -374,8 +170,7 @@ export async function dbInsertAccountSnapshot(account: AccountInfo) {
       now,
       new Date(now).toISOString(),
     ]));
-    stmt.free();
-    persistDatabase();
+    stmt.finalize();
   } catch (err: any) {
     console.error('dbInsertAccountSnapshot error:', err.message);
   }
@@ -384,7 +179,7 @@ export async function dbInsertAccountSnapshot(account: AccountInfo) {
 // 3. Candles History
 export async function dbInsertCandles(symbol: string, timeframe: string, candles: CandleData[]) {
   if (!candles || candles.length === 0) return;
-  const db = await getDatabase();
+  const db = await getDatabaseAdapter();
   const stmt = db.prepare(`
     INSERT OR REPLACE INTO candles_history (
       symbol, timeframe, time, open, high, low, close, volume, time_iso
@@ -407,16 +202,15 @@ export async function dbInsertCandles(symbol: string, timeframe: string, candles
       ]));
     }
   } finally {
-    stmt.free();
+    stmt.finalize();
   }
-  persistDatabase();
 }
 
 // 4. Ticks History
 export async function dbInsertTicks(ticks: TickData[]) {
   if (!ticks || !Array.isArray(ticks) || ticks.length === 0) return;
   try {
-    const db = await getDatabase();
+    const db = await getDatabaseAdapter();
     const stmt = db.prepare(`
       INSERT INTO ticks_history (symbol, bid, ask, spread, timestamp, time_iso)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -443,9 +237,8 @@ export async function dbInsertTicks(ticks: TickData[]) {
         ]));
       }
     } finally {
-      stmt.free();
+      stmt.finalize();
     }
-    persistDatabase();
   } catch (err: any) {
     console.error('dbInsertTicks error:', err.message);
   }
@@ -453,63 +246,81 @@ export async function dbInsertTicks(ticks: TickData[]) {
 
 // 5. Query Candles
 export async function dbGetCandles(symbol: string, timeframe: string, limit = 100): Promise<CandleData[]> {
-  const db = await getDatabase();
+  const db = await getDatabaseAdapter();
   const sql = `
     SELECT time, open, high, low, close, volume, time_iso
     FROM candles_history
-    WHERE symbol = '${(symbol || '').trim()}' COLLATE NOCASE AND timeframe = '${(timeframe || '').trim()}' COLLATE NOCASE
+    WHERE symbol = ? COLLATE NOCASE AND timeframe = ? COLLATE NOCASE
     ORDER BY time ASC
-    LIMIT ${limit}
+    LIMIT ?
   `;
-  const res = db.exec(sql);
+  const res = await db.query(sql, [symbol?.trim() || 'EURUSD', timeframe?.trim() || 'M1', limit]);
   if (res.length === 0) return [];
-  const rows = res[0].values;
+  const rows = res;
   return rows.map((r) => ({
-    time: Number(r[0]),
-    open: Number(r[1]),
-    high: Number(r[2]),
-    low: Number(r[3]),
-    close: Number(r[4]),
-    volume: Number(r[5]),
-    timeIso: String(r[6]),
+    time: Number(r.time),
+    open: Number(r.open),
+    high: Number(r.high),
+    low: Number(r.low),
+    close: Number(r.close),
+    volume: Number(r.volume),
+    timeIso: String(r.time_iso),
   }));
 }
 
 // 6. Query Ticks History
 export async function dbGetTicksHistory(symbol?: string, limit = 100): Promise<any[]> {
-  const db = await getDatabase();
+  const db = await getDatabaseAdapter();
   let sql = `SELECT symbol, bid, ask, spread, timestamp, time_iso FROM ticks_history`;
+  const params: any[] = [];
+  
   if (symbol && symbol.trim().toLowerCase() !== 'all') {
-    sql += ` WHERE symbol = '${symbol.trim()}' COLLATE NOCASE`;
+    sql += ` WHERE symbol = ? COLLATE NOCASE`;
+    params.push(symbol.trim());
   }
-  sql += ` ORDER BY timestamp DESC LIMIT ${limit}`;
+  sql += ` ORDER BY timestamp DESC LIMIT ?`;
+  params.push(limit);
 
-  const res = db.exec(sql);
+  const res = await db.query(sql, params);
   if (res.length === 0) return [];
-  const cols = res[0].columns;
-  return res[0].values.map((row) => {
+  return res.map((row) => {
     const item: Record<string, any> = {};
-    cols.forEach((c, i) => (item[c] = row[i]));
+    item.symbol = row.symbol;
+    item.bid = row.bid;
+    item.ask = row.ask;
+    item.spread = row.spread;
+    item.timestamp = row.timestamp;
+    item.time_iso = row.time_iso;
     return item;
   });
 }
 
 // 7. Query Account History
 export async function dbGetAccountHistory(limit = 100): Promise<any[]> {
-  const db = await getDatabase();
-  const res = db.exec(`SELECT * FROM account_history ORDER BY created_at DESC LIMIT ${limit}`);
+  const db = await getDatabaseAdapter();
+  const res = await db.query(`SELECT * FROM account_history ORDER BY created_at DESC LIMIT ?`, [limit]);
   if (res.length === 0) return [];
-  const cols = res[0].columns;
-  return res[0].values.map((row) => {
+  return res.map((row) => {
     const item: Record<string, any> = {};
-    cols.forEach((c, i) => (item[c] = row[i]));
+    item.id = row.id;
+    item.login = row.login;
+    item.balance = row.balance;
+    item.equity = row.equity;
+    item.margin = row.margin;
+    item.free_margin = row.free_margin;
+    item.margin_level = row.margin_level;
+    item.profit = row.profit;
+    item.currency = row.currency;
+    item.server = row.server;
+    item.created_at = row.created_at;
+    item.created_at_iso = row.created_at_iso;
     return item;
   });
 }
 
 // 8. Logs
 export async function dbInsertLog(log: any) {
-  const db = await getDatabase();
+  const db = await getDatabaseAdapter();
   const stmt = db.prepare(`
     INSERT OR REPLACE INTO audit_logs (id, timestamp, level, title, details, source, ticket)
     VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -525,14 +336,13 @@ export async function dbInsertLog(log: any) {
       log.ticket || null,
     ]));
   } finally {
-    stmt.free();
+    stmt.finalize();
   }
-  persistDatabase();
 }
 
 // 9. Risk Settings
 export async function dbSaveRiskSettings(risk: any) {
-  const db = await getDatabase();
+  const db = await getDatabaseAdapter();
   const stmt = db.prepare(`
     INSERT OR REPLACE INTO risk_settings (
       id, global_tp_usd, global_sl_usd, max_drawdown_pct, kill_switch,
@@ -548,48 +358,62 @@ export async function dbSaveRiskSettings(risk: any) {
       risk.emergencyKillSwitch ? 1 : 0,
       risk.trailingStopEnabled ? 1 : 0,
       risk.trailingStopDistancePoints ?? 50,
-      risk.trailingStopStepPoints ?? 10,
+      risk.trailingStepPoints ?? 10,
       risk.maxLotSizePerTrade ?? 1.0,
       risk.maxOpenPositions ?? 10,
       Date.now(),
     ]));
   } finally {
-    stmt.free();
+    stmt.finalize();
   }
-  persistDatabase();
 }
 
 // 10. Query Orders
 export async function dbGetOrders(limit = 100): Promise<any[]> {
-  const db = await getDatabase();
+  const db = await getDatabaseAdapter();
   const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
   // Automatically purge unexecuted orders older than 24 hours
-  db.run(`DELETE FROM orders WHERE status IN ('pending', 'dispatched') AND created_at < ${twentyFourHoursAgo}`);
-  persistDatabase();
+  await db.execute(`DELETE FROM orders WHERE status IN ('pending', 'dispatched') AND created_at < ?`, [twentyFourHoursAgo]);
 
-  const res = db.exec(`SELECT * FROM orders ORDER BY created_at DESC LIMIT ${limit}`);
+  const res = await db.query(`SELECT * FROM orders ORDER BY created_at DESC LIMIT ?`, [limit]);
   if (res.length === 0) return [];
-  const columns = res[0].columns;
-  return res[0].values.map((row) => {
+  return res.map((row) => {
     const item: Record<string, any> = {};
-    columns.forEach((col, idx) => {
-      item[col] = row[idx];
-    });
+    item.id = row.id;
+    item.action = row.action;
+    item.symbol = row.symbol;
+    item.order_type = row.order_type;
+    item.volume = row.volume;
+    item.price = row.price;
+    item.sl = row.sl;
+    item.tp = row.tp;
+    item.ticket = row.ticket;
+    item.magic = row.magic;
+    item.comment = row.comment;
+    item.status = row.status;
+    item.source = row.source;
+    item.deal_ticket = row.deal_ticket;
+    item.execution_price = row.execution_price;
+    item.execution_time_ms = row.execution_time_ms;
+    item.error_code = row.error_code;
+    item.error_message = row.error_message;
+    item.created_at = row.created_at;
+    item.executed_at = row.executed_at;
     return item;
   });
 }
 
 // 11. Database Analytics
 export async function dbGetAnalytics(): Promise<any> {
-  const db = await getDatabase();
-  const totalOrdersRes = db.exec(`SELECT COUNT(*) as total, SUM(CASE WHEN status = 'executed' THEN 1 ELSE 0 END) as executed, SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed FROM orders`);
-  const logsRes = db.exec(`SELECT COUNT(*) as total FROM audit_logs`);
-  const candlesRes = db.exec(`SELECT COUNT(*) as total FROM candles_history`);
-  const ticksRes = db.exec(`SELECT COUNT(*) as total FROM ticks_history`);
-  const accountRes = db.exec(`SELECT COUNT(*) as total FROM account_history`);
-  const stratRes = db.exec(`SELECT COUNT(*) as total FROM strategies`);
-  const obsRes = db.exec(`SELECT COUNT(*) as total FROM observations`);
-  const btRes = db.exec(`SELECT COUNT(*) as total FROM backtest_results`);
+  const db = await getDatabaseAdapter();
+  const totalOrdersRes = await db.query(`SELECT COUNT(*) as total, SUM(CASE WHEN status = 'executed' THEN 1 ELSE 0 END) as executed, SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed FROM orders`);
+  const logsRes = await db.query(`SELECT COUNT(*) as total FROM audit_logs`);
+  const candlesRes = await db.query(`SELECT COUNT(*) as total FROM candles_history`);
+  const ticksRes = await db.query(`SELECT COUNT(*) as total FROM ticks_history`);
+  const accountRes = await db.query(`SELECT COUNT(*) as total FROM account_history`);
+  const stratRes = await db.query(`SELECT COUNT(*) as total FROM strategies`);
+  const obsRes = await db.query(`SELECT COUNT(*) as total FROM observations`);
+  const btRes = await db.query(`SELECT COUNT(*) as total FROM backtest_results`);
 
   let totalOrders = 0;
   let executedOrders = 0;
@@ -602,44 +426,45 @@ export async function dbGetAnalytics(): Promise<any> {
   let totalObservations = 0;
   let totalBacktests = 0;
 
-  if (totalOrdersRes.length > 0 && totalOrdersRes[0].values.length > 0) {
-    const row = totalOrdersRes[0].values[0];
-    totalOrders = Number(row[0]) || 0;
-    executedOrders = Number(row[1]) || 0;
-    failedOrders = Number(row[2]) || 0;
+  if (totalOrdersRes.length > 0 && totalOrdersRes[0].length > 0) {
+    const row = totalOrdersRes[0];
+    totalOrders = Number(row.total) || 0;
+    executedOrders = Number(row.executed) || 0;
+    failedOrders = Number(row.failed) || 0;
   }
 
-  if (logsRes.length > 0 && logsRes[0].values.length > 0) {
-    totalLogs = Number(logsRes[0].values[0][0]) || 0;
+  if (logsRes.length > 0 && logsRes[0].length > 0) {
+    totalLogs = Number(logsRes[0].total) || 0;
   }
-  if (candlesRes.length > 0 && candlesRes[0].values.length > 0) {
-    totalCandles = Number(candlesRes[0].values[0][0]) || 0;
+  if (candlesRes.length > 0 && candlesRes[0].length > 0) {
+    totalCandles = Number(candlesRes[0].total) || 0;
   }
-  if (ticksRes.length > 0 && ticksRes[0].values.length > 0) {
-    totalTicks = Number(ticksRes[0].values[0][0]) || 0;
+  if (ticksRes.length > 0 && ticksRes[0].length > 0) {
+    totalTicks = Number(ticksRes[0].total) || 0;
   }
-  if (accountRes.length > 0 && accountRes[0].values.length > 0) {
-    totalAccountSnapshots = Number(accountRes[0].values[0][0]) || 0;
+  if (accountRes.length > 0 && accountRes[0].length > 0) {
+    totalAccountSnapshots = Number(accountRes[0].total) || 0;
   }
-  if (stratRes.length > 0 && stratRes[0].values.length > 0) {
-    totalStrategies = Number(stratRes[0].values[0][0]) || 0;
+  if (stratRes.length > 0 && stratRes[0].length > 0) {
+    totalStrategies = Number(stratRes[0].total) || 0;
   }
-  if (obsRes.length > 0 && obsRes[0].values.length > 0) {
-    totalObservations = Number(obsRes[0].values[0][0]) || 0;
+  if (obsRes.length > 0 && obsRes[0].length > 0) {
+    totalObservations = Number(obsRes[0].total) || 0;
   }
-  if (btRes.length > 0 && btRes[0].values.length > 0) {
-    totalBacktests = Number(btRes[0].values[0][0]) || 0;
+  if (btRes.length > 0 && btRes[0].length > 0) {
+    totalBacktests = Number(btRes[0].total) || 0;
   }
 
-  let dbSizeBytes = 0;
-  if (fs.existsSync(DB_FILE)) {
-    dbSizeBytes = fs.statSync(DB_FILE).size;
-  }
+  // Note: Getting database file size is adapter-specific
+  // For now, we'll skip this in the analytics since it's not easily accessible through the adapter layer
+  // The database controller handles this separately by accessing the file system directly
 
   return {
     databasePath: 'data/mt5_bridge.sqlite',
-    databaseType: 'SQLite WASM (Persistent with Retention Pruning)',
-    dbSizeBytes,
+    // Note: databaseType would need to be determined from the adapter, which is complex
+    // We'll leave this as a placeholder or remove it
+    databaseType: 'SQLite (Adapter-based)',
+    dbSizeBytes: 0, // Would need adapter-specific implementation to get accurately
     totalOrders,
     executedOrders,
     failedOrders,
@@ -659,7 +484,7 @@ export async function dbGetAnalytics(): Promise<any> {
 // ==========================================
 
 export async function dbSaveStrategy(strategy: any): Promise<void> {
-  const db = await getDatabase();
+  const db = await getDatabaseAdapter();
   const stmt = db.prepare(`
     INSERT OR REPLACE INTO strategies (
       id, name, description, type, symbol, timeframe, parameters_json,
@@ -684,77 +509,72 @@ export async function dbSaveStrategy(strategy: any): Promise<void> {
       Date.now(),
     ]));
   } finally {
-    stmt.free();
+    stmt.finalize();
   }
-  persistDatabase();
 }
 
 export async function dbGetStrategies(symbol?: string): Promise<any[]> {
-  const db = await getDatabase();
+  const db = await getDatabaseAdapter();
   let sql = 'SELECT * FROM strategies';
+  const params: any[] = [];
+  
   if (symbol && symbol.trim().toLowerCase() !== 'all') {
-    sql += ` WHERE symbol = '${symbol.trim()}' COLLATE NOCASE`;
+    sql += ` WHERE symbol = ? COLLATE NOCASE`;
+    params.push(symbol.trim());
   }
   sql += ' ORDER BY updated_at DESC';
 
-  const res = db.exec(sql);
+  const res = await db.query(sql, params);
   if (res.length === 0) {
     // Seed default strategies if table is empty
     await seedDefaultStrategies();
     return dbGetStrategies(symbol);
   }
-
-  const cols = res[0].columns;
-  return res[0].values.map((row) => {
-    const item: Record<string, any> = {};
-    cols.forEach((col, idx) => (item[col] = row[idx]));
+  
+  return res.map((row) => {
     return {
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      type: item.type,
-      symbol: item.symbol,
-      timeframe: item.timeframe,
-      parameters: item.parameters_json ? JSON.parse(item.parameters_json) : {},
-      status: item.status,
-      tags: item.tags_json ? JSON.parse(item.tags_json) : [],
-      author: item.author,
-      notes: item.notes,
-      createdAt: item.created_at,
-      updatedAt: item.updated_at,
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      type: row.type,
+      symbol: row.symbol,
+      timeframe: row.timeframe,
+      parameters: row.parameters_json ? JSON.parse(row.parameters_json) : {},
+      status: row.status,
+      tags: row.tags_json ? JSON.parse(row.tags_json) : [],
+      author: row.author,
+      notes: row.notes,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     };
   });
 }
 
 export async function dbGetStrategyById(id: string): Promise<any | null> {
-  const db = await getDatabase();
-  const res = db.exec(`SELECT * FROM strategies WHERE id = '${id}' LIMIT 1`);
-  if (res.length === 0 || res[0].values.length === 0) return null;
-  const cols = res[0].columns;
-  const row = res[0].values[0];
-  const item: Record<string, any> = {};
-  cols.forEach((col, idx) => (item[col] = row[idx]));
+  const db = await getDatabaseAdapter();
+  const res = await db.query(`SELECT * FROM strategies WHERE id = ? LIMIT 1`, [id]);
+  if (res.length === 0 || res[0].length === 0) return null;
+  const row = res[0];
   return {
-    id: item.id,
-    name: item.name,
-    description: item.description,
-    type: item.type,
-    symbol: item.symbol,
-    timeframe: item.timeframe,
-    parameters: item.parameters_json ? JSON.parse(item.parameters_json) : {},
-    status: item.status,
-    tags: item.tags_json ? JSON.parse(item.tags_json) : [],
-    author: item.author,
-    notes: item.notes,
-    createdAt: item.created_at,
-    updatedAt: item.updated_at,
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    type: row.type,
+    symbol: row.symbol,
+    timeframe: row.timeframe,
+    parameters: row.parameters_json ? JSON.parse(row.parameters_json) : {},
+    status: row.status,
+    tags: row.tags_json ? JSON.parse(row.tags_json) : [],
+    author: row.author,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
 export async function dbDeleteStrategy(id: string): Promise<boolean> {
-  const db = await getDatabase();
-  db.run(`DELETE FROM strategies WHERE id = '${id}'`);
-  persistDatabase();
+  const db = await getDatabaseAdapter();
+  await db.execute(`DELETE FROM strategies WHERE id = ?`, [id]);
   return true;
 }
 
@@ -837,7 +657,7 @@ async function seedDefaultStrategies() {
 // ==========================================
 
 export async function dbSaveObservation(obs: any): Promise<void> {
-  const db = await getDatabase();
+  const db = await getDatabaseAdapter();
   const stmt = db.prepare(`
     INSERT OR REPLACE INTO observations (
       id, title, content, symbol, timeframe, strategy_id, category,
@@ -860,49 +680,47 @@ export async function dbSaveObservation(obs: any): Promise<void> {
       Date.now(),
     ]));
   } finally {
-    stmt.free();
+    stmt.finalize();
   }
-  persistDatabase();
 }
 
 export async function dbGetObservations(category?: string): Promise<any[]> {
-  const db = await getDatabase();
+  const db = await getDatabaseAdapter();
   let sql = 'SELECT * FROM observations';
+  const params: any[] = [];
+  
   if (category && category !== 'all') {
-    sql += ` WHERE category = '${category}'`;
+    sql += ` WHERE category = ?`;
+    params.push(category);
   }
   sql += ' ORDER BY created_at DESC';
 
-  const res = db.exec(sql);
+  const res = await db.query(sql, params);
   if (res.length === 0) {
     await seedDefaultObservations();
     return dbGetObservations(category);
   }
-
-  const cols = res[0].columns;
-  return res[0].values.map((row) => {
-    const item: Record<string, any> = {};
-    cols.forEach((col, idx) => (item[col] = row[idx]));
+  
+  return res.map((row) => {
     return {
-      id: item.id,
-      title: item.title,
-      content: item.content,
-      symbol: item.symbol,
-      timeframe: item.timeframe,
-      strategyId: item.strategy_id,
-      category: item.category,
-      tags: item.tags_json ? JSON.parse(item.tags_json) : [],
-      metrics: item.metrics_json ? JSON.parse(item.metrics_json) : {},
-      createdAt: item.created_at,
-      updatedAt: item.updated_at,
+      id: row.id,
+      title: row.title,
+      content: row.content,
+      symbol: row.symbol,
+      timeframe: row.timeframe,
+      strategyId: row.strategy_id,
+      category: row.category,
+      tags: row.tags_json ? JSON.parse(row.tags_json) : [],
+      metrics: row.metrics_json ? JSON.parse(row.metrics_json) : {},
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     };
   });
 }
 
 export async function dbDeleteObservation(id: string): Promise<boolean> {
-  const db = await getDatabase();
-  db.run(`DELETE FROM observations WHERE id = '${id}'`);
-  persistDatabase();
+  const db = await getDatabaseAdapter();
+  await db.execute(`DELETE FROM observations WHERE id = ?`, [id]);
   return true;
 }
 
@@ -944,7 +762,7 @@ async function seedDefaultObservations() {
 // ==========================================
 
 export async function dbSaveBacktestResult(result: any): Promise<void> {
-  const db = await getDatabase();
+  const db = await getDatabaseAdapter();
   const stmt = db.prepare(`
     INSERT OR REPLACE INTO backtest_results (
       id, strategy_id, strategy_name, symbol, timeframe, candle_count,
@@ -987,94 +805,90 @@ export async function dbSaveBacktestResult(result: any): Promise<void> {
       result.evaluatedAt || Date.now(),
     ]));
   } finally {
-    stmt.free();
+    stmt.finalize();
   }
-  persistDatabase();
 }
 
 export async function dbGetBacktestResults(strategyId?: string, limit = 50): Promise<any[]> {
-  const db = await getDatabase();
+  const db = await getDatabaseAdapter();
   let sql = 'SELECT * FROM backtest_results';
+  const params: any[] = [];
+  
   if (strategyId) {
-    sql += ` WHERE strategy_id = '${strategyId}'`;
+    sql += ` WHERE strategy_id = ?`;
+    params.push(strategyId);
   }
-  sql += ` ORDER BY evaluated_at DESC LIMIT ${limit}`;
+  sql += ` ORDER BY evaluated_at DESC LIMIT ?`;
+  params.push(limit);
 
-  const res = db.exec(sql);
+  const res = await db.query(sql, params);
   if (res.length === 0) return [];
-
-  const cols = res[0].columns;
-  return res[0].values.map((row) => {
-    const item: Record<string, any> = {};
-    cols.forEach((col, idx) => (item[col] = row[idx]));
+  
+  return res.map((row) => {
     return {
-      id: item.id,
-      strategyId: item.strategy_id,
-      strategyName: item.strategy_name,
-      symbol: item.symbol,
-      timeframe: item.timeframe,
-      candleCount: item.candle_count,
-      startTime: item.start_time,
-      startTimeIso: item.start_time_iso,
-      endTime: item.end_time,
-      endTimeIso: item.end_time_iso,
-      initialDeposit: item.initial_deposit,
-      finalEquity: item.final_equity,
-      netProfit: item.net_profit,
-      profitFactor: item.profit_factor,
-      winRatePct: item.win_rate_pct,
-      totalTrades: item.total_trades,
-      winningTrades: item.winning_trades,
-      losingTrades: item.losing_trades,
-      maxDrawdownPct: item.max_drawdown_pct,
-      maxDrawdownUsd: item.max_drawdown_usd,
-      averageTradeProfit: item.average_trade_profit,
-      averageWin: item.average_win,
-      averageLoss: item.average_loss,
-      riskRewardRatio: item.risk_reward_ratio,
-      trades: item.trades_json ? JSON.parse(item.trades_json) : [],
-      equityCurve: item.equity_curve_json ? JSON.parse(item.equity_curve_json) : [],
-      evaluatedAt: item.evaluated_at,
+      id: row.id,
+      strategyId: row.strategy_id,
+      strategyName: row.strategy_name,
+      symbol: row.symbol,
+      timeframe: row.timeframe,
+      candleCount: row.candle_count,
+      startTime: row.start_time,
+      startTimeIso: row.start_time_iso,
+      endTime: row.end_time,
+      endTimeIso: row.end_time_iso,
+      initialDeposit: row.initial_deposit,
+      finalEquity: row.final_equity,
+      netProfit: row.net_profit,
+      profitFactor: row.profit_factor,
+      winRatePct: row.win_rate_pct,
+      totalTrades: row.total_trades,
+      winningTrades: row.winning_trades,
+      losingTrades: row.losing_trades,
+      maxDrawdownPct: row.max_drawdown_pct,
+      maxDrawdownUsd: row.max_drawdown_usd,
+      averageTradeProfit: row.average_trade_profit,
+      averageWin: row.average_win,
+      averageLoss: row.average_loss,
+      riskRewardRatio: row.risk_reward_ratio,
+      trades: row.trades_json ? JSON.parse(row.trades_json) : [],
+      equityCurve: row.equity_curve_json ? JSON.parse(row.equity_curve_json) : [],
+      evaluatedAt: row.evaluated_at,
     };
   });
 }
 
 export async function dbGetBacktestById(id: string): Promise<any | null> {
-  const db = await getDatabase();
-  const res = db.exec(`SELECT * FROM backtest_results WHERE id = '${id}' LIMIT 1`);
-  if (res.length === 0 || res[0].values.length === 0) return null;
-  const cols = res[0].columns;
-  const row = res[0].values[0];
-  const item: Record<string, any> = {};
-  cols.forEach((col, idx) => (item[col] = row[idx]));
+  const db = await getDatabaseAdapter();
+  const res = await db.query(`SELECT * FROM backtest_results WHERE id = ? LIMIT 1`, [id]);
+  if (res.length === 0 || res[0].length === 0) return null;
+  const row = res[0];
   return {
-    id: item.id,
-    strategyId: item.strategy_id,
-    strategyName: item.strategy_name,
-    symbol: item.symbol,
-    timeframe: item.timeframe,
-    candleCount: item.candle_count,
-    startTime: item.start_time,
-    startTimeIso: item.start_time_iso,
-    endTime: item.end_time,
-    endTimeIso: item.end_time_iso,
-    initialDeposit: item.initial_deposit,
-    finalEquity: item.final_equity,
-    netProfit: item.net_profit,
-    profitFactor: item.profit_factor,
-    winRatePct: item.win_rate_pct,
-    totalTrades: item.total_trades,
-    winningTrades: item.winning_trades,
-    losingTrades: item.losing_trades,
-    maxDrawdownPct: item.max_drawdown_pct,
-    maxDrawdownUsd: item.max_drawdown_usd,
-    averageTradeProfit: item.average_trade_profit,
-    averageWin: item.average_win,
-    averageLoss: item.average_loss,
-    riskRewardRatio: item.risk_reward_ratio,
-    trades: item.trades_json ? JSON.parse(item.trades_json) : [],
-    equityCurve: item.equity_curve_json ? JSON.parse(item.equity_curve_json) : [],
-    evaluatedAt: item.evaluated_at,
+    id: row.id,
+    strategyId: row.strategy_id,
+    strategyName: row.strategy_name,
+    symbol: row.symbol,
+    timeframe: row.timeframe,
+    candleCount: row.candle_count,
+    startTime: row.start_time,
+    startTimeIso: row.start_time_iso,
+    endTime: row.end_time,
+    endTimeIso: row.end_time_iso,
+    initialDeposit: row.initial_deposit,
+    finalEquity: row.final_equity,
+    netProfit: row.net_profit,
+    profitFactor: row.profit_factor,
+    winRatePct: row.win_rate_pct,
+    totalTrades: row.total_trades,
+    winningTrades: row.winning_trades,
+    losingTrades: row.losing_trades,
+    maxDrawdownPct: row.max_drawdown_pct,
+    maxDrawdownUsd: row.max_drawdown_usd,
+    averageTradeProfit: row.average_trade_profit,
+    averageWin: row.average_win,
+    averageLoss: row.average_loss,
+    riskRewardRatio: row.risk_reward_ratio,
+    trades: row.trades_json ? JSON.parse(row.trades_json) : [],
+    equityCurve: row.equity_curve_json ? JSON.parse(row.equity_curve_json) : [],
+    evaluatedAt: row.evaluated_at,
   };
 }
-

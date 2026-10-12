@@ -1,5 +1,5 @@
 import { request } from './client';
-import { RiskGuardConfig, TradeCommand } from '../../types';
+import { RiskGuardConfig, TradeCommand } from '@/types';
 
 export const tradeApi = {
   executeTrade(command: {

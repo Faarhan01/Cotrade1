@@ -1,5 +1,5 @@
 import { CandleData } from '@core/types';
-import { calculateIndicators } from './indicatorEngine.js';
+import { calculateIndicators } from '@/services/indicatorEngine';
 
 export type StrategyType =
   | 'RSI_REVERSAL'
@@ -222,26 +222,26 @@ export function runStrategyBacktest(
           id: `sim-trd-${trades.length + 1}`,
           type: openTrade.type,
           entryIndex: openTrade.entryIndex,
-          entryTime: openTrade.entryTime;
-          entryTimeIso: openTrade.entryTimeIso;
-          entryPrice: openTrade.entryPrice;
-          exitIndex: i;
-          exitTime: currentBar.time;
-          exitTimeIso: currentBar.timeIso || new Date(currentBar.time * 1000).toISOString();
-          exitPrice: Number(exitPrice.toFixed(5));
-          profitPoints: Math.round(pointDiff);
-          profitUsd;
-          returnPct;
-          exitReason;
-          lotSize;
-          slPrice: openTrade.sl;
-          tpPrice: openTrade.tp;
+          entryTime: openTrade.entryTime,
+          entryTimeIso: openTrade.entryTimeIso,
+          entryPrice: openTrade.entryPrice,
+          exitIndex: i,
+          exitTime: currentBar.time,
+          exitTimeIso: currentBar.timeIso || new Date(currentBar.time * 1000).toISOString(),
+          exitPrice: Number(exitPrice.toFixed(5)),
+          profitPoints: Math.round(pointDiff),
+          profitUsd,
+          returnPct,
+          exitReason,
+          lotSize,
+          slPrice: openTrade.sl,
+          tpPrice: openTrade.tp,
         });
 
         equityCurve.push({
-          time: currentBar.time;
-          timeIso: currentBar.timeIso || new Date(currentBar.time * 1000).toISOString();
-          equity: Math.round(currentEquity * 100) / 100;
+          time: currentBar.time,
+          timeIso: currentBar.timeIso || new Date(currentBar.time * 1000).toISOString(),
+          equity: Math.round(currentEquity * 100) / 100,
         });
 
         openTrade = null;
@@ -320,13 +320,13 @@ export function runStrategyBacktest(
             : entryPrice - tpPoints * effectivePoint;
 
         openTrade = {
-          type: signal;
-          entryIndex: i;
-          entryTime: currentBar.time;
-          entryTimeIso: currentBar.timeIso || new Date(currentBar.time * 1000).toISOString();
-          entryPrice;
-          sl: Number(sl.toFixed(5));
-          tp: Number(tp.toFixed(5));
+          type: signal,
+          entryIndex: i,
+          entryTime: currentBar.time,
+          entryTimeIso: currentBar.timeIso || new Date(currentBar.time * 1000).toISOString(),
+          entryPrice,
+          sl: Number(sl.toFixed(5)),
+          tp: Number(tp.toFixed(5)),
         };
       }
     }
@@ -344,25 +344,25 @@ export function runStrategyBacktest(
     const returnPct = Math.round((profitUsd / currentEquity) * 10000) / 100;
     currentEquity += profitUsd;
 
-    trades.push({
-      id: `sim-trd-${trades.length + 1}`;
-      type: openTrade.type;
-      entryIndex: openTrade.entryIndex;
-      entryTime: openTrade.entryTime;
-      entryTimeIso: openTrade.entryTimeIso;
-      entryPrice: openTrade.entryPrice;
-      exitIndex: candles.length - 1;
-      exitTime: lastBar.time;
-      exitTimeIso: lastBar.timeIso || new Date(lastBar.time * 1000).toISOString();
-      exitPrice: Number(lastBar.close.toFixed(5));
-      profitPoints: Math.round(pointDiff);
-      profitUsd;
-      returnPct;
-      exitReason: 'END_OF_DATA';
-      lotSize;
-      slPrice: openTrade.sl;
-      tpPrice: openTrade.tp;
-    });
+     trades.push({
+       id: `sim-trd-${trades.length + 1}`,
+       type: openTrade.type,
+       entryIndex: openTrade.entryIndex,
+       entryTime: openTrade.entryTime,
+       entryTimeIso: openTrade.entryTimeIso,
+       entryPrice: openTrade.entryPrice,
+       exitIndex: candles.length - 1,
+       exitTime: lastBar.time,
+       exitTimeIso: lastBar.timeIso || new Date(lastBar.time * 1000).toISOString(),
+       exitPrice: Number(lastBar.close.toFixed(5)),
+       profitPoints: Math.round(pointDiff),
+       profitUsd,
+       returnPct,
+       exitReason: 'END_OF_DATA',
+       lotSize,
+       slPrice: openTrade.sl,
+       tpPrice: openTrade.tp,
+     });
   }
 
   // Calculate Summary Statistics
@@ -384,34 +384,34 @@ export function runStrategyBacktest(
   const firstCandle = candles[0];
   const lastCandle = candles[candles.length - 1];
 
-  return {
-    id: `bt-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    strategyId: strategy.id;
-    strategyName: strategy.name;
-    symbol: strategy.symbol;
-    timeframe: strategy.timeframe;
-    candleCount: candles.length;
-    startTime: firstCandle.time;
-    startTimeIso: firstCandle.timeIso || new Date(firstCandle.time * 1000).toISOString();
-    endTime: lastCandle.time;
-    endTimeIso: lastCandle.timeIso || new Date(lastCandle.time * 1000).toISOString();
-    initialDeposit: deposit;
-    finalEquity: Math.round(currentEquity * 100) / 100;
-    netProfit;
-    profitFactor;
-    winRatePct;
-    totalTrades;
-    winningTrades: winningTrades.length;
-    losingTrades: losingTrades.length;
-    maxDrawdownPct: Math.round(maxDrawdownPct * 10) / 10;
-    maxDrawdownUsd: Math.round(maxDrawdownUsd * 100) / 100;
-    averageTradeProfit;
-    averageWin;
-    averageLoss;
-    riskRewardRatio;
-    sharpeRatio?: undefined;
-    trades;
-    equityCurve;
-    evaluatedAt: Date.now();
-  };
+   return {
+     id: `bt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+     strategyId: strategy.id,
+     strategyName: strategy.name,
+     symbol: strategy.symbol,
+     timeframe: strategy.timeframe,
+     candleCount: candles.length,
+     startTime: firstCandle.time,
+     startTimeIso: firstCandle.timeIso || new Date(firstCandle.time * 1000).toISOString(),
+     endTime: lastCandle.time,
+     endTimeIso: lastCandle.timeIso || new Date(lastCandle.time * 1000).toISOString(),
+     initialDeposit: deposit,
+     finalEquity: Math.round(currentEquity * 100) / 100,
+     netProfit,
+     profitFactor,
+     winRatePct,
+     totalTrades,
+     winningTrades: winningTrades.length,
+     losingTrades: losingTrades.length,
+     maxDrawdownPct: Math.round(maxDrawdownPct * 10) / 10,
+     maxDrawdownUsd: Math.round(maxDrawdownUsd * 100) / 100,
+     averageTradeProfit,
+     averageWin,
+     averageLoss,
+     riskRewardRatio,
+      sharpeRatio: undefined,
+     trades,
+     equityCurve,
+     evaluatedAt: Date.now(),
+   };
 }

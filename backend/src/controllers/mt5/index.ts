@@ -1,1 +1,1 @@
-export * from '../../../controllers/mt5Controller.js';
+export * from './mt5Controller';

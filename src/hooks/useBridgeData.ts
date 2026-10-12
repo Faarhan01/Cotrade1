@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { AppState, Position, TickData, AccountInfo, TradeCommand, ExecutionLog, RiskGuardConfig } from '../types';
-import { api } from './api';
+import { AppState, Position, TickData, AccountInfo, TradeCommand, ExecutionLog, RiskGuardConfig } from '@/types';
+import { api } from '../lib/api';
 
 type WebSocketStatus = 'connected' | 'connecting' | 'disconnected';
 

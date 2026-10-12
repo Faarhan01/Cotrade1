@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MCP_TOOLS } from '../../constants/mcpTools';
-import { api } from '../../services/api';
+import { MCPToolDefinition } from '@/types';
+import { api } from '../../lib/api';
 import {
   Cpu,
   Terminal,
@@ -254,7 +255,7 @@ print("Asynchronous Order Dispatched to EA:", trade_res)
             </div>
 
             <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
-              {MCP_TOOLS.map((tool) => {
+              {MCP_TOOLS.map((tool: MCPToolDefinition) => {
                 const isSelected = selectedTool.name === tool.name;
                 return (
                   <div

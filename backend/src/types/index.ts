@@ -1,15 +1,16 @@
 export type OrderType = 'BUY' | 'SELL';
+export type PendingOrderType = 'BUY_LIMIT' | 'SELL_LIMIT' | 'BUY_STOP' | 'SELL_STOP' | 'BUY_STOP_LIMIT' | 'SELL_STOP_LIMIT';
 export type CommandStatus = 'pending' | 'dispatched' | 'executed' | 'failed' | 'cancelled';
-export type OrderAction = 'EXECUTE_TRADE' | 'MODIFY_POSITION' | 'CLOSE_POSITION' | 'CLOSE_ALL' | 'SET_RISK_GUARD' | 'CANCEL_PENDING';
+export type OrderAction = 'EXECUTE_TRADE' | 'MODIFY_POSITION' | 'CLOSE_POSITION' | 'CLOSE_ALL' | 'CANCEL_PENDING' | 'FETCH_HISTORY' | 'SET_RISK_GUARD';
 
 export interface AccountInfo {
   login: number;
-  tradeMode: string;
+  tradeMode: string; // 'DEMO' | 'REAL' | 'CONTEST'
   balance: number;
   equity: number;
   margin: number;
   freeMargin: number;
-  marginLevel: number;
+  marginLevel: number; // percentage
   leverage: number;
   currency: string;
   server: string;
@@ -46,6 +47,7 @@ export interface Position {
   openTime: number;
   trailingEnabled?: boolean;
   trailingDistance?: number;
+  trailingStep?: number;
 }
 
 export interface TradeCommand {
@@ -79,17 +81,17 @@ export interface TradeCommand {
 }
 
 export interface RiskGuardConfig {
-  globalTakeProfitUSD: number;
-  globalStopLossUSD: number;
-  maxDrawdownPercent: number;
+  globalTakeProfitUSD: number; // 0 = disabled
+  globalStopLossUSD: number; // 0 = disabled
+  maxDrawdownPercent: number; // 0 = disabled
   emergencyKillSwitch: boolean;
   trailingStopEnabled: boolean;
-  trailingStopDistancePoints: number;
-  trailingStopStepPoints: number;
+  trailingStopDistancePoints: number; // in points
+  trailingStopStepPoints: number; // in points
   maxLotSizePerTrade: number;
   maxOpenPositions: number;
   allowedSymbols: string[];
-  autoCloseOnMarginLevelBelow: number;
+  autoCloseOnMarginLevelBelow: number; // e.g. 50%
 }
 
 export interface ExecutionLog {
@@ -160,8 +162,6 @@ export interface CandleData {
   spread?: number;
 }
 
-export type PendingOrderType = 'BUY_LIMIT' | 'SELL_LIMIT' | 'BUY_STOP' | 'SELL_STOP' | 'BUY_STOP_LIMIT' | 'SELL_STOP_LIMIT';
-
 export interface PendingOrder {
   ticket: number;
   symbol: string;
@@ -217,25 +217,128 @@ export interface TechnicalIndicatorsResult {
   };
 }
 
-export interface AppState {
-  connection: {
-    isEaConnected: boolean;
-    lastEaSync: number;
-    eaVersion: string;
-    bridgeEndpoint: string;
-    fallbackEndpoint: string;
-    serverTime: number;
-    mt5ServerTime: number;
-    terminalName?: string;
-    terminalCompany?: string;
-    terminalBuild?: number;
-    chartSymbol?: string;
-    chartTimeframe?: string;
+export interface EASyncPayload {
+  apiKey: string;
+  account: AccountInfo;
+  positions: Position[];
+  pendingOrders?: PendingOrder[];
+  ticks: TickData[];
+  eaVersion: string;
+  mt5Time: number;
+  currentChart?: ChartSymbolInfo;
+  allSymbols?: DetailedSymbolInfo[];
+  chartHistory?: CandleData[];
+  marketDepth?: Record<string, { bids: MarketDepthItem[]; asks: MarketDepthItem[] }>;
+  historyPayload?: {
+    symbol: string;
+    timeframe: string;
+    candles: CandleData[];
   };
+  terminalName?: string;
+  terminalCompany?: string;
+  terminalBuild?: number;
+  pendingExecutionResults?: {
+    commandId: string;
+    success: boolean;
+    dealTicket?: number;
+    orderTicket?: number;
+    executionPrice?: number;
+    errorCode?: number;
+    errorMessage?: string;
+    executionTimeMs?: number;
+  }[];
+}
+
+export interface EASyncResponse {
+  status: 'ok' | 'error';
+  serverTime: number;
+  commands: TradeCommand[];
+  riskGuard: RiskGuardConfig;
+  message?: string;
+}
+
+export interface HistoryDeal {
+  ticket: number;
+  order: number;
+  time: number;
+  timeIso?: string;
+  type: 'BUY' | 'SELL' | 'BALANCE' | 'CREDIT';
+  entry: 'IN' | 'OUT' | 'INOUT';
+  symbol: string;
+  volume: number;
+  price: number;
+  commission: number;
+  swap: number;
+  profit: number;
+  fee?: number;
+  magic: number;
+  comment: string;
+}
+
+export interface HistoryOrder {
+  ticket: number;
+  symbol: string;
+  type: string;
+  volumeInitial: number;
+  volumeCurrent: number;
+  priceOpen: number;
+  priceCurrent?: number;
+  sl: number;
+  tp: number;
+  state: 'FILLED' | 'CANCELLED' | 'REJECTED' | 'EXPIRED' | string;
+  timeSetup: number;
+  timeDone?: number;
+  magic: number;
+  comment: string;
+}
+
+export interface MarginCalcResult {
+  margin: number;
+  currency: string;
+  success: boolean;
+  message?: string;
+}
+
+export interface ProfitCalcResult {
+  profit: number;
+  currency: string;
+  success: boolean;
+  message?: string;
+}
+
+export interface OrderCheckResult {
+  feasible: boolean;
+  margin?: number;
+  marginFree?: number;
+  marginLevel?: number;
+  balance?: number;
+  equity?: number;
+  retcode?: number;
+  comment?: string;
+  message?: string;
+}
+
+export interface ConnectionStatus {
+  isEaConnected: boolean;
+  lastEaSync: number;
+  eaVersion: string;
+  bridgeEndpoint: string;
+  fallbackEndpoint: string;
+  serverTime: number;
+  mt5ServerTime: number;
+  terminalName?: string;
+  terminalCompany?: string;
+  terminalBuild?: number;
+  chartSymbol?: string;
+  chartTimeframe?: string;
+}
+
+export interface AppState {
+  connection: ConnectionStatus;
   currentChart: ChartSymbolInfo | null;
   allSymbols: DetailedSymbolInfo[];
   chartHistory: CandleData[];
-  indicators?: TechnicalIndicatorsResult | null;
+  indicators: TechnicalIndicatorsResult | null;
   account: AccountInfo;
   positions: Position[];
   pendingOrders: PendingOrder[];
@@ -252,18 +355,31 @@ export interface MCPToolDefinition {
   description: string;
   inputSchema: {
     type: 'object';
-    properties: Record<string, any>;
+    properties?: Record<string, any>;
     required?: string[];
   };
 }
 
-export type StrategyType =
-  | 'RSI_REVERSAL'
-  | 'EMA_CROSSOVER'
-  | 'MACD_MOMENTUM'
-  | 'BOLLINGER_BREAKOUT'
-  | 'MULTI_INDICATOR_CONSENSUS'
-  | 'CUSTOM_RULESET';
+export interface StrategyParameters {
+  rsiOversold?: number;
+  rsiOverbought?: number;
+  rsiPeriod?: number;
+  fastEmaPeriod?: number;
+  slowEmaPeriod?: number;
+  macdFast?: number;
+  macdSlow?: number;
+  macdSignal?: number;
+  bollingerPeriod?: number;
+  bollingerStdDev?: number;
+  stopLossPoints?: number;
+  takeProfitPoints?: number;
+  trailingStopPoints?: number;
+  riskPercent?: number;
+  lotSize?: number;
+  maxHoldBars?: number;
+  customRules?: string;
+  [key: string]: any;
+}
 
 export interface StrategyDefinition {
   id: string;
@@ -272,7 +388,7 @@ export interface StrategyDefinition {
   type: StrategyType;
   symbol: string;
   timeframe: string;
-  parameters: Record<string, any>;
+  parameters: StrategyParameters;
   status: 'active' | 'draft' | 'archived' | 'testing';
   tags?: string[];
   author?: string;
@@ -340,69 +456,16 @@ export interface BacktestResult {
   averageWin: number;
   averageLoss: number;
   riskRewardRatio: number;
+  sharpeRatio?: number;
   trades: SimulatedTrade[];
   equityCurve: { time: number; timeIso: string; equity: number }[];
   evaluatedAt: number;
 }
 
-export interface HistoryDeal {
-  ticket: number;
-  order: number;
-  time: number;
-  timeIso?: string;
-  type: 'BUY' | 'SELL' | 'BALANCE' | 'CREDIT';
-  entry: 'IN' | 'OUT' | 'INOUT';
-  symbol: string;
-  volume: number;
-  price: number;
-  commission: number;
-  swap: number;
-  profit: number;
-  fee?: number;
-  magic: number;
-  comment: string;
-}
-
-export interface HistoryOrder {
-  ticket: number;
-  symbol: string;
-  type: string;
-  volumeInitial: number;
-  volumeCurrent: number;
-  priceOpen: number;
-  priceCurrent?: number;
-  sl: number;
-  tp: number;
-  state: 'FILLED' | 'CANCELLED' | 'REJECTED' | 'EXPIRED' | string;
-  timeSetup: number;
-  timeDone?: number;
-  magic: number;
-  comment: string;
-}
-
-export interface MarginCalcResult {
-  margin: number;
-  currency: string;
-  success: boolean;
-  message?: string;
-}
-
-export interface ProfitCalcResult {
-  profit: number;
-  currency: string;
-  success: boolean;
-  message?: string;
-}
-
-export interface OrderCheckResult {
-  feasible: boolean;
-  margin?: number;
-  marginFree?: number;
-  marginLevel?: number;
-  balance?: number;
-  equity?: number;
-  retcode?: number;
-  comment?: string;
-  message?: string;
-}
-
+export type StrategyType =
+  | 'RSI_REVERSAL'
+  | 'EMA_CROSSOVER'
+  | 'MACD_MOMENTUM'
+  | 'BOLLINGER_BREAKOUT'
+  | 'MULTI_INDICATOR_CONSENSUS'
+  | 'CUSTOM_RULESET';

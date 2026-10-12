@@ -1,5 +1,5 @@
-import { IMT5Connector } from './mt5Provider.js';
-import { PeronMT5Connector } from './PeronMT5Connector.js';
+import { IMT5Connector } from './mt5Provider.ts';
+import { PeronMT5Connector } from './PeronMT5Connector.ts';
 import { tradeStore } from '@services/tradeStore';
 import { broadcast } from '@services/websocket';
 import { defaultMT5Config, MT5ProviderType } from '@core/config';

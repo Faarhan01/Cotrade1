@@ -1,13 +1,4 @@
-export interface MCPToolDefinition {
-  name: string;
-  description: string;
-  inputSchema: {
-    type: 'object';
-    properties: Record<string, any>;
-    required?: string[];
-  };
-}
-
+import { MCPToolDefinition } from "@/types";
 export const MCP_TOOLS: MCPToolDefinition[] = [
   {
     name: 'mt5_get_account_info',
@@ -119,7 +110,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
           description: 'Volume in lots to close. If omitted or 0, closes the entire position.',
         },
       },
-      required: ['ticket'],
+      required: ["ticket"],
     },
   },
   {
@@ -223,23 +214,47 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
     },
   },
   {
-    name: 'mt5_get_technical_indicators',
-    description: 'Precomputed technical indicator suite: RSI (14), EMAs (9, 21, 50, 200), MACD (12,26,9), Bollinger Bands (20,2), ATR (14), and market bias consensus (STRONG_BUY, BUY, NEUTRAL, SELL, STRONG_SELL).',
+    name: 'mt5_get_chart_history',
+    description: 'Retrieve real historical OHLCV candlestick data (open, high, low, close, volume, timestamps) with optional precomputed technical indicators (RSI, EMA, MACD, Bollinger Bands, ATR) for any symbol and timeframe (M1, M5, M15, H1, H4, D1).',
     inputSchema: {
       type: 'object',
       properties: {
-        symbol: { type: 'string', description: 'Symbol ticker (default: active chart)' },
-        timeframe: { type: 'string', description: 'Timeframe (default: M1)' },
+        symbol: {
+          type: 'string',
+          description: 'Symbol ticker (e.g. EURUSD, XAUUSD, BTCUSD). Defaults to active chart symbol.',
+        },
+        timeframe: {
+          type: 'string',
+          description: 'Timeframe: M1, M5, M15, M30, H1, H4, D1 (default: active chart period or M1)',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of recent candles to return (default: 60, max: 500)',
+        },
+        includeIndicators: {
+          type: 'boolean',
+          description: 'Whether to include precomputed technical indicators (RSI, EMA, MACD, Bollinger, ATR) calculated on these candles (default: true)',
+        },
       },
     },
   },
   {
+    name: 'mt5_get_technical_indicators',
+    description: 'Precomputed technical indicator suite for quantitative analysis: RSI (14), EMAs (9, 21, 50, 200), MACD (12,26,9), Bollinger Bands (20,2), ATR (14), and automated algorithmic market summary (STRONG_BUY, BUY, NEUTRAL, SELL, STRONG_SELL).',
+    inputSchema: {
+      type: 'object',
+    },
+  },
+  {
     name: 'mt5_get_pending_orders',
-    description: 'Retrieve active pending limit and stop orders in MetaTrader 5.',
+    description: 'Retrieve all active pending orders in MetaTrader 5 (BUY_LIMIT, SELL_LIMIT, BUY_STOP, SELL_STOP, BUY_STOP_LIMIT, SELL_STOP_LIMIT) including open prices, SL/TP, and order tickets.',
     inputSchema: {
       type: 'object',
       properties: {
-        symbol: { type: 'string', description: 'Optional symbol filter' },
+        symbol: {
+          type: 'string',
+          description: 'Optional filter by symbol (e.g. EURUSD)',
+        },
       },
     },
   },
@@ -249,168 +264,452 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        ticket: { type: 'number', description: 'Order ticket ID to cancel' },
+        ticket: {
+          type: 'number',
+          description: 'Order ticket ID to cancel',
+        },
       },
-      required: ['ticket'],
+      required: ["ticket"],
     },
   },
   {
     name: 'mt5_request_chart_history',
-    description: 'Trigger on-demand historical candle pull from MetaTrader 5 for any symbol, timeframe, and bar count.',
+    description: 'Trigger an on-demand historical candle pull from MetaTrader 5 for any symbol, timeframe (M1, M5, M15, H1, etc.), and count. The EA fetches CopyRates from MT5 and uploads to the database.',
     inputSchema: {
       type: 'object',
       properties: {
-        symbol: { type: 'string', description: 'Symbol ticker (e.g. EURUSD, GBPUSD, XAUUSD)' },
-        timeframe: { type: 'string', description: 'Timeframe: M1, M5, M15, H1, H4, D1 (default: M1)' },
-        count: { type: 'number', description: 'Number of historical candles to fetch (e.g. 100, 300)' },
+        symbol: {
+          type: 'string',
+          description: 'Symbol ticker (e.g. EURUSD, GBPUSD, XAUUSD)',
+        },
+        timeframe: {
+          type: 'string',
+          description: 'Timeframe: M1, M5, M15, H1, H4, D1 (default: M1)',
+        },
+        count: {
+          type: 'number',
+          description: 'Number of historical candles to fetch from MT5 (e.g. 100, 250, 500)',
+        },
       },
-      required: ['symbol'],
+      required: ["symbol"],
+    },
+  },
+  {
+    name: 'mt5_get_account_history',
+    description: 'Retrieve persistent historical account snapshots (balance, equity, margin level %, floating profit) stored in SQLite across time.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          description: 'Maximum snapshots to return (default: 30)',
+        },
+      },
+    },
+  },
+  {
+    name: 'mt5_get_tick_history',
+    description: 'Retrieve persisted historical tick stream data from SQLite with sub-second bids, asks, and spreads.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbol: {
+          type: 'string',
+          description: 'Symbol filter (e.g. EURUSD), or ALL for all symbols',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum ticks to return (default: 50)',
+        },
+      },
     },
   },
   {
     name: 'mt5_simulate_candles',
-    description: 'Seed synthetic candlestick data into SQLite and precompute indicators for testing without waiting for live ticks.',
+    description: 'Seed synthetic historical OHLCV candlestick data into the database and precalculate indicators for immediate backtesting or strategy testing without waiting for live ticks.',
     inputSchema: {
       type: 'object',
       properties: {
-        symbol: { type: 'string', description: 'Symbol (default: EURUSD)' },
-        timeframe: { type: 'string', description: 'Timeframe (default: M1)' },
-        count: { type: 'number', description: 'Number of candles (default: 60)' },
+        symbol: {
+          type: 'string',
+          description: 'Symbol to simulate (default: EURUSD)',
+        },
+        timeframe: {
+          type: 'string',
+          description: 'Timeframe: M1, M5, M15, H1 (default: M1)',
+        },
+        count: {
+          type: 'number',
+          description: 'Number of candles to generate (default: 60)',
+        },
+        basePrice: {
+          type: 'number',
+          description: 'Starting price (default: 1.0850)',
+        },
       },
     },
   },
   {
     name: 'mt5_list_strategies',
-    description: 'List quantitative trading strategies stored in the persistent knowledge base.',
+    description: 'List quantitative trading strategies stored in the persistent SQLite knowledge base. Filterable by symbol.',
     inputSchema: {
       type: 'object',
       properties: {
-        symbol: { type: 'string', description: 'Filter by symbol (optional)' },
+        symbol: {
+          type: 'string',
+          description: 'Filter by symbol (e.g. EURUSD, XAUUSD), or leave empty for all.',
+        },
       },
     },
   },
   {
     name: 'mt5_create_strategy',
-    description: 'Create or update a quantitative trading strategy in the site knowledge base (e.g. RSI_REVERSAL, EMA_CROSSOVER, MACD_MOMENTUM, MULTI_INDICATOR_CONSENSUS).',
+    description: 'Create or update a quantitative trading strategy in the site knowledge base (e.g. RSI_REVERSAL, EMA_CROSSOVER, MACD_MOMENTUM, MULTI_INDICATOR_CONSENSUS). Strategies can then be backtested against stored MT5 candle history.',
     inputSchema: {
       type: 'object',
       properties: {
-        name: { type: 'string', description: 'Strategy name' },
-        description: { type: 'string', description: 'Strategy thesis and rules' },
+        name: {
+          type: 'string',
+          description: 'Descriptive strategy name',
+        },
+        description: {
+          type: 'string',
+          description: 'Strategy thesis and rules',
+        },
         type: {
           type: 'string',
-          enum: ['RSI_REVERSAL', 'EMA_CROSSOVER', 'MACD_MOMENTUM', 'BOLLINGER_BREAKOUT', 'MULTI_INDICATOR_CONSENSUS', 'CUSTOM_RULESET'],
+          enum: [],
           description: 'Strategy algorithmic type',
         },
-        symbol: { type: 'string', description: 'Target symbol (e.g. EURUSD, XAUUSD)' },
-        timeframe: { type: 'string', description: 'Target timeframe (M1, M5, M15, H1, H4, D1)' },
-        parameters: { type: 'object', description: 'Indicator parameters (rsiOversold, stopLossPoints, etc.)' },
-        tags: { type: 'array', items: { type: 'string' }, description: 'Keywords' },
-        author: { type: 'string', description: 'Author attribution' },
+        symbol: {
+          type: 'string',
+          description: 'Target symbol (e.g. EURUSD, XAUUSD)',
+        },
+        timeframe: {
+          type: 'string',
+          description: 'Target timeframe (M1, M5, M15, H1, H4, D1)',
+        },
+        parameters: {
+          type: 'object',
+          description: 'Indicator parameters (e.g. rsiOversold: 30, rsiOverbought: 70, fastEmaPeriod: 9, slowEmaPeriod: 21, stopLossPoints: 300, takeProfitPoints: 600, lotSize: 0.1)',
+        },
+        tags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Keywords and tags',
+        },
+        author: {
+          type: 'string',
+          description: 'Author / Agent attribution (e.g. Claude, AI Agent, Quant)',
+        },
+        notes: {
+          type: 'string',
+          description: 'Execution conditions or market insights',
+        },
       },
       required: ['name', 'symbol'],
     },
   },
   {
-    name: 'mt5_delete_strategy',
-    description: 'Delete a strategy by ID from the knowledge base.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        strategyId: { type: 'string', description: 'Strategy ID to delete' },
-      },
-      required: ['strategyId'],
-    },
-  },
-  {
     name: 'mt5_backtest_strategy',
-    description: 'Run backtest of a strategy against stored historical MT5 candles on the site server. Calculates win rate, net profit, drawdown, and equity curve.',
+    description: 'Run an algorithmic backtest of a strategy against stored historical MT5 candlestick data. Evaluates trades, win rate, net profit, maximum drawdown, and return equity curve on the site server.',
     inputSchema: {
       type: 'object',
       properties: {
-        strategyId: { type: 'string', description: 'Strategy ID' },
-        candleLimit: { type: 'number', description: 'Historical candles count (default: 300)' },
-        initialDeposit: { type: 'number', description: 'Deposit in USD (default: 10000)' },
-      },
-      required: ['strategyId'],
-    },
-  },
-  {
-    name: 'mt5_evaluate_strategy_signals',
-    description: 'Evaluate active quantitative strategies against real-time MT5 candlestick data and quotes. Returns BUY/SELL/NEUTRAL signals with rationale and dynamic SL/TP.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        strategyId: { type: 'string', description: 'Optional ID of specific strategy' },
-      },
-    },
-  },
-  {
-    name: 'mt5_execute_strategy_signal',
-    description: 'Execute a strategy signal through the site command queue to MT5. Bridge pushes order for EA execution.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        strategyId: { type: 'string', description: 'ID of strategy to execute' },
-        volume: { type: 'number', description: 'Lot size override (optional)' },
+        strategyId: {
+          type: 'string',
+          description: 'ID of strategy to test (e.g. strat-rsi-reversal-eurusd)',
+        },
+        candleLimit: {
+          type: 'number',
+          description: 'Number of historical candles to run backtest across (default: 300)',
+        },
+        initialDeposit: {
+          type: 'number',
+          description: 'Initial deposit capital in USD (default: 10000)',
+        },
       },
       required: ['strategyId'],
     },
   },
   {
     name: 'mt5_list_observations',
-    description: 'Retrieve observations, empirical market patterns, and research insights from knowledge base.',
+    description: 'Retrieve observations, market patterns, and research insights stored in the knowledge base.',
     inputSchema: {
       type: 'object',
       properties: {
         category: {
           type: 'string',
-          enum: ['all', 'market_insight', 'pattern', 'execution_note', 'anomaly', 'research'],
-          description: 'Filter category (default: all)',
+          enum: [],
+          description: 'Filter by category (default: all)',
         },
       },
     },
   },
   {
     name: 'mt5_record_observation',
-    description: 'Store a market observation or execution insight in the persistent knowledge base.',
+    description: 'Store a market observation, empirical pattern discovery, or execution insight in the persistent knowledge base for future review and algorithmic strategy design.',
     inputSchema: {
       type: 'object',
       properties: {
-        title: { type: 'string', description: 'Observation title' },
-        content: { type: 'string', description: 'Detailed analysis or empirical finding' },
-        symbol: { type: 'string', description: 'Associated symbol (optional)' },
-        timeframe: { type: 'string', description: 'Associated timeframe (optional)' },
+        title: {
+          type: 'string',
+          description: 'Observation headline or pattern name',
+        },
+        content: {
+          type: 'string',
+          description: 'Detailed analysis, notes, or empirical finding',
+        },
+        symbol: {
+          type: 'string',
+          description: 'Associated ticker symbol (optional)',
+        },
+        timeframe: {
+          type: 'string',
+          description: 'Associated timeframe (optional)',
+        },
         category: {
           type: 'string',
-          enum: ['market_insight', 'pattern', 'execution_note', 'anomaly', 'research'],
-          description: 'Classification category',
+          description: 'Category classification',
         },
-        tags: { type: 'array', items: { type: 'string' }, description: 'Tags' },
+        tags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Categorization tags',
+        },
+        metrics: {
+          type: 'object',
+          description: 'Key metrics observed (e.g. avgSpread, winRateBoost)',
+        },
       },
       required: ['title', 'content'],
     },
   },
   {
-    name: 'mt5_delete_observation',
-    description: 'Delete an observation by ID from the knowledge base.',
+    name: 'mt5_get_backtest_history',
+    description: 'Retrieve archived backtest evaluation runs and performance results from SQLite.',
     inputSchema: {
       type: 'object',
       properties: {
-        observationId: { type: 'string', description: 'Observation ID to delete' },
+        strategyId: {
+          type: 'string',
+          description: 'Filter by strategy ID (optional)',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum backtest reports to return (default: 20)',
+        },
       },
-      required: ['observationId'],
     },
   },
   {
-    name: 'mt5_get_backtest_history',
-    description: 'Retrieve archived backtest runs and performance results from SQLite.',
+    name: 'mt5_get_history_deals',
+    description: 'Retrieve real historical deals executed on the MetaTrader 5 account directly from the broker (deal ticket, order ticket, symbol, volume, entry/exit price, profit, commission, swap, fee, time).',
     inputSchema: {
       type: 'object',
       properties: {
-        strategyId: { type: 'string', description: 'Filter by strategy ID (optional)' },
-        limit: { type: 'number', description: 'Maximum reports to return (default: 20)' },
+        dateFrom: {
+          type: 'number',
+          description: 'Unix timestamp in seconds for starting date filter (optional)',
+        },
+        dateTo: {
+          type: 'number',
+          description: 'Unix timestamp in seconds for ending date filter (optional)',
+        },
+        count: {
+          type: 'number',
+          description: 'Maximum historical deals to return (default: 50)',
+        },
       },
+    },
+  },
+  {
+    name: 'mt5_get_history_orders',
+    description: 'Retrieve historical filled, expired, or canceled orders from MetaTrader 5 terminal.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        dateFrom: {
+          type: 'number',
+          description: 'Unix timestamp in seconds for starting date filter (optional)',
+        },
+        dateTo: {
+          type: 'number',
+          description: 'Unix timestamp in seconds for ending date filter (optional)',
+        },
+        count: {
+          type: 'number',
+          description: 'Maximum historical orders to return (default: 50)',
+        },
+      },
+    },
+  },
+  {
+    name: 'mt5_modify_pending_order',
+    description: 'Modify price level, stop loss (SL), or take profit (TP) of an active pending order (BUY_LIMIT, SELL_LIMIT, BUY_STOP, SELL_STOP) in MetaTrader 5.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ticket: {
+          type: 'number',
+          description: 'Order ticket ID to modify',
+        },
+        price: {
+          type: 'number',
+          description: 'New pending order trigger price',
+        },
+        sl: {
+          type: 'number',
+          description: 'New Stop Loss absolute price level',
+        },
+        tp: {
+          type: 'number',
+          description: 'New Take Profit absolute price level',
+        },
+      },
+      required: ['ticket'],
+    },
+  },
+  {
+    name: 'mt5_calc_margin',
+    description: 'Calculate the margin requirement in the account currency for a specified trade order before execution.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        orderType: {
+          type: 'string',
+          enum: [],
+          description: 'Order type',
+        },
+        symbol: {
+          type: 'string',
+          description: 'Symbol ticker (e.g. EURUSD, XAUUSD)',
+        },
+        volume: {
+          type: 'number',
+          description: 'Volume in lots (e.g. 0.1, 1.0)',
+        },
+        price: {
+          type: 'number',
+          description: 'Open price (optional, uses current ask/bid if omitted)',
+        },
+      },
+      required: ['symbol', 'volume'],
+    },
+  },
+  {
+    name: 'mt5_calc_profit',
+    description: 'Calculate the potential floating or realized profit in account currency for an order based on open and close target prices.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        orderType: {
+          type: 'string',
+          enum: [],
+          description: 'Order type',
+        },
+        symbol: {
+          type: 'string',
+          description: 'Symbol ticker (e.g. EURUSD)',
+        },
+        volume: {
+          type: 'number',
+          description: 'Volume in lots',
+        },
+        priceOpen: {
+          type: 'number',
+          description: 'Opening price level',
+        },
+        priceClose: {
+          type: 'number',
+          description: 'Closing target price level',
+        },
+      },
+      required: ['symbol', 'volume', 'priceOpen', 'priceClose'],
+    },
+  },
+  {
+    name: 'mt5_check_order',
+    description: 'Pre-validate order feasibility against MetaTrader 5 broker specifications, lot limits, margins, and account balance without placing the trade.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbol: {
+          type: 'string',
+          description: 'Symbol ticker',
+        },
+        orderType: {
+          type: 'string',
+          enum: [],
+          description: 'Order type',
+        },
+        volume: {
+          type: 'number',
+          description: 'Volume in lots',
+        },
+        price: {
+          type: 'number',
+          description: 'Order price',
+        },
+      },
+      required: ['symbol', 'volume'],
+    },
+  },
+  {
+    name: 'mt5_get_market_depth',
+    description: 'Retrieve Level 2 Market Depth (DOM / Order Book) bids and asks for any broker symbol directly from MetaTrader 5.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbol: {
+          type: 'string',
+          description: 'Symbol ticker (e.g. EURUSD)',
+        },
+      },
+      required: ['symbol'],
+    },
+  },
+  {
+    name: 'mt5_get_symbol_info',
+    description: 'Retrieve comprehensive broker symbol specifications: tick size, point value, digits, contract size, swap long/short, margin rate, min/max lot size.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbol: {
+          type: 'string',
+          description: 'Symbol ticker (e.g. EURUSD)',
+        },
+      },
+      required: ['symbol'],
+    },
+  },
+  {
+    name: 'mt5_set_trailing_stop',
+    description: 'Configure or adjust dynamic trailing stop loss parameters (enabled, distance points, step points) in real-time.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        trailingStopEnabled: {
+          type: 'boolean',
+          description: 'Enable or disable dynamic trailing stop',
+        },
+        trailingStopDistancePoints: {
+          type: 'number',
+          description: 'Trailing distance in broker points (e.g. 150 points = 15 pips)',
+        },
+        trailingStopStepPoints: {
+          type: 'number',
+          description: 'Trailing step in broker points (e.g. 30 points)',
+        },
+      },
+    },
+  },
+  {
+    name: 'mt5_get_live_stream_info',
+    description: 'Retrieve connection information and endpoints for external AI agents to stream live market ticks, position events, and order execution updates in real-time (SSE & WebSockets).',
+    inputSchema: {
+      type: 'object',
+      properties: {},
     },
   },
 ];

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChartSymbolInfo } from '../../types';
+import { ChartSymbolInfo } from '@/types';
 import {
   Monitor,
   Zap,

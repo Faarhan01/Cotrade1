@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { RiskGuardConfig } from '../../types';
-import { api } from '../../services/api';
+import { RiskGuardConfig } from '@/types';
+import { api } from '../../lib/api';
 import {
   ShieldAlert,
   Sliders,

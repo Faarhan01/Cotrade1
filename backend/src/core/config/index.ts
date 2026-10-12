@@ -1,2 +1,2 @@
-export * from './mt5Config.js';
-export * from './databaseConfig.js';
+export * from './mt5Config.ts';
+export * from './databaseConfig.ts';

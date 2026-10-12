@@ -3,7 +3,7 @@ import { Database } from './database.ts';
 
 /**
  * Database service that provides a unified interface for database operations
- * Supports switching between sql.js (WASM) and better-sqlite3 based on environment
+ * Supports switching between sql.js (WASM) and node:sqlite based on environment
  */
 export class DatabaseService {
   private static instance: DatabaseService;

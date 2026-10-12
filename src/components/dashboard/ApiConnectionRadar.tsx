@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { AppState } from '../../types';
-import { api } from '../../services/api';
+import { AppState } from '@/types';
+import { api } from '../../lib/api';
 import {
   Radio,
   CheckCircle2,

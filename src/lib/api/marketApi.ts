@@ -1,5 +1,5 @@
 import { request } from './client';
-import { CandleData, DetailedSymbolInfo, TickData } from '../../types';
+import { CandleData, DetailedSymbolInfo, TickData } from '@/types';
 
 export const marketApi = {
   // Discovered broker symbols directly from MT5 Python package

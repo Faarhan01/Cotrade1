@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppState } from '../types';
+import { AppState } from '@/types';
 import { RiskSettingsPanel } from '../components/risk/RiskSettingsPanel';
 import { AsyncQueueMonitor } from '../components/risk/AsyncQueueMonitor';
 

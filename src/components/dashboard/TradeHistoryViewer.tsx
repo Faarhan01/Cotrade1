@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../../services/api';
-import { HistoryDeal } from '../../types';
+import { api } from '../../lib/api';
+import { HistoryDeal } from '@/types';
 import {
   History,
   TrendingUp,

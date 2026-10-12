@@ -4,13 +4,13 @@ import { normalizeSymbol, symbolsMatch } from '@core/utils';
 import { connectorManager } from '@features/mt5';
 
 export interface MCPToolDefinition {
-  name,
-  description,
+  name: string;
+  description: string;
   inputSchema: {
-    type: 'object',
-    properties,
-    required?,
-  },
+    type: 'object';
+    properties?: Record<string, any>;
+    required?: string[];
+  };
 }
 
 export const MCP_TOOLS: MCPToolDefinition[] = [
@@ -421,7 +421,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
           description: 'Execution conditions or market insights',
         },
       },
-      required: ['name', 'symbol',]
+      required: ['name', 'symbol'],
     },
   },
   {
@@ -443,7 +443,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
           description: 'Initial deposit capital in USD (default: 10000)',
         },
       },
-      required: ['strategyId',]
+      required: ['strategyId'],
     },
   },
   {
@@ -484,7 +484,6 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
         },
         category: {
           type: 'string',
-          enum: [],
           description: 'Category classification',
         },
         tags: {
@@ -497,7 +496,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
           description: 'Key metrics observed (e.g. avgSpread, winRateBoost)',
         },
       },
-      required: ['title', 'content',]
+      required: ['title', 'content'],
     },
   },
   {
@@ -582,7 +581,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
           description: 'New Take Profit absolute price level',
         },
       },
-      required: ['ticket',]
+      required: ['ticket'],
     },
   },
   {
@@ -609,7 +608,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
           description: 'Open price (optional, uses current ask/bid if omitted)',
         },
       },
-      required: ['symbol', 'volume',]
+      required: ['symbol', 'volume'],
     },
   },
   {
@@ -640,7 +639,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
           description: 'Closing target price level',
         },
       },
-      required: ['symbol', 'volume', 'priceOpen', 'priceClose',]
+      required: ['symbol', 'volume', 'priceOpen', 'priceClose'],
     },
   },
   {
@@ -667,7 +666,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
           description: 'Order price',
         },
       },
-      required: ['symbol', 'volume',]
+      required: ['symbol', 'volume'],
     },
   },
   {
@@ -681,7 +680,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
           description: 'Symbol ticker (e.g. EURUSD)',
         },
       },
-      required: ['symbol',]
+      required: ['symbol'],
     },
   },
   {
@@ -695,7 +694,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
           description: 'Symbol ticker (e.g. EURUSD)',
         },
       },
-      required: ['symbol',]
+      required: ['symbol'],
     },
   },
   {
@@ -714,7 +713,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
         },
         trailingStopStepPoints: {
           type: 'number',
-          description: 'Trailing step in points (e.g. 30 points = 3 pips)',
+          description: 'Trailing step in broker points (e.g. 30 points)',
         },
       },
     },
@@ -732,9 +731,9 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
 export async function executeMcpTool(name: string, args: Record<string, any> = {}): Promise<any> {
   switch (name) {
     case 'mt5_query_trade_history': {
-      const { dbGetOrders } = await import('../database/db.js');
+      const { dbGetOrders } = await import('../../core/database/db.ts');
       const limit = args.limit ? Number(args.limit) : undefined;
-      const orders = await dbGetOrders(limit);;
+      const orders = await dbGetOrders(limit);
       return {
         count: orders.length,
         orders,
@@ -742,7 +741,7 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
     }
 
     case 'mt5_get_performance_analytics': {
-      const { dbGetAnalytics } = await import('../database/db.js');
+      const { dbGetAnalytics } = await import('../../core/database/db.ts');
       return await dbGetAnalytics();
     }
 
@@ -780,7 +779,7 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
         leverage: `1:${account.leverage}`,
         server: account.server,
         lastUpdate: new Date(account.lastUpdate).toISOString(),
-      },
+      };
     }
 
     case 'mt5_get_market_data': {
@@ -804,7 +803,7 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
         count: positions.length,
         totalProfit: positions.reduce((acc, p) => acc + p.profit, 0),
         positions,
-      },
+      };
     }
 
     case 'mt5_execute_trade': {
@@ -877,7 +876,7 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
         commandId: res.commandId,
         message: `Asynchronous order queued for MT5 dispatch. Action: ${orderType} ${volume} ${normSym}`,
         timestamp: Date.now(),
-      },
+      };
     }
 
     case 'mt5_modify_position': {
@@ -894,7 +893,7 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
       });
 
       if (!res.success) {
-        throw new Error(`Modify rejected,
+        throw new Error(`Modify rejected`);
       }
 
       const connector = connectorManager.getConnector();
@@ -909,21 +908,20 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
           return {
             status: 'executed',
             commandId: res.commandId,
-            message: execRes.message || `Position #${ticket} modified`,
-          },
+            message: execRes.message || "Position #" + ticket + " modified"
+          };
         }
       }
-
       return {
-        status: 'queued',
+        status: "queued",
         commandId: res.commandId,
-        message: `Modification queued for ticket #${ticket}. New SL: ${sl ?? 'unchanged'}, New TP: ${tp ?? 'unchanged'}`,
-      },
+        message: "Modification queued for ticket #" + ticket + ". New SL: " + (sl || 'unchanged') + ", New TP: " + (tp || 'unchanged')
+      };
     }
 
     case 'mt5_close_position': {
       const { ticket, volume } = args;
-      if (!ticket) throw new Error('Missing required argument,
+      if (!ticket) throw new Error('Missing required argument');
 
       const res = tradeStore.enqueueCommand({
         action: 'CLOSE_POSITION',
@@ -934,7 +932,7 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
       });
 
       if (!res.success) {
-        throw new Error(`Close rejected,
+        throw new Error("Close rejected");
       }
 
       const connector = connectorManager.getConnector();
@@ -948,20 +946,20 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
           return {
             status: 'executed',
             commandId: res.commandId,
-            message: execRes.message || `Position #${ticket} closed`,
-          },
+            message: execRes.message || `Position #${ticket} closed`
+          };
         }
       }
 
       return {
         status: 'queued',
         commandId: res.commandId,
-        message: `Close order queued for ticket #${ticket}`,
-      },
+        message: `Close order queued for ticket #${ticket}`
+      };
     }
 
     case 'mt5_close_all': {
-      const symbol = args.symbol ? normalizeSymbol(String(args.symbol)) ,
+      const symbol = args.symbol ? normalizeSymbol(String(args.symbol)) : undefined;
       const res = tradeStore.enqueueCommand({
         action: 'CLOSE_ALL',
         symbol: symbol,
@@ -970,72 +968,72 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
       });
 
       return {
-        status,
-        commandId,
-        message,
-      },
+        status: 'queued',
+        commandId: res.commandId,
+        message: `Close all order queued${symbol ? ` for symbol ${symbol}` : ''}`,
+      };
     }
 
     case 'mt5_configure_risk_guard': {
       tradeStore.updateRiskGuard(args);
       return {
-        status,
-        riskGuard,
-      },
+        status: 'success',
+        riskGuard: tradeStore.getRiskGuard(),
+      };
     }
 
     case 'mt5_get_execution_queue': {
       const state = tradeStore.getState();
-      const limit = args.limit ? Number(args.limit) ,
+      const limit = args.limit ? Number(args.limit) : undefined;
       return state.commandQueue.slice(0, limit);
     }
 
     case 'mt5_get_chart_history': {
       const sym = normalizeSymbol(args.symbol || tradeStore.getCurrentChart()?.symbol || 'EURUSD');
       const tf = String(args.timeframe || tradeStore.getCurrentChart()?.timeframe || 'M1').trim();
-      const limit = args.limit ? Math.min(Number(args.limit), 500) ,
+      const limit = args.limit ? Math.min(Number(args.limit), 500) : undefined;
       const includeIndicators = args.includeIndicators !== false;
 
       // First check SQLite database for historical candles
-      const { dbGetCandles } = await import('../database/db.js');
+      const { dbGetCandles } = await import('../../core/database/db.ts');
       let candles = await dbGetCandles(sym, tf, limit);
 
       // Fallback to in-memory chartHistory if querying active chart and SQLite has fewer
       if (candles.length === 0 && (!args.symbol || sym === tradeStore.getCurrentChart()?.symbol)) {
-        candles = tradeStore.getChartHistory().slice(-limit);
+        candles = tradeStore.getChartHistory().slice(-(limit ?? 100));
       }
 
-      const { calculateIndicators } = await import('./indicatorEngine.js');
-      const indicators = includeIndicators ? calculateIndicators(candles, sym, tf) ,
+      const { calculateIndicators } = await import('@/services/indicatorEngine');
+      const indicators = includeIndicators ? calculateIndicators(candles, sym, tf) : undefined;
 
-      return {
-        symbol,
-        timeframe,
-        count,
-        candles;
-        indicators;
-      },
+       return {
+         symbol: sym,
+         timeframe: tf,
+         count: candles.length,
+         candles,
+         indicators,
+       };
     }
 
     case 'mt5_get_technical_indicators': {
       const sym = normalizeSymbol(args.symbol || tradeStore.getCurrentChart()?.symbol || 'EURUSD');
       const tf = String(args.timeframe || tradeStore.getCurrentChart()?.timeframe || 'M1').trim();
 
-      const { dbGetCandles } = await import('../database/db.js');
+      const { dbGetCandles } = await import('../../core/database/db.ts');
       let candles = await dbGetCandles(sym, tf, 200);
       if (candles.length === 0) {
         candles = tradeStore.getChartHistory();
       }
 
-      const { calculateIndicators } = await import('./indicatorEngine.js');
+      const { calculateIndicators } = await import('@/services/indicatorEngine');
       const indicators = calculateIndicators(candles, sym, tf);
       if (!indicators) {
         return {
-          status,
-          message,
-          symbol,
-          timeframe,
-        },
+           status: 'error',
+           message: 'Failed to calculate indicators',
+           symbol: sym,
+         timeframe: tf,
+         };
       }
       return indicators;
     }
@@ -1046,9 +1044,9 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
         orders = orders.filter((o) => symbolsMatch(o.symbol, String(args.symbol)));
       }
       return {
-        count,
-        pendingOrders,
-      },
+        count: orders.length,
+        pendingOrders: orders,
+      };
     }
 
     case 'mt5_cancel_pending_order': {
@@ -1061,78 +1059,93 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
         const execRes = await connector.cancelOrder(ticket);
         if (execRes.success) {
           return {
-            status,
-            ticket;
-            message,
-          },
+            status: 'executed',
+            ticket,
+            message: execRes.message || `Order cancelled for ticket #${ticket}`,
+          };
         }
       }
 
       const res = tradeStore.enqueueCommand({
-        action,
-        ticket;
-        source,
-        comment,
+        action: 'CANCEL_PENDING',
+        ticket,
+        source: 'AI_MCP',
+        comment: 'AI_MCP_CANCEL_PENDING',
       });
       return {
-        status,
-        commandId,
-        message,
-      },
+        status: 'queued',
+        commandId: res.commandId,
+        message: `Cancellation queued for ticket #${ticket}`,
+      };
     }
 
     case 'mt5_request_chart_history': {
       const sym = normalizeSymbol(String(args.symbol));
-      const tf = args.timeframe ? String(args.timeframe).trim() ,
-      const count = args.count ? Number(args.count) ,
+      const tf = args.timeframe ? String(args.timeframe).trim() : undefined;
+      const count = args.count ? Number(args.count) : undefined;
       const res = tradeStore.requestHistoryFromEA(sym, tf, count);
       return {
-        status,
-        commandId,
-        message,
-      },
+        status: 'queued',
+        commandId: res.commandId,
+        message: `History request queued for symbol ${sym}${tf ? `, timeframe ${tf}` : ''}${count ? `, count ${count}` : ''}`,
+      };
     }
 
     case 'mt5_get_account_history': {
-      const limit = args.limit ? Number(args.limit) ,
-      const { dbGetAccountHistory } = await import('../database/db.js');
+      const limit = args.limit ? Number(args.limit) : undefined;
+      const { dbGetAccountHistory } = await import('../../core/database/db.ts');
       const history = await dbGetAccountHistory(limit);
       return {
-        count,
-        history;
-      },
+        count: history.length,
+        history,
+      };
     }
 
     case 'mt5_get_tick_history': {
-      const limit = args.limit ? Number(args.limit) ,
-      const { dbGetTicksHistory } = await import('../database/db.js');
+      const limit = args.limit ? Number(args.limit) : undefined;
+      const { dbGetTicksHistory } = await import('../../core/database/db.ts');
       const ticks = await dbGetTicksHistory(args.symbol, limit);
       return {
-        count,
-        ticks;
-      },
+        count: ticks.length,
+        ticks,
+      };
     }
 
     case 'mt5_simulate_candles': {
       const sym = args.symbol || 'EURUSD';
       const tf = args.timeframe || 'M1';
-      const count = args.count ? Number(args.count) ,
-      const basePrice = args.basePrice ? Number(args.basePrice) ,
+      const count = args.count ? Number(args.count) : undefined;
+      const basePrice = args.basePrice ? Number(args.basePrice) : undefined;
       return await tradeStore.seedCandles(sym, tf, count, basePrice);
     }
 
     case 'mt5_list_strategies': {
-      const { dbGetStrategies } = await import('../database/db.js');
+      const { dbGetStrategies } = await import('../../core/database/db.ts');
       const strategies = await dbGetStrategies(args.symbol);
       return {
-        count,
-        strategies;
-      },
+        count: strategies.length,
+        strategies,
+      };
     }
 
     case 'mt5_create_strategy': {
-      const { dbSaveStrategy } = await import('../database/db.js');
+      const { dbSaveStrategy } = await import('../../core/database/db.ts');
       const stratId = args.id || `strat-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const {
+        id = stratId,
+        name,
+        description,
+        type,
+        symbol,
+        timeframe,
+        parameters = {},
+        tags = [],
+        author = 'Unknown',
+        notes = '',
+      } = args;
+      const createdAt = Date.now();
+      const updatedAt = createdAt;
+      const status = 'active';
       const strategyData = {
         id,
         name,
@@ -1140,31 +1153,31 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
         type,
         symbol,
         timeframe,
-        parameters: args.parameters || {},
+        parameters,
         status,
         tags,
         author,
         notes,
         createdAt,
         updatedAt,
-      },
+      };
       await dbSaveStrategy(strategyData);
       return {
-        success,
-        strategy,
-        message,
-      },
+        success: true,
+        strategy: strategyData,
+        message: 'Strategy created',
+      };
     }
 
     case 'mt5_backtest_strategy': {
-      const { dbGetStrategyById, dbGetCandles, dbSaveBacktestResult } = await import('../database/db.js');
-      const { runStrategyBacktest } = await import('../services/strategyEngine.js');
+      const { dbGetStrategyById, dbGetCandles, dbSaveBacktestResult } = await import('../../core/database/db.ts');
+      const { runStrategyBacktest } = await import('@/services/strategyEngine');
 
       const strategy = await dbGetStrategyById(args.strategyId);
       if (!strategy) throw new Error(`Strategy ${args.strategyId} not found`);
 
-      const candleLimit = args.candleLimit ? Number(args.candleLimit) ,
-      const initialDeposit = args.initialDeposit ? Number(args.initialDeposit) ,
+      const candleLimit = args.candleLimit ? Number(args.candleLimit) : undefined;
+      const initialDeposit = args.initialDeposit ? Number(args.initialDeposit) : undefined;
 
       let candles = await dbGetCandles(strategy.symbol, strategy.timeframe, candleLimit);
       if (candles.length < 20) {
@@ -1181,120 +1194,115 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
       const backtest = runStrategyBacktest(strategy, candles, initialDeposit);
       await dbSaveBacktestResult(backtest);
 
-      return {
-        success,
-        summary: {
-          strategyName,
-          symbol,
-          timeframe,
-          candleCount,
-          initialDeposit,
-          finalEquity,
-          netProfit,
-          profitFactor,
-          winRatePct,
-          totalTrades,
-          winningTrades,
-          losingTrades,
-          maxDrawdownPct,
-          maxDrawdownUsd,
-          averageTradeProfit,
-          riskRewardRatio,
-        },
-        backtestId,
-        trades,
-      },
+       return {
+         success: true,
+         summary: {
+           strategyName: backtest.strategyName,
+           symbol: backtest.symbol,
+           timeframe: backtest.timeframe,
+           candleCount: backtest.candleCount,
+           initialDeposit: backtest.initialDeposit,
+           finalEquity: backtest.finalEquity,
+           netProfit: backtest.netProfit,
+           profitFactor: backtest.profitFactor,
+           winRatePct: backtest.winRatePct,
+           maxDrawdownPct: backtest.maxDrawdownPct,
+           averageTradeProfit: backtest.averageTradeProfit,
+           riskRewardRatio: backtest.riskRewardRatio,
+         },
+         backtestId: backtest.id,
+         trades: backtest.trades
+       };
     }
 
     case 'mt5_list_observations': {
-      const { dbGetObservations } = await import('../database/db.js');
+      const { dbGetObservations } = await import('../../core/database/db.ts');
       const observations = await dbGetObservations(args.category);
       return {
-        count,
-        observations;
-      },
+        count: observations.length,
+        observations
+      };
     }
 
     case 'mt5_record_observation': {
-      const { dbSaveObservation } = await import('../database/db.js');
+      const { dbSaveObservation } = await import('../../core/database/db.ts');
       const obsId = args.id || `obs-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const obs = {
-        id,
-        title,
-        content,
-        symbol,
-        timeframe,
-        strategyId,
-        category,
-        tags,
+        id: obsId,
+        title: args.title,
+        content: args.content,
+        symbol: args.symbol,
+        timeframe: args.timeframe,
+        strategyId: args.strategyId,
+        category: args.category,
+        tags: args.tags || [],
         metrics: args.metrics || {},
-        createdAt,
-        updatedAt,
-      },
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
       await dbSaveObservation(obs);
       return {
-        success,
-        observation,
-        message,
-      },
+        success: true,
+        observation: obs,
+        message: 'Observation recorded'
+      };
     }
 
     case 'mt5_get_backtest_history': {
-      const { dbGetBacktestResults } = await import('../database/db.js');
-      const limit = args.limit ? Number(args.limit) ,
+      const { dbGetBacktestResults } = await import('../../core/database/db.ts');
+      const limit = args.limit ? Number(args.limit) : undefined;
       const results = await dbGetBacktestResults(args.strategyId, limit);
       return {
-        count,
-        results;
-      },
+        count: results.length,
+        results
+      };
     }
 
     case 'mt5_get_history_deals': {
-      const dateFrom = args.dateFrom ? Number(args.dateFrom) ,
-      const dateTo = args.dateTo ? Number(args.dateTo) ,
-      const count = args.count ? Number(args.count) ,
       const connector = connectorManager.getConnector();
+      const count = args.count ? Number(args.count) : undefined;
+      const dateFrom = args.dateFrom ? Number(args.dateFrom) : undefined;
+      const dateTo = args.dateTo ? Number(args.dateTo) : undefined;
       const deals = await connector.getHistoryDeals({ dateFrom, dateTo, count });
       return {
-        count,
-        deals;
-      },
+        count: deals.length,
+        deals
+      };
     }
 
     case 'mt5_get_history_orders': {
-      const dateFrom = args.dateFrom ? Number(args.dateFrom) ,
-      const dateTo = args.dateTo ? Number(args.dateTo) ,
-      const count = args.count ? Number(args.count) ,
       const connector = connectorManager.getConnector();
+      const count = args.count ? Number(args.count) : undefined;
+      const dateFrom = args.dateFrom ? Number(args.dateFrom) : undefined;
+      const dateTo = args.dateTo ? Number(args.dateTo) : undefined;
       const orders = await connector.getHistoryOrders({ dateFrom, dateTo, count });
       return {
-        count,
-        orders;
-      },
+        count: orders.length,
+        orders
+      };
     }
 
     case 'mt5_modify_pending_order': {
       const ticket = Number(args.ticket);
-      const price = args.price !== undefined ? Number(args.price) ,
-      const sl = args.sl !== undefined ? Number(args.sl) ,
-      const tp = args.tp !== undefined ? Number(args.tp) ,
+      const price = args.price !== undefined ? Number(args.price) : undefined;
+      const sl = args.sl !== undefined ? Number(args.sl) : undefined;
+      const tp = args.tp !== undefined ? Number(args.tp) : undefined;
       if (!ticket) throw new Error('Missing ticket parameter');
 
       const connector = connectorManager.getConnector();
       const result = await connector.modifyOrder(ticket, price, sl, tp);
       return {
-        ticket;
-        success,
-        message,
-      },
+        ticket,
+        success: result.success
+      };
     }
 
     case 'mt5_calc_margin': {
       const connector = connectorManager.getConnector();
       return await connector.calcMargin(
-        args.orderType || 'BUY';
-        normalizeSymbol(args.symbol || 'EURUSD');
-        Number(args.volume) || 0.1;
+        args.orderType || 'BUY',
+        normalizeSymbol(args.symbol || 'EURUSD'),
+        Number(args.volume) || 0.1,
         args.price ? Number(args.price) : undefined
       );
     }
@@ -1302,36 +1310,35 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
     case 'mt5_calc_profit': {
       const connector = connectorManager.getConnector();
       return await connector.calcProfit(
-        args.orderType || 'BUY';
-        normalizeSymbol(args.symbol || 'EURUSD');
-        Number(args.volume) || 0.1;
-        Number(args.priceOpen) || 0;
+        args.orderType || 'BUY',
+        normalizeSymbol(args.symbol || 'EURUSD'),
+        Number(args.volume) || 0.1,
+        Number(args.priceOpen) || 0,
         Number(args.priceClose) || 0
       );
     }
 
     case 'mt5_check_order': {
       const connector = connectorManager.getConnector();
-      return await connector.checkOrder({
-        symbol,
-        orderType,
-        volume,
-        price: args.price ? Number(args.price) : undefined
-      });
+       return await connector.checkOrder({
+         symbol: args.symbol,
+         orderType: args.orderType,
+         volume: args.volume,
+         price: args.price
+       });
     }
 
     case 'mt5_get_market_depth': {
       const symbol = normalizeSymbol(args.symbol || 'EURUSD');
       const connector = connectorManager.getConnector();
       const depth = await connector.getMarketDepth(symbol);
-      return { symbol, depth },
+      return depth;
     }
 
     case 'mt5_get_symbol_info': {
-      const symbol = normalizeSymbol(args.symbol || 'EURUSD');
       const connector = connectorManager.getConnector();
-      const spec = await connector.getDetailedSymbol(symbol);
-      return { symbol, spec },
+      const spec = await connector.getDetailedSymbol(normalizeSymbol(args.symbol || 'EURUSD'));
+      return { symbol: args.symbol, spec };
     }
 
     case 'mt5_set_trailing_stop': {
@@ -1339,29 +1346,32 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
       tradeStore.updateRiskGuard({
         trailingStopEnabled,
         trailingStopDistancePoints,
-        trailingStopStepPoints,
+        trailingStopStepPoints
       });
       return {
-        status,
-        riskGuard,
-        message,
-      },
+        status: 'success',
+        riskGuard: tradeStore.getRiskGuard(),
+        message: 'Trailing stop configuration updated'
+      };
     }
 
-    case 'mt5_get_live_stream_info': {
-      const { getStreamStats } = await import('./websocketServer.js');
-      return {
-        protocol,
-        sseUrl,
-        websocketUrl,
-        description: 'Real-time live streaming channel for external AI agents to intercept live market ticks, positions, balances, and trade events.',
-        stats,
-        exampleCurl,
-      },
-    }
+     case 'mt5_get_live_stream_info': {
+       const { getStreamStats } = await import('@/services/websocketServer');
+       const stats = getStreamStats();
+       return {
+         protocol: '',
+         sseUrl: '',
+         websocketUrl: '',
+         stats: {
+           wsClientsCount: stats.wsClientsCount,
+           sseClientsCount: stats.sseClientsCount,
+           totalEventsBroadcasted: stats.totalEventsBroadcasted
+         }
+       };
+     }
 
     default:
-      throw new Error(`Unknown tool,
+      throw new Error(`Unknown tool: ${name}`);
   }
 }
 
@@ -1372,70 +1382,74 @@ export async function handleMcpJsonRpc(body: any): Promise<any> {
   if (method === 'initialize') {
     return {
       jsonrpc,
-      id;
+      id,
       result: {
-        protocolVersion,
+        protocolVersion: '2024-11-05',
         capabilities: {
           tools: {},
         },
         serverInfo: {
-          name,
-          version,
+          name: 'MCP Server',
+          version: '1.0.0',
         },
       },
-    },
+    };
   }
 
   if (method === 'tools/list') {
     return {
       jsonrpc,
-      id;
+      id,
       result: {
-        tools,
+        tools: MCP_TOOLS.map(tool => ({
+          name: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema
+        }))
       },
-    },
+    };
   }
 
   if (method === 'tools/call') {
-    const { name, arguments: toolArgs } = params || {},
+    const { name, arguments: toolArgs } = params || {};
     try {
       const toolResult = await executeMcpTool(name, toolArgs || {});
       return {
         jsonrpc,
-        id;
+        id,
         result: {
           content: [
             {
               type: 'text',
-              text,
+              text: JSON.stringify(toolResult),
             },
-          ];
-          isError,
+          ],
+          isError: false,
         },
-      },
+      };
     } catch (err: any) {
       return {
         jsonrpc,
-        id;
+        id,
         result: {
           content: [
             {
               type: 'text',
-              text,
+              text: err.message,
             },
-          ];
-          isError,
+          ],
+          isError: true,
         },
-      },
+      };
     }
   }
 
   return {
     jsonrpc,
-    id;
+    id,
     error: {
-      code,
-      message,
+      code: -32601,
+      message: 'Method not found',
     },
-  },
+  };
 }

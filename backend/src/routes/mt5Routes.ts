@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { tradeStore } from '@services/tradeStore';
-import { broadcast } from '@services/websocketServer';
+import { broadcast } from '@/services/websocketServer';
 import { EASyncPayload, EASyncResponse } from '@core/types';
 
 export const mt5Router = Router();

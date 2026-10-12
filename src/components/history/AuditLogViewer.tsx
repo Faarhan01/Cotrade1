@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ExecutionLog } from '../../types';
+import { ExecutionLog } from '@/types';
 import { Clock, Filter, Search, Terminal, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 
 interface AuditLogViewerProps {

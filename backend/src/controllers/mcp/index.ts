@@ -1,1 +1,1 @@
-export * from '../../../controllers/mcpController.js';
+export * from './mcpController';

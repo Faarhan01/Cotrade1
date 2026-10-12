@@ -23,7 +23,7 @@
 - API communication via `src/services/api/strategyApi.ts`
 
 ### ScalarAI Reference (Best Practices)
-- Uses `better-sqlite3` (native Node.js SQLite3 driver) for better performance
+- Uses `node:sqlite` (built-in Node.js SQLite3 module) for better performance
 - Schema organized with clear separation of concerns:
   - Core trading data (trades, ticks, candles)
   - AI knowledge base (ai_knowledge, ai_strategy)
@@ -37,7 +37,7 @@
 ## 2. Key Improvement Areas
 
 ### 2.1 Database Engine Enhancement
-- Migrate from `sql.js` (WASM) to `better-sqlite3` for:
+- Migrate from `sql.js` (WASM) to `node:sqlite` for:
   - 3-5x performance improvement in read/write operations
   - Full SQLite3 feature set (including JSON1 extension, FTS5)
   - Better integration with Node.js ecosystem
@@ -172,8 +172,8 @@
 
 ## 3. Database Structure for Easy Migration
 
-### 3.1 Current to Better SQLite 3 Migration Path
-- Maintain schema compatibility between sql.js and better-sqlite3
+### 3.1 Current to Node:SQLite Migration Path
+- Maintain schema compatibility between sql.js and node:sqlite
 - Use standard SQL data types and constraints
 - Avoid WASM-specific workarounds
 - Implement database abstraction layer:
@@ -190,7 +190,7 @@
 - Use environment-based database engine selection:
   ```javascript
   const dbEngine = process.env.USE_NATIVE_SQLITE ? 
-    new BetterSqlite3Adapter() : 
+    new NodeSqliteAdapter() : 
     new SqlJsAdapter();
   ```
 - Implement dual-write during transition period for zero-downtime migration
@@ -576,7 +576,7 @@
 
 ### Phase 1: Foundation and Migration (Weeks 1-3)
 - [ ] Design and implement database abstraction layer
-- [ ] Create migration scripts from sql.js to better-sqlite3
+- [ ] Create migration scripts from sql.js to node:sqlite
 - [ ] Set up dual-write mechanism for zero-downtime migration
 - [ ] Implement initial schema enhancements (indexes, constraints)
 - [ ] Establish CI/CD pipeline for database changes
@@ -711,7 +711,7 @@
 ## 10. Technology Stack Recommendations
 
 ### 10.1 Database and Storage
-- Primary: better-sqlite3 with WAL mode and JSON1 extension
+- Primary: node:sqlite with WAL mode and JSON1 extension
 - Full-text search: SQLite FTS5 with Porter tokenizer
 - Vector storage: SQLite BLOB fields with custom similarity functions
 - Caching: Redis 7+ with clustering for horizontal scaling
@@ -798,7 +798,6 @@
 - Implement comprehensive automated testing (unit, integration, e2e)
 - Follow strict code review processes and quality gates
 - Document architectural decisions and trade-offs
-- Implement observability from the beginning (metrics, logs, traces)
 - Technical debt tracking and regular refactoring sprints
 - Knowledge sharing and cross-training among team members
 - Regular dependency updates and security patching

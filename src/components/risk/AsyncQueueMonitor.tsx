@@ -1,5 +1,5 @@
 import React from 'react';
-import { TradeCommand } from '../../types';
+import { TradeCommand } from '@/types';
 import { GitCommit, Clock, CheckCircle2, AlertCircle, Send, ArrowRight } from 'lucide-react';
 
 interface AsyncQueueMonitorProps {
