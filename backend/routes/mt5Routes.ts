@@ -26,7 +26,7 @@ mt5Router.post(['/sync', '/api/mt5/sync'], (req, res) => {
   }
 
   // Process EA incoming state (account, positions, ticks, results, currentChart, allSymbols)
-  const commandsToExecute = tradeStore.handleEASync(payload);
+  const commandsToExecute = await tradeStore.handleEASync(payload);
 
   // Broadcast live updates immediately to connected web terminals
   broadcast({

@@ -29,6 +29,7 @@ import {
   dbGetAccountHistory,
   pruneDatabase,
 } from '../database/db.js';
+import { Database } from '../../src/core/database/database.ts';
 import { calculateIndicators } from './indicatorEngine.js';
 import { symbolsMatch } from '../utils/symbolUtils.js';
 

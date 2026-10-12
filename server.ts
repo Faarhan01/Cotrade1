@@ -10,6 +10,7 @@ import { apiRouter } from './backend/routes/apiRoutes.js';
 import { corsMiddleware, requestLogger, errorHandler } from './backend/middleware/index.js';
 import { connectorManager } from './backend/lib/ConnectorManager.js';
 import { logger } from './backend/utils/logger.js';
+import { Database } from './src/core/database/database.ts';
 
 dotenv.config();
 
