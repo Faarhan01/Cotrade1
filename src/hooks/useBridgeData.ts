@@ -100,7 +100,7 @@ export function useBridgeData() {
             } else if (data.type === 'account') {
               const updatedAccount: AccountInfo = data.payload;
               setState((prev) => (prev ? { ...prev, account: updatedAccount } : prev));
-            } else if (data.type === 'ea:sync') {
+            } else if (data.type === 'mt5:sync' || data.type === 'ea:sync') {
               const sync = data.payload;
               setState((prev) =>
                 prev
@@ -117,8 +117,10 @@ export function useBridgeData() {
                         ? { ...prev.connection, ...sync.connection }
                         : {
                             ...prev.connection,
-                            isEaConnected: sync.isEaConnected,
-                            lastEaSync: sync.lastEaSync,
+                            terminalConnected: sync.terminalConnected ?? true,
+                            isEaConnected: sync.terminalConnected ?? sync.isEaConnected ?? true,
+                            lastSync: sync.lastSync ?? Date.now(),
+                            lastEaSync: sync.lastEaSync ?? Date.now(),
                           },
                     }
                   : prev

@@ -23,7 +23,6 @@ export const MT5GatewayPage: React.FC = () => {
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [showLegacyEa, setShowLegacyEa] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // Connection Credentials Form
@@ -374,29 +373,15 @@ else:
         </div>
       </div>
 
-      {/* Collapsible Legacy EA Section */}
+      {/* Direct Python MetaTrader 5 Architecture Panel */}
       <div className="border border-slate-800/80 rounded-xl bg-slate-900/40 p-4">
-        <button
-          onClick={() => setShowLegacyEa(!showLegacyEa)}
-          className="w-full flex items-center justify-between text-left text-xs font-mono text-slate-400 hover:text-slate-200"
-        >
-          <div className="flex items-center gap-2">
-            <FileCode2 className="h-4 w-4 text-slate-500" />
-            <span>Legacy Alternative: WebRequest Expert Advisor (Optional)</span>
-          </div>
-          {showLegacyEa ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-
-        {showLegacyEa && (
-          <div className="mt-4 pt-3 border-t border-slate-800/80 text-xs text-slate-400 space-y-2 font-mono">
-            <p>
-              If your environment cannot run Python locally, our platform also includes a fallback MQL5 EA located at <code className="text-cyan-400">backend/ea/AIMT5Bridge.mq5</code>.
-            </p>
-            <p>
-              However, the direct Python <code className="text-cyan-400">MetaTrader5</code> package is the recommended, zero-lag standard.
-            </p>
-          </div>
-        )}
+        <div className="flex items-center gap-2 mb-2 text-xs font-mono text-slate-300 font-semibold">
+          <Layers className="h-4 w-4 text-cyan-400" />
+          <span>Direct Python IPC Architecture (Zero EA Required)</span>
+        </div>
+        <p className="text-xs text-slate-400 leading-relaxed font-mono">
+          Unlike legacy setups that rely on MQL5 Expert Advisors polling via slow HTTP WebRequests, this terminal connects directly into MetaTrader 5 through inter-process shared memory using the official Python <code className="text-cyan-400">MetaTrader5</code> package. All quotes, tick streams, Level 2 depth, order fills, and historical OHLCV bars are retrieved instantly without placing any code on your MT5 charts.
+        </p>
       </div>
     </div>
   );

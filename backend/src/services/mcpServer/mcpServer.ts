@@ -392,7 +392,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
         },
         type: {
           type: 'string',
-          enum: [],
+          enum: ['RSI_REVERSAL', 'EMA_CROSSOVER', 'MACD_MOMENTUM', 'BOLLINGER_BREAKOUT', 'MULTI_INDICATOR_CONSENSUS', 'CUSTOM_RULESET'],
           description: 'Strategy algorithmic type',
         },
         symbol: {
@@ -454,7 +454,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
       properties: {
         category: {
           type: 'string',
-          enum: [],
+          enum: ['all', 'market_insight', 'pattern', 'execution_note', 'anomaly', 'research'],
           description: 'Filter by category (default: all)',
         },
       },
@@ -592,7 +592,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
       properties: {
         orderType: {
           type: 'string',
-          enum: [],
+          enum: ['BUY', 'SELL'],
           description: 'Order type',
         },
         symbol: {
@@ -619,7 +619,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
       properties: {
         orderType: {
           type: 'string',
-          enum: [],
+          enum: ['BUY', 'SELL'],
           description: 'Order type',
         },
         symbol: {
@@ -654,7 +654,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
         },
         orderType: {
           type: 'string',
-          enum: [],
+          enum: ['BUY', 'SELL', 'BUY_LIMIT', 'SELL_LIMIT', 'BUY_STOP', 'SELL_STOP'],
           description: 'Order type',
         },
         volume: {
@@ -724,6 +724,77 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
     inputSchema: {
       type: 'object',
       properties: {},
+    },
+  },
+  {
+    name: 'mt5_daemon_dispatch',
+    description: 'Send high-level autonomous directives to the background MT5 trading daemon. Controls trades, risk rules, and triggers strategy tests or knowledge base operations.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          description: 'Directive action (e.g. BUY, SELL, CLOSE_POSITION, CLOSE_ALL, MODIFY_POSITION, CREATE_STRATEGY, RECORD_OBSERVATION, RUN_BACKTEST, EMERGENCY_HALT, RESUME)',
+        },
+        symbol: {
+          type: 'string',
+          description: 'Symbol ticker (e.g. EURUSD, XAUUSD)',
+        },
+        volume: {
+          type: 'number',
+          description: 'Lot volume',
+        },
+        price: {
+          type: 'number',
+          description: 'Target price',
+        },
+        sl: {
+          type: 'number',
+          description: 'Stop loss price level or points',
+        },
+        tp: {
+          type: 'number',
+          description: 'Take profit price level or points',
+        },
+        ticket: {
+          type: 'number',
+          description: 'Order or position ticket ID',
+        },
+        reason: {
+          type: 'string',
+          description: 'Quantitative rationale behind the AI directive',
+        },
+        confidence: {
+          type: 'number',
+          description: 'AI model confidence score between 0.0 and 1.0',
+        },
+      },
+      required: ['action'],
+    },
+  },
+  {
+    name: 'mt5_daemon_status',
+    description: 'Check active AI daemon operational status, watchdog heartbeat, background tasks, and active watchlist.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'mt5_daemon_heartbeat',
+    description: 'Register external AI agent session heartbeat to keep autonomous watchdog active.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        aiName: {
+          type: 'string',
+          description: 'External AI agent identification (e.g. Claude Quant, Cursor Agent, Custom Copilot)',
+        },
+        sessionId: {
+          type: 'string',
+          description: 'Session identifier',
+        },
+      },
     },
   },
 ];
@@ -1355,20 +1426,37 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
       };
     }
 
-     case 'mt5_get_live_stream_info': {
-       const { getStreamStats } = await import('@/services/websocketServer');
-       const stats = getStreamStats();
-       return {
-         protocol: '',
-         sseUrl: '',
-         websocketUrl: '',
-         stats: {
-           wsClientsCount: stats.wsClientsCount,
-           sseClientsCount: stats.sseClientsCount,
-           totalEventsBroadcasted: stats.totalEventsBroadcasted
-         }
-       };
-     }
+      case 'mt5_get_live_stream_info': {
+        const { getStreamStats } = await import('@/services/websocketServer');
+        const stats = getStreamStats();
+        return {
+          protocol: 'SSE & WebSocket (JSON format)',
+          liveMarketSseUrl: '/api/stream/live',
+          daemonEventsSseUrl: '/api/daemon/stream',
+          mcpSseUrl: '/api/mcp/sse',
+          websocketUrl: '/ws',
+          stats: {
+            wsClientsCount: stats.wsClientsCount,
+            sseClientsCount: stats.sseClientsCount,
+            totalEventsBroadcasted: stats.totalEventsBroadcasted,
+          },
+        };
+      }
+
+      case 'mt5_daemon_dispatch': {
+        const { daemonService } = await import('@features/daemon/daemonService.ts');
+        return await daemonService.dispatchAICommand(args as any);
+      }
+
+      case 'mt5_daemon_status': {
+        const { daemonService } = await import('@features/daemon/daemonService.ts');
+        return daemonService.getStatus();
+      }
+
+      case 'mt5_daemon_heartbeat': {
+        const { daemonService } = await import('@features/daemon/daemonService.ts');
+        return daemonService.registerHeartbeat(args.aiName, args.sessionId, args.metadata);
+      }
 
     default:
       throw new Error(`Unknown tool: ${name}`);

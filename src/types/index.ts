@@ -1,6 +1,44 @@
 export type OrderType = 'BUY' | 'SELL';
 export type CommandStatus = 'pending' | 'dispatched' | 'executed' | 'failed' | 'cancelled';
-export type OrderAction = 'EXECUTE_TRADE' | 'MODIFY_POSITION' | 'CLOSE_POSITION' | 'CLOSE_ALL' | 'SET_RISK_GUARD';
+export type OrderAction = 'EXECUTE_TRADE' | 'MODIFY_POSITION' | 'CLOSE_POSITION' | 'CLOSE_ALL' | 'SET_RISK_GUARD' | 'CANCEL_PENDING' | 'CANCEL_ORDER';
+
+export interface HistoryDeal {
+  ticket: number;
+  order: number;
+  time: number;
+  type: string;
+  entry: string;
+  magic: number;
+  positionId: number;
+  volume: number;
+  price: number;
+  commission: number;
+  swap: number;
+  profit: number;
+  fee?: number;
+  symbol: string;
+  comment: string;
+  timeIso?: string;
+}
+
+export interface HistoryOrder {
+  ticket: number;
+  timeSetup: number;
+  type: string;
+  state: string;
+  magic: number;
+  positionId: number;
+  volumeInitial: number;
+  volumeCurrent: number;
+  priceOpen: number;
+  sl: number;
+  tp: number;
+  priceCurrent: number;
+  symbol: string;
+  comment: string;
+  timeDone?: number;
+  timeDoneIso?: string;
+}
 
 export interface AccountInfo {
   login: number;
@@ -220,8 +258,14 @@ export interface TechnicalIndicatorsResult {
 export interface AppState {
   connection: {
     isEaConnected: boolean;
+    terminalConnected?: boolean;
+    lastSync?: number;
     lastEaSync: number;
     eaVersion: string;
+    packageVersion?: string;
+    engine?: string;
+    isNative?: boolean;
+    packageAvailable?: boolean;
     bridgeEndpoint: string;
     fallbackEndpoint: string;
     serverTime: number;

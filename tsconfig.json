@@ -17,7 +17,7 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "paths": {
-      "@/*": ["./backend/src/*"],
+      "@/*": ["./src/*", "./backend/src/*"],
       "@core/*": ["./backend/src/core/*"],
       "@features/*": ["./backend/src/features/*"],
       "@services/*": ["./backend/src/services/*"],

@@ -50,22 +50,31 @@ class ConnectorManager {
         }
 
         // Broadcast to frontend terminal clients
+        const syncPayload = {
+          account: data.account,
+          positions: data.positions,
+          pendingOrders: data.pendingOrders,
+          ticks: data.ticks,
+          allSymbols: data.symbols,
+          currentChart: tradeStore.getCurrentChart(),
+          chartHistory: tradeStore.getChartHistory(),
+          tickHistory: tradeStore.getTickHistory(),
+          connection: tradeStore.getState().connection,
+          terminalConnected: true,
+          isEaConnected: true,
+          provider: this.activeConnector.name,
+          lastSync: Date.now(),
+          lastEaSync: Date.now(),
+        };
+
+        broadcast({
+          type: 'mt5:sync',
+          payload: syncPayload,
+        });
+
         broadcast({
           type: 'ea:sync',
-          payload: {
-            account: data.account,
-            positions: data.positions,
-            pendingOrders: data.pendingOrders,
-            ticks: data.ticks,
-            allSymbols: data.symbols,
-            currentChart: tradeStore.getCurrentChart(),
-            chartHistory: tradeStore.getChartHistory(),
-            tickHistory: tradeStore.getTickHistory(),
-            connection: tradeStore.getState().connection,
-            isEaConnected: true,
-            provider: this.activeConnector.name,
-            lastEaSync: Date.now(),
-          },
+          payload: syncPayload,
         });
       });
     }

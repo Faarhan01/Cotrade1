@@ -8,6 +8,7 @@ import { DatabaseExplorer } from './components/database/DatabaseExplorer';
 import { KnowledgeBasePage } from './pages/KnowledgeBasePage';
 import { DaemonPage } from './pages/DaemonPage';
 import { MT5GatewayPage } from './components/gateway/MT5GatewayPage';
+import { AuditLogPage } from './pages/AuditLogPage';
 import { Activity, ShieldCheck, Terminal, Cpu } from 'lucide-react';
 
 export default function App() {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AppState } from '@/types';
-import { EaConnectionRadar } from '../components/dashboard/EaConnectionRadar';
+import { MT5ConnectionRadar } from '../components/dashboard/MT5ConnectionRadar';
 import { CurrentChartSymbolCard } from '../components/dashboard/CurrentChartSymbolCard';
 import { AccountMetricsBar } from '../components/dashboard/AccountMetricsBar';
 import { LiveTickStream } from '../components/dashboard/LiveTickStream';
@@ -57,13 +57,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ state, onRefresh }
 
   return (
     <div className="space-y-6">
-      {/* 1. Real-Time EA Connection Detector */}
-      <EaConnectionRadar state={state} onRefresh={onRefresh} />
+      {/* 1. Real-Time MetaTrader 5 Connection Radar */}
+      <MT5ConnectionRadar state={state} onRefresh={onRefresh} />
 
       {/* 2. Account High-Level Metrics */}
       <AccountMetricsBar account={account} />
 
-      {/* 3. Section for Current Symbol (EA Connected Chart) */}
+      {/* 3. Section for Current Symbol (Connected Terminal Chart) */}
       <CurrentChartSymbolCard
         currentChart={currentChart}
         onSelectSymbol={setSelectedSymbol}
@@ -104,7 +104,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ state, onRefresh }
         onSelectSymbol={setSelectedSymbol}
       />
 
-      {/* 7. Section for All Tracked Symbols Sent By MT5 EA */}
+      {/* 7. Section for All Tracked Symbols Sent By MetaTrader 5 Package */}
       <AllTrackedSymbolsTable
         symbols={allSymbols}
         ticks={ticks}

@@ -243,6 +243,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
     description: 'Precomputed technical indicator suite for quantitative analysis: RSI (14), EMAs (9, 21, 50, 200), MACD (12,26,9), Bollinger Bands (20,2), ATR (14), and automated algorithmic market summary (STRONG_BUY, BUY, NEUTRAL, SELL, STRONG_SELL).',
     inputSchema: {
       type: 'object',
+      properties: {},
     },
   },
   {
@@ -710,6 +711,77 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
     inputSchema: {
       type: 'object',
       properties: {},
+    },
+  },
+  {
+    name: 'mt5_daemon_dispatch',
+    description: 'Send high-level autonomous directives to the background MT5 trading daemon. Controls trades, risk rules, and triggers strategy tests or knowledge base operations.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          description: 'Directive action (e.g. BUY, SELL, CLOSE_POSITION, CLOSE_ALL, MODIFY_POSITION, CREATE_STRATEGY, RECORD_OBSERVATION, RUN_BACKTEST, EMERGENCY_HALT, RESUME)',
+        },
+        symbol: {
+          type: 'string',
+          description: 'Symbol ticker (e.g. EURUSD, XAUUSD)',
+        },
+        volume: {
+          type: 'number',
+          description: 'Lot volume',
+        },
+        price: {
+          type: 'number',
+          description: 'Target price',
+        },
+        sl: {
+          type: 'number',
+          description: 'Stop loss price level or points',
+        },
+        tp: {
+          type: 'number',
+          description: 'Take profit price level or points',
+        },
+        ticket: {
+          type: 'number',
+          description: 'Order or position ticket ID',
+        },
+        reason: {
+          type: 'string',
+          description: 'Quantitative rationale behind the AI directive',
+        },
+        confidence: {
+          type: 'number',
+          description: 'AI model confidence score between 0.0 and 1.0',
+        },
+      },
+      required: ['action'],
+    },
+  },
+  {
+    name: 'mt5_daemon_status',
+    description: 'Check active AI daemon operational status, watchdog heartbeat, background tasks, and active watchlist.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'mt5_daemon_heartbeat',
+    description: 'Register external AI agent session heartbeat to keep autonomous watchdog active.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        aiName: {
+          type: 'string',
+          description: 'External AI agent identification (e.g. Claude Quant, Cursor Agent, Custom Copilot)',
+        },
+        sessionId: {
+          type: 'string',
+          description: 'Session identifier',
+        },
+      },
     },
   },
 ];

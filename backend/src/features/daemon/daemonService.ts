@@ -1,8 +1,23 @@
-import { appendEvent, readEvents, clearEvents } from '@services/eventBuffer';
+import { appendEvent } from '@services/eventBuffer';
 import { tradeStore } from '@services/tradeStore';
 import { connectorManager } from '@features/mt5';
 import { broadcast } from '@services/websocketServer';
 import { Response } from 'express';
+import { normalizeSymbol } from '@core/utils';
+import {
+  dbGetStrategies,
+  dbSaveStrategy,
+  dbDeleteStrategy,
+  dbGetObservations,
+  dbSaveObservation,
+  dbDeleteObservation,
+  dbSaveBacktestResult,
+  dbGetBacktestResults,
+  dbGetCandles,
+  dbGetAnalytics,
+  pruneDatabase,
+} from '@features/database';
+import { runStrategyBacktest } from '@features/strategies';
 
 export interface DaemonConfig {
   heartbeatTimeoutMs: number;
@@ -39,11 +54,11 @@ export class DaemonService {
     autoRiskGuard: true,
     maxSlippagePoints: 20,
     allowedSymbols: ['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD', 'BTCUSD'],
-    maxOpenPositions: 5,
+    maxOpenPositions: 10,
     aiControlMode: 'autonomous',
   };
 
-  private watchlist: string[] = ['EURUSD', 'GBPUSD', 'XAUUSD'];
+  private watchlist: string[] = ['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD', 'BTCUSD'];
   private tasks: DaemonTask[] = [
     {
       id: 'task-risk-guard',
@@ -94,10 +109,6 @@ export class DaemonService {
     this.lastPulse = Date.now();
     const now = Date.now();
 
-    // 1. Check AI watchdog
-    const aiAlive = this.aiLastHeartbeat > 0 && now - this.aiLastHeartbeat < this.config.heartbeatTimeoutMs;
-
-    // 2. Run active tasks
     for (const task of this.tasks) {
       if (task.status === 'active' && now - task.lastRun >= task.intervalMs) {
         task.lastRun = now;
@@ -117,7 +128,6 @@ export class DaemonService {
         });
       }
     } else if (task.action === 'EVALUATE_TICKS') {
-      // Check current ticks for unusual spread
       const ticks = tradeStore.getTicks();
       for (const t of ticks) {
         if (t.spread > 50 && this.watchlist.includes(t.symbol)) {
@@ -179,7 +189,7 @@ export class DaemonService {
     };
   }
 
-  // External AI Dispatches Action or Trade
+  // External AI Dispatches Full Action Suite (Trading, Terminal Control & Knowledge Base)
   public async dispatchAICommand(command: {
     action: string;
     symbol?: string;
@@ -191,9 +201,24 @@ export class DaemonService {
     ticket?: number;
     reason?: string;
     confidence?: number;
+    comment?: string;
+    magic?: number;
+    timeframe?: string;
+    count?: number;
+    dateFrom?: number;
+    dateTo?: number;
+    priceOpen?: number;
+    priceClose?: number;
+    strategy?: any;
+    observation?: any;
+    strategyId?: string;
+    observationId?: string;
+    category?: string;
+    params?: any;
+    [key: string]: any;
   }): Promise<any> {
     const connector = connectorManager.getConnector();
-    const actionUpper = (command.action || '').toUpperCase();
+    const actionUpper = (command.action || '').toUpperCase().trim();
 
     this.notify('AI_DISPATCH_RECEIVED', {
       action: actionUpper,
@@ -201,17 +226,28 @@ export class DaemonService {
       timestamp: Date.now(),
     });
 
-    if (actionUpper === 'BUY' || actionUpper === 'SELL' || actionUpper === 'EXECUTE_ORDER') {
+    // ==========================================
+    // 1. MetaTrader 5 Trade Execution & Orders
+    // ==========================================
+    if (actionUpper === 'BUY' || actionUpper === 'SELL' || actionUpper === 'EXECUTE_ORDER' || actionUpper === 'PLACE_ORDER') {
+      const sym = normalizeSymbol(command.symbol || 'EURUSD');
+      const orderTypeVal = command.orderType
+        ? command.orderType.toUpperCase()
+        : actionUpper === 'SELL'
+        ? 'SELL'
+        : 'BUY';
+
       const orderData = {
         action: 'EXECUTE_TRADE' as const,
-        symbol: command.symbol || 'EURUSD',
-        orderType: (command.orderType === 'SELL' || actionUpper === 'SELL' ? 'SELL' : 'BUY') as 'BUY' | 'SELL',
+        symbol: sym,
+        orderType: orderTypeVal as any,
         volume: Number(command.volume) || 0.1,
-        price: command.price,
-        sl: command.sl,
-        tp: command.tp,
+        price: command.price ? Number(command.price) : undefined,
+        sl: command.sl ? Number(command.sl) : undefined,
+        tp: command.tp ? Number(command.tp) : undefined,
         source: 'AI_MCP' as const,
-        comment: `AI_${(command.confidence ? Math.round(command.confidence * 100) : 90)}%`,
+        comment: command.comment || `AI_${command.confidence ? Math.round(command.confidence * 100) : 90}%`,
+        magic: command.magic || 889900,
       };
 
       const queueResult = tradeStore.enqueueCommand(orderData);
@@ -220,6 +256,7 @@ export class DaemonService {
       this.notify('AI_ORDER_EXECUTED', {
         success: execResult.success,
         ticket: execResult.ticket,
+        dealTicket: execResult.dealTicket,
         price: execResult.price,
         message: execResult.message,
         commandId: queueResult.commandId,
@@ -228,25 +265,337 @@ export class DaemonService {
       return {
         success: execResult.success,
         ticket: execResult.ticket,
+        dealTicket: execResult.dealTicket,
         price: execResult.price,
         message: execResult.message,
         commandId: queueResult.commandId,
       };
-    } else if (actionUpper === 'CLOSE_ALL') {
+    }
+
+    if (actionUpper === 'MODIFY_POSITION') {
+      const ticket = Number(command.ticket);
+      if (!ticket) return { success: false, message: 'Ticket number is required to modify position' };
+      const res = await connector.modifyPosition(ticket, command.sl, command.tp);
+      this.notify('AI_POSITION_MODIFIED', { ticket, ...res });
+      return res;
+    }
+
+    if (actionUpper === 'CLOSE_POSITION') {
+      const ticket = Number(command.ticket);
+      if (!ticket) return { success: false, message: 'Ticket number is required to close position' };
+      const res = await connector.closePosition(ticket, command.volume);
+      this.notify('AI_POSITION_CLOSED', { ticket, ...res });
+      return res;
+    }
+
+    if (actionUpper === 'CLOSE_ALL') {
       const positions = tradeStore.getPositions();
+      const targetSym = command.symbol ? normalizeSymbol(command.symbol) : null;
       const results = [];
       for (const p of positions) {
-        const res = await connector.closePosition(p.ticket, p.volume);
-        results.push({ ticket: p.ticket, ...res });
+        if (!targetSym || p.symbol === targetSym) {
+          const res = await connector.closePosition(p.ticket, p.volume);
+          results.push({ ticket: p.ticket, symbol: p.symbol, ...res });
+        }
       }
       this.notify('AI_CLOSE_ALL_COMPLETED', { closedCount: results.length, results });
-      return { success: true, closedPositions: results };
-    } else if (actionUpper === 'EMERGENCY_HALT') {
+      return { success: true, closedCount: results.length, closedPositions: results };
+    }
+
+    if (actionUpper === 'MODIFY_ORDER') {
+      const ticket = Number(command.ticket);
+      if (!ticket) return { success: false, message: 'Ticket number is required to modify pending order' };
+      const res = await connector.modifyOrder(ticket, command.price, command.sl, command.tp);
+      this.notify('AI_ORDER_MODIFIED', { ticket, ...res });
+      return res;
+    }
+
+    if (actionUpper === 'CANCEL_ORDER' || actionUpper === 'DELETE_ORDER') {
+      const ticket = Number(command.ticket);
+      if (!ticket) return { success: false, message: 'Ticket number is required to cancel pending order' };
+      const res = await connector.cancelOrder(ticket);
+      this.notify('AI_ORDER_CANCELLED', { ticket, ...res });
+      return res;
+    }
+
+    // ==========================================
+    // 2. MT5 Calculations, Pre-Checks & Depth
+    // ==========================================
+    if (actionUpper === 'CALC_MARGIN') {
+      const sym = normalizeSymbol(command.symbol || 'EURUSD');
+      return await connector.calcMargin(
+        command.orderType || 'BUY',
+        sym,
+        Number(command.volume) || 0.1,
+        command.price ? Number(command.price) : undefined
+      );
+    }
+
+    if (actionUpper === 'CALC_PROFIT') {
+      const sym = normalizeSymbol(command.symbol || 'EURUSD');
+      return await connector.calcProfit(
+        command.orderType || 'BUY',
+        sym,
+        Number(command.volume) || 0.1,
+        Number(command.priceOpen || 0),
+        Number(command.priceClose || 0)
+      );
+    }
+
+    if (actionUpper === 'CHECK_ORDER') {
+      const sym = normalizeSymbol(command.symbol || 'EURUSD');
+      return await connector.checkOrder({
+        symbol: sym,
+        orderType: (command.orderType || 'BUY') as any,
+        volume: Number(command.volume) || 0.1,
+        price: command.price ? Number(command.price) : undefined,
+      });
+    }
+
+    if (actionUpper === 'GET_MARKET_DEPTH') {
+      const sym = normalizeSymbol(command.symbol || 'EURUSD');
+      return await connector.getMarketDepth(sym);
+    }
+
+    // ==========================================
+    // 3. MT5 Data & Terminal Telemetry Queries
+    // ==========================================
+    if (actionUpper === 'GET_ACCOUNT' || actionUpper === 'ACCOUNT_INFO') {
+      return tradeStore.getAccount();
+    }
+
+    if (actionUpper === 'GET_POSITIONS') {
+      const pos = tradeStore.getPositions();
+      return command.symbol ? pos.filter((p) => p.symbol === normalizeSymbol(command.symbol!)) : pos;
+    }
+
+    if (actionUpper === 'GET_ORDERS' || actionUpper === 'GET_PENDING_ORDERS') {
+      return tradeStore.getPendingOrders();
+    }
+
+    if (actionUpper === 'GET_TICKS') {
+      const ticks = tradeStore.getTicks();
+      if (command.symbol) {
+        return ticks.filter((t) => t.symbol === normalizeSymbol(command.symbol!));
+      }
+      return ticks;
+    }
+
+    if (actionUpper === 'GET_CANDLES' || actionUpper === 'FETCH_CANDLES') {
+      const sym = normalizeSymbol(command.symbol || 'EURUSD');
+      const tf = (command.timeframe || 'M1').toUpperCase();
+      const count = Number(command.count) || 100;
+      return await connector.getCandles(sym, tf, count);
+    }
+
+    if (actionUpper === 'GET_HISTORY_DEALS') {
+      return await connector.getHistoryDeals({
+        dateFrom: command.dateFrom,
+        dateTo: command.dateTo,
+        count: command.count || 50,
+      });
+    }
+
+    if (actionUpper === 'GET_HISTORY_ORDERS') {
+      return await connector.getHistoryOrders({
+        dateFrom: command.dateFrom,
+        dateTo: command.dateTo,
+        count: command.count || 50,
+      });
+    }
+
+    if (actionUpper === 'CONNECT_MT5') {
+      const res = await connector.connect({
+        login: command.login,
+        password: command.password,
+        server: command.server,
+        path: command.path,
+      });
+      this.notify('AI_CONNECT_MT5', res);
+      return res;
+    }
+
+    if (actionUpper === 'DISCONNECT_MT5') {
+      const res = await connector.disconnect();
+      this.notify('AI_DISCONNECT_MT5', res);
+      return res;
+    }
+
+    if (actionUpper === 'CONFIGURE_RISK') {
+      if (command.params) {
+        tradeStore.updateRiskGuard(command.params);
+      }
+      return { success: true, riskGuard: tradeStore.getRiskGuard() };
+    }
+
+    // ==========================================
+    // 4. Knowledge Base & Strategy Interactions
+    // ==========================================
+    if (actionUpper === 'CREATE_STRATEGY' || actionUpper === 'SAVE_STRATEGY') {
+      const stratData = command.strategy || command;
+      if (!stratData.name) {
+        return { success: false, message: 'Strategy name is required' };
+      }
+
+      const newStrat = {
+        id: stratData.id || `strat-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        name: stratData.name,
+        description: stratData.description || 'AI Created Strategy',
+        type: stratData.type || 'MULTI_INDICATOR_CONSENSUS',
+        symbol: normalizeSymbol(stratData.symbol || 'EURUSD'),
+        timeframe: (stratData.timeframe || 'M1').toUpperCase(),
+        parameters: stratData.parameters || {
+          rsiOversold: 30,
+          rsiOverbought: 70,
+          fastEmaPeriod: 9,
+          slowEmaPeriod: 21,
+          stopLossPoints: 300,
+          takeProfitPoints: 600,
+          lotSize: 0.1,
+        },
+        status: stratData.status || 'active',
+        tags: stratData.tags || ['AI_Agent', 'Autonomous'],
+        author: stratData.author || this.aiName,
+        notes: stratData.notes || command.reason || '',
+      };
+
+      await dbSaveStrategy(newStrat as any);
+      this.notify('AI_STRATEGY_SAVED', { strategy: newStrat });
+      tradeStore.addLog(
+        'info',
+        `AI Created Strategy: ${newStrat.name}`,
+        `Symbol: ${newStrat.symbol} [${newStrat.timeframe}] by ${newStrat.author}`,
+        'AI_AGENT'
+      );
+      return { success: true, strategy: newStrat };
+    }
+
+    if (actionUpper === 'GET_STRATEGIES' || actionUpper === 'LIST_STRATEGIES') {
+      const sym = command.symbol ? normalizeSymbol(command.symbol) : undefined;
+      const strategies = await dbGetStrategies(sym);
+      return { success: true, count: strategies.length, strategies };
+    }
+
+    if (actionUpper === 'DELETE_STRATEGY') {
+      const stratId = command.strategyId || command.id;
+      if (!stratId) return { success: false, message: 'Strategy ID is required' };
+      await dbDeleteStrategy(stratId);
+      this.notify('AI_STRATEGY_DELETED', { strategyId: stratId });
+      return { success: true, message: `Strategy ${stratId} deleted` };
+    }
+
+    if (actionUpper === 'RECORD_OBSERVATION' || actionUpper === 'SAVE_OBSERVATION') {
+      const obsData = command.observation || command;
+      if (!obsData.title || !obsData.content) {
+        return { success: false, message: 'Observation title and content are required' };
+      }
+
+      const newObs = {
+        id: obsData.id || `obs-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        title: obsData.title,
+        content: obsData.content,
+        symbol: obsData.symbol ? normalizeSymbol(obsData.symbol) : undefined,
+        timeframe: obsData.timeframe ? obsData.timeframe.toUpperCase() : undefined,
+        strategyId: obsData.strategyId,
+        category: obsData.category || 'market_insight',
+        tags: obsData.tags || ['AI_Obs'],
+        metrics: obsData.metrics,
+      };
+
+      await dbSaveObservation(newObs as any);
+      this.notify('AI_OBSERVATION_SAVED', { observation: newObs });
+      tradeStore.addLog(
+        'info',
+        `AI Market Observation: ${newObs.title}`,
+        `${newObs.category.toUpperCase()} • ${newObs.content.substring(0, 80)}...`,
+        'AI_AGENT'
+      );
+      return { success: true, observation: newObs };
+    }
+
+    if (actionUpper === 'GET_OBSERVATIONS' || actionUpper === 'LIST_OBSERVATIONS') {
+      const obs = await dbGetObservations(command.category);
+      return { success: true, count: obs.length, observations: obs };
+    }
+
+    if (actionUpper === 'DELETE_OBSERVATION') {
+      const obsId = command.observationId || command.id;
+      if (!obsId) return { success: false, message: 'Observation ID is required' };
+      await dbDeleteObservation(obsId);
+      this.notify('AI_OBSERVATION_DELETED', { observationId: obsId });
+      return { success: true, message: `Observation ${obsId} deleted` };
+    }
+
+    if (actionUpper === 'RUN_BACKTEST') {
+      const sym = normalizeSymbol(command.symbol || 'EURUSD');
+      const tf = (command.timeframe || 'M1').toUpperCase();
+      const candleCount = Number(command.candleCount) || 300;
+      const initialDeposit = Number(command.initialDeposit) || 10000;
+
+      // 1. Fetch candles from database or MT5 connector
+      let candles = await dbGetCandles(sym, tf, candleCount);
+      if (candles.length < 20) {
+        const fetched = await connector.getCandles(sym, tf, candleCount);
+        if (fetched && fetched.length >= 20) {
+          candles = fetched;
+        } else {
+          return {
+            success: false,
+            message: `Insufficient historical candles for ${sym} [${tf}]. Need at least 20, got ${candles.length}.`,
+          };
+        }
+      }
+
+      const stratObj = command.strategy || {
+        id: command.strategyId || 'adhoc-ai-strat',
+        name: command.strategyName || 'AI Algorithmic Evaluation',
+        type: command.strategyType || 'MULTI_INDICATOR_CONSENSUS',
+        symbol: sym,
+        timeframe: tf,
+        parameters: command.parameters || {},
+      };
+
+      const result = runStrategyBacktest(stratObj, candles, initialDeposit, 0.0001);
+      await dbSaveBacktestResult(result);
+
+      this.notify('AI_BACKTEST_COMPLETED', { result });
+      tradeStore.addLog(
+        'info',
+        `AI Backtest Finished: ${result.strategyName}`,
+        `Win Rate: ${result.winRatePct}% | Net Profit: $${result.netProfit} | Trades: ${result.totalTrades}`,
+        'AI_AGENT'
+      );
+      return { success: true, result };
+    }
+
+    if (actionUpper === 'GET_BACKTEST_RESULTS') {
+      const results = await dbGetBacktestResults(command.strategyId, command.limit || 20);
+      return { success: true, count: results.length, results };
+    }
+
+    if (actionUpper === 'GET_DATABASE_ANALYTICS') {
+      const analytics = await dbGetAnalytics();
+      return { success: true, analytics };
+    }
+
+    if (actionUpper === 'PRUNE_DATABASE') {
+      await pruneDatabase();
+      return { success: true, message: 'Database pruned and capped successfully' };
+    }
+
+    // ==========================================
+    // 5. Emergency Failsafes & State
+    // ==========================================
+    if (actionUpper === 'EMERGENCY_HALT') {
       this.isRunning = false;
       this.notify('AI_EMERGENCY_HALT', { reason: command.reason || 'AI triggered halt' });
+      tradeStore.triggerKillSwitch(true);
       return { success: true, message: 'Daemon and automated trading halted' };
-    } else if (actionUpper === 'RESUME') {
+    }
+
+    if (actionUpper === 'RESUME') {
       this.isRunning = true;
+      tradeStore.triggerKillSwitch(false);
       this.notify('AI_DAEMON_RESUMED', { message: 'Daemon resumed' });
       return { success: true, message: 'Daemon operations resumed' };
     }
@@ -280,6 +629,41 @@ export class DaemonService {
       watchlist: this.watchlist,
       tasks: this.tasks,
       activeSseSubscribers: this.sseClients.size,
+      capabilities: [
+        'BUY',
+        'SELL',
+        'EXECUTE_ORDER',
+        'MODIFY_POSITION',
+        'CLOSE_POSITION',
+        'CLOSE_ALL',
+        'MODIFY_ORDER',
+        'CANCEL_ORDER',
+        'CALC_MARGIN',
+        'CALC_PROFIT',
+        'CHECK_ORDER',
+        'GET_MARKET_DEPTH',
+        'GET_ACCOUNT',
+        'GET_POSITIONS',
+        'GET_ORDERS',
+        'GET_TICKS',
+        'GET_CANDLES',
+        'GET_HISTORY_DEALS',
+        'GET_HISTORY_ORDERS',
+        'CONNECT_MT5',
+        'DISCONNECT_MT5',
+        'CREATE_STRATEGY',
+        'GET_STRATEGIES',
+        'DELETE_STRATEGY',
+        'RECORD_OBSERVATION',
+        'GET_OBSERVATIONS',
+        'DELETE_OBSERVATION',
+        'RUN_BACKTEST',
+        'GET_BACKTEST_RESULTS',
+        'GET_DATABASE_ANALYTICS',
+        'PRUNE_DATABASE',
+        'EMERGENCY_HALT',
+        'RESUME',
+      ],
     };
   }
 

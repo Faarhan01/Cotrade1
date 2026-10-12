@@ -320,8 +320,14 @@ export interface OrderCheckResult {
 
 export interface ConnectionStatus {
   isEaConnected: boolean;
+  terminalConnected?: boolean;
+  lastSync?: number;
   lastEaSync: number;
   eaVersion: string;
+  packageVersion?: string;
+  engine?: string;
+  isNative?: boolean;
+  packageAvailable?: boolean;
   bridgeEndpoint: string;
   fallbackEndpoint: string;
   serverTime: number;
