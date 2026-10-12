@@ -373,7 +373,7 @@ export const KnowledgeBasePage: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto px-4 space-y-6">
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-cyan-950/30 to-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -807,7 +807,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
       {/* SUBTAB 2: BACKTEST LAB RESULTS */}
       {activeSubTab === 'backtests' && (
-        <div className="space-y-6">
+        <div className="container mx-auto px-4 space-y-6">
           {activeBacktestResult ? (
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6 shadow-sm">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
@@ -1011,7 +1011,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
       {/* SUBTAB 3: CHART DATA & HISTORY INSPECTOR */}
       {activeSubTab === 'chart_history' && (
-        <div className="space-y-6">
+        <div className="container mx-auto px-4 space-y-6">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
@@ -1335,7 +1335,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
       {/* SUBTAB 5: METATRADER 5 PACKAGE API REFERENCE */}
       {activeSubTab === 'api_reference' && (
-        <div className="space-y-6">
+        <div className="container mx-auto px-4 space-y-6">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
             <h2 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
               <Code className="h-4 w-4 text-cyan-400" />
@@ -1764,3 +1764,4 @@ export const KnowledgeBasePage: React.FC = () => {
     </div>
   );
 };
+

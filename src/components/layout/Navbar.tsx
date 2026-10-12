@@ -67,9 +67,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   ];
 
   return (
-    <header className="border-b border-slate-800/80 bg-slate-950/95 sticky top-0 z-50">
-      <div className="container-custom">
-        <div className="flex items-center justify-between gap-8 h-14">
+    <header className="border-b border-slate-800/80 bg-slate-900/95 sticky top-0 z-50 shadow-sm">
+      <div className="container">
+        <div className="flex items-center justify-between gap-8 h-16">
           {/* Zone 1: Brand Wordmark (Single line, no pills) */}
           <div className="flex items-center gap-3 shrink-0">
             <button
@@ -77,14 +77,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="text-base font-bold tracking-tight text-white hover:text-cyan-400 transition-colors whitespace-nowrap shrink-0 flex items-center gap-2"
             >
               <span>MetaTrader 5 Copilot</span>
-              <span className="text-xs font-mono font-normal text-slate-400">
-                / Python IPC
-              </span>
             </button>
           </div>
 
           {/* Zone 2: Navigation Links (Single-line, whitespace-nowrap, subtle hover) */}
-          <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-slate-400">
+          <nav className="flex-1 overflow-x-auto whitespace-nowrap gap-4 text-sm font-medium text-slate-400">
             {navItems.map((item) => {
               const isActive = activeTab === item.id || (item.id === 'gateway' && activeTab === 'ea');
               return (
@@ -94,7 +91,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className={`transition-colors whitespace-nowrap shrink-0 text-xs font-mono ${
                     isActive
                       ? 'text-cyan-400 font-semibold'
-                      : 'hover:text-slate-200'
+                      : 'text-slate-300 hover:text-slate-100'
                   }`}
                 >
                   {item.label}
@@ -146,7 +143,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
                 className={`whitespace-nowrap shrink-0 py-1 ${
-                  isActive ? 'text-cyan-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+                  isActive ? 'text-cyan-400 font-bold' : 'text-slate-400 text-slate-300 hover:text-slate-100'
                 }`}
               >
                 {item.label}
@@ -158,3 +155,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     </header>
   );
 };
+
+
+
+

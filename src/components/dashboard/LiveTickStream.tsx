@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { TickData } from '@/types';
-import { ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 
 interface LiveTickStreamProps {
   ticks: TickData[];
@@ -93,9 +93,9 @@ export const LiveTickStream: React.FC<LiveTickStreamProps> = ({
                     <div
                       className={`text-sm font-bold font-mono transition-colors duration-300 ${
                         flash === 'up'
-                          ? 'text-emerald-400 bg-emerald-950/60 px-1 rounded'
+                          ? 'text-emerald-400'
                           : flash === 'down'
-                            ? 'text-rose-400 bg-rose-950/60 px-1 rounded'
+                            ? 'text-rose-400'
                             : 'text-slate-100'
                       }`}
                     >
@@ -128,3 +128,4 @@ export const LiveTickStream: React.FC<LiveTickStreamProps> = ({
     </div>
   );
 };
+

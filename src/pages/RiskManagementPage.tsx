@@ -9,9 +9,10 @@ interface RiskManagementPageProps {
 
 export const RiskManagementPage: React.FC<RiskManagementPageProps> = ({ state }) => {
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto px-4 space-y-6">
       <RiskSettingsPanel riskGuard={state?.riskGuard || null} />
       <AsyncQueueMonitor queue={state?.commandQueue || []} />
     </div>
   );
 };
+

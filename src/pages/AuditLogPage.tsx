@@ -8,8 +8,9 @@ interface AuditLogPageProps {
 
 export const AuditLogPage: React.FC<AuditLogPageProps> = ({ state }) => {
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto px-4 space-y-6">
       <AuditLogViewer logs={state?.logs || []} />
     </div>
   );
 };
+

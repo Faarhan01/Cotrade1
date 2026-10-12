@@ -1,4 +1,4 @@
-# MT5 AI Copilot & MCP Bridge Terminal
+﻿# MT5 AI Copilot & MCP Bridge Terminal
 
 An open-source, full-stack bridge and real-time operational terminal connecting **MetaTrader 5 (MT5)** to **External AI Models** (such as Claude Desktop, Cursor, OpenAI Agents, Gemini, or custom Python agents) via the **Model Context Protocol (MCP)**, REST APIs, and low-latency **WebSockets**. The system uses the **Peron Python package** for direct MT5 integration, eliminating the need for Expert Advisors and ensuring reliable, low-latency communication.
 
@@ -6,54 +6,54 @@ Designed for **real account & broker execution** without synthetic or fake simul
 
 ---
 
-## 🏛️ System Architecture
+## ðŸ›ï¸ System Architecture
 
 ```
-┌─────────────────────────────────┐                 ┌────────────────────────────────┐
-│      External AI Agent          │                 │     Manual User Terminal       │
-│  (Claude, Cursor, Python, etc.) │                 │  (React + Tailwind Dashboard)  │
-└────────────────┬────────────────┘                 └───────────────┬────────────────┘
-                 │                                                  │
-                 │ JSON-RPC 2.0 / SSE                               │ REST & WebSocket
-                 ▼                                                  ▼
-┌────────────────────────────────────────────────────────────────────────────────────┐
-│                    Node.js & Express Bridge Server (Port 3000)                     │
-│                                                                                    │
-│  • MCP Server (/api/mcp, /api/mcp/sse)    • WebSocket Broadcaster (/ws)            │
-│  • Async Order Queue & Dispatcher         • Dynamic Risk Guard & Trailing Engine   │
-│  • Persistent SQLite Database (data/mt5_bridge.sqlite via WASM SQL)                │
-│  • Peron Python Package Integration         • MT5 Connection Management            │
-└────────────────────────────────────────┬───────────────────────────────────────────┘
-                                         │
-                                         │ Direct MT5 Communication via Peron Package
-                                         ▼
-┌────────────────────────────────────────────────────────────────────────────────────┐
-│                     MetaTrader 5 Terminal & Peron Python Package                   │
-│                            (Direct API Integration)                                │
-│                                                                                    │
-│  • Real-time Market Data (Ticks, Symbols, OHLCV)                                   │
-│  • Account & Position Management                                                   │
-│  • Order Execution & Position Modification                                         │
-│  • History & Historical Data Access                                                │
-└────────────────────────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚      External AI Agent          â”‚                 â”‚     Manual User Terminal       â”‚
+â”‚  (Claude, Cursor, Python, etc.) â”‚                 â”‚  (React + Tailwind Dashboard)  â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                 â”‚                                                  â”‚
+                 â”‚ JSON-RPC 2.0 / SSE                               â”‚ REST & WebSocket
+                 â–¼                                                  â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                    Node.js & Express Bridge Server (Port 3000)                     â”‚
+â”‚                                                                                    â”‚
+â”‚  â€¢ MCP Server (/api/mcp, /api/mcp/sse)    â€¢ WebSocket Broadcaster (/ws)            â”‚
+â”‚  â€¢ Async Order Queue & Dispatcher         â€¢ Dynamic Risk Guard & Trailing Engine   â”‚
+â”‚  â€¢ Persistent SQLite Database (data/mt5_bridge.sqlite via WASM SQL)                â”‚
+â”‚  â€¢ Peron Python Package Integration         â€¢ MT5 Connection Management            â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                                         â”‚
+                                         â”‚ Direct MT5 Communication via Peron Package
+                                         â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                     MetaTrader 5 Terminal & Peron Python Package                   â”‚
+â”‚                            (Direct API Integration)                                â”‚
+â”‚                                                                                    â”‚
+â”‚  â€¢ Real-time Market Data (Ticks, Symbols, OHLCV)                                   â”‚
+â”‚  â€¢ Account & Position Management                                                   â”‚
+â”‚  â€¢ Order Execution & Position Modification                                         â”‚
+â”‚  â€¢ History & Historical Data Access                                                â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ---
 
-## ✨ Key Features
+## âœ¨ Key Features
 
 - **No Fake / Simulated Data**: Initialized with clean states. All ticks, chart trajectories, and positions are populated exclusively from your live MT5 broker via the Peron Python package.
 - **Model Context Protocol (MCP)**: Native support for both standard HTTP JSON-RPC 2.0 (`/api/mcp`) and Server-Sent Events (`/api/mcp/sse`), enabling any external AI agent to inspect market conditions, execute orders, and modify positions.
 - **Dual-Listener Network**:
   - `http://localhost:3000`: Web UI, WebSocket server, REST API, and MCP endpoints.
   - `http://127.0.0.1:7777`: Peron Python Bridge for MT5 communication.
-- **Asynchronous Execution Pipeline**: Every order moves through a monitored state machine (`pending` → `dispatched` → `executed` / `failed`), returning deal tickets and broker latency in milliseconds.
+- **Asynchronous Execution Pipeline**: Every order moves through a monitored state machine (`pending` â†’ `dispatched` â†’ `executed` / `failed`), returning deal tickets and broker latency in milliseconds.
 - **Connected Chart Symbol Section**: Automatically detects the exact symbol and timeframe the user selects, complete with broker contract specifications, min/max lot limits, and live spreads.
 - **All Tracked Symbols Matrix**: Live table displaying real-time quotes, lot step constraints, and trading permissions for all symbols available from MT5.
 - **Embedded SQLite Database (`data/mt5_bridge.sqlite`)**: Persistent storage for orders, execution logs, account history, and risk settings with 1-click database binary downloads.
 - **Risk Guard & Trailing Stop Engine**: Global portfolio Take Profit ($), Stop Loss ($), maximum position caps, margin call cutoff protection, and emergency kill switch.
 
-## 🛠️ Recent Improvements
+## ðŸ› ï¸ Recent Improvements
 
 - Fixed close position functionality: The close position button in the UI now correctly calls the `/api/positions/:ticket/close` endpoint.
 - Fixed chart data display: The Live Price Chart now correctly shows tick history data from the Peron MT5 connector.
@@ -62,19 +62,57 @@ Designed for **real account & broker execution** without synthetic or fake simul
 
 ---
 
-## 🛠️ Prerequisites
+## ðŸ› ï¸ Prerequisites
 
 1. **Node.js** (v18.0.0 or higher) and **npm**
 2. **Python 3.7+** (for the Peron Python package)
 3. **MetaTrader 5 Desktop Terminal** (Windows, or via Wine/CrossOver on macOS/Linux)
-4. **MetaTrader5 Python Package** (Faarhan01/peron) - Installed automatically via setup
-5. Any MT5 broker account (Demo or Live)
-
----
-
-## 🚀 Local Installation & Setup
+4. **MetaTrader5 Python Package** (Faarhan01/peron) - Must be available at the path specified in the PERON_PACKAGE_PATH environment variable (see setup below). The package is included in the repository at Workspaces/Tools/peron/metatrader5_package for convenience, but you can also install it separately.
+5. Any MT5 broker account (Demo or Live)## ðŸš€ Local Installation & Setup
 
 ### 1. Clone & Install Dependencies
+
+`ash
+git clone https://github.com/your-username/mt5-ai-copilot-mcp.git
+cd mt5-ai-copilot-mcp
+
+# Install Node.js dependencies
+npm install
+
+# The Peron Python package is included in the repository at:
+# Workspaces/Tools/peron/metatrader5_package
+# No separate installation needed - it's bundled with the project
+`
+
+### 2. Configure Environment Variables
+
+Before running, create a .env file in the root directory with the following (adjust paths as necessary for your system):
+
+`
+# Path to the MetaTrader5/Peron package directory
+PERON_PACKAGE_PATH=/absolute/path/to/your/metatrader5_package
+# Python executable to use (usually 'python' or 'python3')
+PYTHON_PATH=python
+# Optional: set to true to use native SQLite (recommended for performance)
+USE_NATIVE_SQLITE=true
+# Database path (relative to project root)
+DB_PATH="./data/mt5_bridge.sqlite"
+# Other optional variables from .env.example (GEMINI_API_KEY, APP_URL) can be left as placeholders or set in AI Studio
+`
+
+### 3. Start the Local Bridge & Web Terminal
+
+`ash
+npm run dev
+`
+
+The application will start:
+- **Web Terminal & MCP Hub**: http://localhost:3000
+- **Peron Python Bridge**: http://127.0.0.1:8888 (communicates with MT5)
+- **WebSocket Feed**: ws://localhost:3000/ws
+
+Note: The Peron Python bridge will automatically attempt to connect to your running MetaTrader 5 terminal.
+Ensure MetaTrader 5 is running and logged into your account before starting the bridge.## 1. Clone & Install Dependencies
 
 ```bash
 git clone https://github.com/your-username/mt5-ai-copilot-mcp.git
@@ -116,7 +154,7 @@ Check the bridge status:
 
 ---
 
-## 🤖 Connecting External AI via MCP
+## ðŸ¤– Connecting External AI via MCP
 
 ### A. Claude Desktop
 Add the following to your `claude_desktop_config.json`:
@@ -132,7 +170,7 @@ Add the following to your `claude_desktop_config.json`:
 ```
 
 ### B. Cursor IDE
-In Cursor **Settings → Features → MCP**, add a new server:
+In Cursor **Settings â†’ Features â†’ MCP**, add a new server:
 - **Name**: `mt5-bridge`
 - **Type**: `sse`
 - **URL**: `http://127.0.0.1:3000/api/mcp/sse`
@@ -179,7 +217,7 @@ print("Order Queued:", order)
 
 ---
 
-## 🧰 Available MCP Tools (21 Comprehensive Tools)
+## ðŸ§° Available MCP Tools (21 Comprehensive Tools)
 
 | Tool Name | Description |
 | :--- | :--- |
@@ -202,12 +240,12 @@ print("Order Queued:", order)
 | `mt5_query_trade_history` | Queries historical trade orders from the persistent SQLite database. |
 | `mt5_get_performance_analytics` | Retrieves execution success rate, order counts, and database storage metrics. |
 | `mt5_configure_risk_guard` | Granularly updates global dollar TP/SL, max lot sizes, and trailing stop distance. |
-| `mt5_get_execution_queue` | Inspects in-flight commands (`pending` → `dispatched` → `executed` / `failed`). |
+| `mt5_get_execution_queue` | Inspects in-flight commands (`pending` â†’ `dispatched` â†’ `executed` / `failed`). |
 | `mt5_simulate_candles` | Seeds synthetic historical OHLCV data & indicators for instant testing and backtesting without waiting for live ticks. |
 
 ---
 
-## 🌐 REST Endpoints
+## ðŸŒ REST Endpoints
 
 - `GET /api/state` - Complete real-time snapshot of connection, account, positions, ticks, orders, and chart
 - `POST /api/commands` - Enqueue an order for execution in MT5 (`EXECUTE_TRADE`, `MODIFY_POSITION`, `CLOSE_POSITION`, `CLOSE_ALL`, `CANCEL_PENDING`)
@@ -224,7 +262,7 @@ print("Order Queued:", order)
 
 ---
 
-## 🗄️ Database & Storage
+## ðŸ—„ï¸ Database & Storage
 
 The bridge uses an embedded, zero-configuration **SQLite WASM** database stored at:
 ```text
@@ -235,7 +273,7 @@ data/mt5_bridge.sqlite
 
 ---
 
-## ❓ Troubleshooting
+## â“ Troubleshooting
 
 ### 1. Peron Python Bridge Connection Issues
 - Ensure MetaTrader 5 terminal is running and logged in
@@ -254,6 +292,7 @@ data/mt5_bridge.sqlite
 
 ---
 
-## 📄 License
+## ðŸ“„ License
 
 MIT License. Free for personal, algorithmic, and commercial trading integration.
+
