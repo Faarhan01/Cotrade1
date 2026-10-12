@@ -1,7 +1,6 @@
 import { DatabaseAdapter } from './databaseAdapter.ts';
 import { Database } from './database.ts';
 
-
 /**
  * Database service that provides a unified interface for database operations
  * Supports switching between sql.js (WASM) and better-sqlite3 based on environment
@@ -10,7 +9,7 @@ export class DatabaseService {
   private static instance: DatabaseService;
   private adapter: DatabaseAdapter;
 
-    private constructor() {
+  private constructor() {
     this.adapter = Database.getInstance();
   }
 
@@ -21,7 +20,6 @@ export class DatabaseService {
     return DatabaseService.instance;
   }
 
-  // Delegate all methods to the adapter
   async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
     return this.adapter.query(sql, params);
   }
@@ -42,4 +40,3 @@ export class DatabaseService {
     return this.adapter.close();
   }
 }
-

@@ -25,7 +25,7 @@ export const databaseApi = {
   async getTableData(table: string, limit = 100): Promise<{ columns: string[]; rows: any[]; total: number }> {
     switch (table) {
       case 'orders':
-        return this.getOrders(limit);
+        return { columns: [], rows: await (await this.getOrders(limit)).orders, total: 0 };
       case 'candles_history':
         return this.getCandles('EURUSD', 'M1', limit);
       case 'ticks_history':

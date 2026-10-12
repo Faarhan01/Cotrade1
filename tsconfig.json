@@ -19,7 +19,21 @@
     "paths": {
       "@/*": [
         "./*"
-      ]
+      ],
+      "@core": ["./backend/src/core/index.ts"],
+      "@core/*": ["./backend/src/core/*"],
+      "@features": ["./backend/src/features/index.ts"],
+      "@features/*": ["./backend/src/features/*"],
+      "@services": ["./backend/src/services/index.ts"],
+      "@services/*": ["./backend/src/services/*"],
+      "@controllers": ["./backend/src/controllers/index.ts"],
+      "@controllers/*": ["./backend/src/controllers/*"],
+      "@routes": ["./backend/src/routes/index.ts"],
+      "@routes/*": ["./backend/src/routes/*"],
+      "@middleware": ["./backend/src/middleware/index.ts"],
+      "@middleware/*": ["./backend/src/middleware/*"],
+      "@integrations": ["./backend/src/integrations/index.ts"],
+      "@integrations/*": ["./backend/src/integrations/*"]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true

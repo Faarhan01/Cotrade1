@@ -12,21 +12,28 @@ export class Database {
   private constructor() {}
 
   /**
-   * Initialize the database with configured backend
+   * Initialize the database with the configured backend.
+   * Backend is selected via DB_TYPE env var (sqljs | better-sqlite3).
+   * Falls back to sql.js if the selected backend is unavailable.
    */
   static async initialize(options?: DatabaseOptions): Promise<DatabaseAdapter> {
     if (Database.initialized && Database.instance) {
       return Database.instance;
     }
 
-    const config = Database.getConfig(options);
-    Database.instance = await Database.createAdapter(config);
+    const config: DatabaseConfig = {
+      type: process.env.DB_TYPE || 'sqljs',
+      path: process.env.DB_PATH || './data/mt5_bridge.sqlite',
+      options,
+    };
+
+    Database.instance = await Database.createAdapter(config.type);
     Database.initialized = true;
     return Database.instance;
   }
 
   /**
-   * Get the initialized database instance
+   * Get the initialized database instance.
    */
   static getInstance(): DatabaseAdapter {
     if (!Database.instance) {
@@ -36,7 +43,7 @@ export class Database {
   }
 
   /**
-   * Reset and reinitialize database
+   * Reset and reinitialize the database.
    */
   static async reset(): Promise<void> {
     if (Database.instance) {
@@ -46,45 +53,29 @@ export class Database {
     Database.initialized = false;
   }
 
-  private static getConfig(options?: DatabaseOptions): DatabaseConfig {
-    const envType = process.env.DB_TYPE || process.env.DATABASE_TYPE || 'sqljs';
-    const envNative = process.env.USE_NATIVE_SQLITE === 'true';
-
-    // If explicitly set to native/sqlite, prefer better-sqlite3 if available
-    if (envNative && envType === 'native' || envType === 'sqlite' || envType === 'better-sqlite3') {
-      return {
-        type: 'better-sqlite3',
-        path: process.env.DB_PATH || './data/mt5_bridge.sqlite',
-        ...options,
-      };
-    }
-
-    return {
-      type: 'sqljs',
-      path: process.env.DB_PATH || './data/mt5_bridge.sqlite',
-      ...options,
-    };
-  }
-
-  private static async createAdapter(config: DatabaseConfig): Promise<DatabaseAdapter> {
-    switch (config.type) {
-      case 'sqljs':
-        return new SqlJsAdapter();
+  private static async createAdapter(type: string): Promise<DatabaseAdapter> {
+    switch (type) {
       case 'better-sqlite3':
         try {
-          const { BetterSqlite3Adapter } = await import('./betterSqlite3Adapter.ts');
-          return new BetterSqlite3Adapter();
+          // dynamic import keeps better-sqlite3 optional
+          const mod = await import('./betterSqlite3Adapter.ts');
+          const Adapter = (mod as any).BetterSqlite3Adapter;
+          if (Adapter) {
+            return new Adapter();
+          }
+          console.warn('better-sqlite3 adapter unavailable, falling back to sql.js');
+          return new SqlJsAdapter();
         } catch (error) {
           console.warn('better-sqlite3 not available, falling back to sql.js:', error);
           return new SqlJsAdapter();
         }
+      case 'sqljs':
       default:
-        console.warn(`Unknown DB type ${config.type}, falling back to sql.js`);
         return new SqlJsAdapter();
     }
   }
 
-  // Delegate methods for convenience when initialized
+  // Convenience delegation methods
   static async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
     return Database.getInstance().query(sql, params);
   }
@@ -102,10 +93,12 @@ export class Database {
   }
 }
 
-export interface DatabaseConfig {
-  type: 'sqljs' | 'better-sqlite3' | string;
-  path?: string;
-  options?: any;
+export interface DatabaseOptions {
+  [key: string]: any;
 }
 
-export interface DatabaseOptions extends Partial<DatabaseConfig> {}
+export interface DatabaseConfig {
+  type: string;
+  path?: string;
+  options?: DatabaseOptions;
+}

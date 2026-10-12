@@ -29,7 +29,7 @@ export const PendingOrdersDock: React.FC<PendingOrdersDockProps> = ({
 
   const handleOpenModify = (order: PendingOrder) => {
     setSelectedOrder(order);
-    setModifyPrice(order.openPrice ? String(order.openPrice) : '');
+    setModifyPrice(order.priceOpen ? String(order.priceOpen) : '');
     setModifySL(order.sl ? String(order.sl) : '');
     setModifyTP(order.tp ? String(order.tp) : '');
     setActionMessage(null);
@@ -128,7 +128,7 @@ export const PendingOrdersDock: React.FC<PendingOrdersDockProps> = ({
                       </span>
                     </td>
                     <td className="py-2 px-3 font-semibold text-slate-200">{ord.volume.toFixed(2)}</td>
-                    <td className="py-2 px-3 text-cyan-400 font-bold">{ord.openPrice.toFixed(5)}</td>
+                    <td className="py-2 px-3 text-cyan-400 font-bold">{ord.priceOpen.toFixed(5)}</td>
                     <td className="py-2 px-3 text-slate-400">{ord.sl > 0 ? ord.sl.toFixed(5) : '—'}</td>
                     <td className="py-2 px-3 text-slate-400">{ord.tp > 0 ? ord.tp.toFixed(5) : '—'}</td>
                     <td className="py-2 px-3 text-slate-400 text-[11px] truncate max-w-[120px]">

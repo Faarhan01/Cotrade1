@@ -1,6 +1,6 @@
 export type OrderType = 'BUY' | 'SELL';
 export type CommandStatus = 'pending' | 'dispatched' | 'executed' | 'failed' | 'cancelled';
-export type OrderAction = 'EXECUTE_TRADE' | 'MODIFY_POSITION' | 'CLOSE_POSITION' | 'CLOSE_ALL' | 'SET_RISK_GUARD';
+export type OrderAction = 'EXECUTE_TRADE' | 'MODIFY_POSITION' | 'CLOSE_POSITION' | 'CLOSE_ALL' | 'SET_RISK_GUARD' | 'CANCEL_PENDING';
 
 export interface AccountInfo {
   login: number;

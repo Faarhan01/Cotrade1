@@ -112,6 +112,10 @@ export const api = {
     return databaseApi.getOrders(limit);
   },
 
+  async getTableData(table: string, limit = 100): Promise<{ columns: string[]; rows: any[]; total: number }> {
+    return databaseApi.getTableData(table, limit);
+  },
+
   async pruneDatabase(): Promise<{ success: boolean; purgedUnexecutedOrders: number; message: string }> {
     return databaseApi.prune();
   },
