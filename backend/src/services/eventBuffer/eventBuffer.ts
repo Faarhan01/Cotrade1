@@ -1,7 +1,8 @@
-import { writeFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import fs from 'fs';
+import path from 'path';
 
-const EVENTS_FILE = join(process.cwd(), 'data', 'daemon-events.jsonl');
+const DATA_DIR = path.resolve(process.cwd(), 'data');
+const EVENTS_FILE = path.join(DATA_DIR, 'daemon-events.jsonl');
 
 export interface StoredEvent {
   ts: number;
@@ -9,25 +10,66 @@ export interface StoredEvent {
   payload: any;
 }
 
+// In-memory ring buffer for fast access and reduced disk churn
+const memoryBuffer: StoredEvent[] = [];
+const MAX_MEMORY_EVENTS = 500;
+let flushTimer: NodeJS.Timeout | null = null;
+let pendingDiskEvents: StoredEvent[] = [];
+
+function ensureDataDir(): void {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+function flushToDisk(): void {
+  if (pendingDiskEvents.length === 0) return;
+  try {
+    ensureDataDir();
+    const batch = pendingDiskEvents;
+    pendingDiskEvents = [];
+    const text = batch.map((e) => JSON.stringify(e)).join('\n') + '\n';
+    fs.appendFileSync(EVENTS_FILE, text, 'utf-8');
+
+    // Keep file size bounded (prune if > 1000 lines)
+    if (fs.existsSync(EVENTS_FILE)) {
+      const stats = fs.statSync(EVENTS_FILE);
+      if (stats.size > 256 * 1024) { // > 256 KB
+        const allLines = fs.readFileSync(EVENTS_FILE, 'utf-8').trim().split('\n');
+        if (allLines.length > 500) {
+          const trimmed = allLines.slice(-300).join('\n') + '\n';
+          fs.writeFileSync(EVENTS_FILE, trimmed, 'utf-8');
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[EventBuffer] Failed to flush events to disk:', error);
+  }
+}
+
 export function appendEvent(event: { type: string; payload: any }): void {
   try {
     const storedEvent: StoredEvent = {
       ts: Date.now(),
       type: event.type,
-      payload: event.payload
+      payload: event.payload,
     };
-    
-    // Ensure data directory exists
-    const dir = join(process.cwd(), 'data');
-    if (!existsSync(dir)) {
-      // Note: In a real app, you might want to create the directory
-      // For now, we'll assume it exists based on the file already being present
+
+    memoryBuffer.push(storedEvent);
+    if (memoryBuffer.length > MAX_MEMORY_EVENTS) {
+      memoryBuffer.shift();
     }
-    
-    // Append the event as a JSON line
-    writeFileSync(EVENTS_FILE, JSON.stringify(storedEvent) + '\n', { flag: 'a' });
+
+    pendingDiskEvents.push(storedEvent);
+
+    if (!flushTimer) {
+      flushTimer = setTimeout(() => {
+        flushTimer = null;
+        flushToDisk();
+      }, 500);
+    }
   } catch (error) {
-    console.error('Failed to append event to buffer:', error);
+    console.error('[EventBuffer] Failed to append event:', error);
   }
 }
 
@@ -38,53 +80,56 @@ export function readEvents(options: {
   endTime?: number;
 } = {}): StoredEvent[] {
   try {
-    if (!existsSync(EVENTS_FILE)) {
-      return [];
+    // Read from memory first for instant response
+    let events = [...memoryBuffer];
+
+    // If memory is empty but file exists, read recent entries
+    if (events.length === 0 && fs.existsSync(EVENTS_FILE)) {
+      const content = fs.readFileSync(EVENTS_FILE, 'utf-8');
+      const lines = content.trim().split('\n').filter((l) => l.length > 0);
+      events = lines
+        .slice(-200)
+        .map((l) => {
+          try {
+            return JSON.parse(l) as StoredEvent;
+          } catch {
+            return null;
+          }
+        })
+        .filter((e): e is StoredEvent => e !== null);
     }
-    
-    const content = require('fs').readFileSync(EVENTS_FILE, 'utf-8');
-    const lines = content.trim().split('\n').filter((line: string) => line.length > 0);
-    
-    const events = lines
-      .map((line: string) => {
-        try {
-          return JSON.parse(line) as StoredEvent;
-        } catch (e) {
-          return null;
-        }
-      })
-      .filter((event: StoredEvent | null): event is StoredEvent => event !== null)
-      .filter((event: StoredEvent) => {
-        // Apply filters
-        if (options.type && event.type !== options.type) {
-          return false;
-        }
-        if (options.startTime && event.ts < options.startTime) {
-          return false;
-        }
-        if (options.endTime && event.ts > options.endTime) {
-          return false;
-        }
-        return true;
-      })
-      // Sort by timestamp (oldest first) then apply limit from the end
-      .sort((a: StoredEvent, b: StoredEvent) => a.ts - b.ts);
-    
-    if (options.limit !== undefined) {
+
+    // Apply filters
+    if (options.type) {
+      events = events.filter((e) => e.type === options.type);
+    }
+    if (options.startTime) {
+      events = events.filter((e) => e.ts >= options.startTime!);
+    }
+    if (options.endTime) {
+      events = events.filter((e) => e.ts <= options.endTime!);
+    }
+
+    events.sort((a, b) => a.ts - b.ts);
+
+    if (options.limit !== undefined && options.limit > 0) {
       return events.slice(-options.limit);
     }
-    
+
     return events;
   } catch (error) {
-    console.error('Failed to read events from buffer:', error);
+    console.error('[EventBuffer] Failed to read events:', error);
     return [];
   }
 }
 
 export function clearEvents(): void {
   try {
-    require('fs').writeFileSync(EVENTS_FILE, '');
+    memoryBuffer.length = 0;
+    pendingDiskEvents.length = 0;
+    ensureDataDir();
+    fs.writeFileSync(EVENTS_FILE, '', 'utf-8');
   } catch (error) {
-    console.error('Failed to clear events buffer:', error);
+    console.error('[EventBuffer] Failed to clear events:', error);
   }
 }

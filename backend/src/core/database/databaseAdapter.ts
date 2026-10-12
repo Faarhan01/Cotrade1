@@ -1,7 +1,7 @@
 // Database abstraction layer interface
 export interface DatabaseAdapter {
   // Query execution methods
-  query(sql: string, params?: any[]): Promise<any[]>;
+  query<T = any>(sql: string, params?: any[]): Promise<T[]>;
   execute(sql: string, params?: any[]): Promise<{ changes: number; lastInsertRowid: number }>;
   prepare(sql: string): Statement;
    

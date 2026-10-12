@@ -85,6 +85,15 @@ export const api = {
     return res.json();
   },
 
+  async simulateChartBatch(symbol: string, count = 40, pattern = 'wave') {
+    const res = await fetch('/api/charts/simulate-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol, count, pattern }),
+    });
+    return res.json();
+  },
+
   // Connection Management
   async getConnectionStatus() {
     return connectionApi.getStatus();
@@ -213,5 +222,71 @@ export const api = {
 
   async getStreamStats() {
     return marketApi.getStreamStats();
+  },
+
+  // Daemon API
+  async getDaemonStatus() {
+    const res = await fetch('/api/daemon/status');
+    return res.json();
+  },
+
+  async sendDaemonHeartbeat(aiName?: string, sessionId?: string, metadata?: any) {
+    const res = await fetch('/api/daemon/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aiName, sessionId, metadata }),
+    });
+    return res.json();
+  },
+
+  async dispatchDaemonCommand(command: any) {
+    const res = await fetch('/api/daemon/dispatch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(command),
+    });
+    return res.json();
+  },
+
+  async getDaemonEvents(options: { limit?: number; type?: string; startTime?: number; endTime?: number } = {}) {
+    const params = new URLSearchParams();
+    if (options.limit) params.set('limit', String(options.limit));
+    if (options.type) params.set('type', options.type);
+    if (options.startTime) params.set('startTime', String(options.startTime));
+    if (options.endTime) params.set('endTime', String(options.endTime));
+    const res = await fetch(`/api/daemon/events?${params.toString()}`);
+    return res.json();
+  },
+
+  async postDaemonEvent(type: string, payload: any) {
+    const res = await fetch('/api/daemon/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, payload }),
+    });
+    return res.json();
+  },
+
+  async clearDaemonEvents() {
+    const res = await fetch('/api/daemon/clear', { method: 'POST' });
+    return res.json();
+  },
+
+  async updateDaemonConfig(config: any) {
+    const res = await fetch('/api/daemon/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+    return res.json();
+  },
+
+  async updateDaemonWatchlist(symbols: string[]) {
+    const res = await fetch('/api/daemon/watchlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbols }),
+    });
+    return res.json();
   },
 };

@@ -12,6 +12,9 @@ import {
   AlertTriangle,
   Database,
   Compass,
+  BookOpen,
+  Zap,
+  Laptop,
 } from 'lucide-react';
 import { AppState } from '@/types';
 import { api } from '../../lib/api';
@@ -56,11 +59,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const navItems = [
     { id: 'dashboard', label: 'Live Terminal', icon: Terminal },
-    { id: 'strategies', label: 'Strategy Lab', icon: Compass },
+    { id: 'knowledge', label: 'Knowledge Base', icon: BookOpen },
+    { id: 'daemon', label: 'AI Daemon', icon: Zap },
     { id: 'mcp', label: 'AI MCP Hub', icon: Cpu },
     { id: 'risk', label: 'Risk & Trailing', icon: ShieldAlert },
     { id: 'database', label: 'Database & SQLite', icon: Database },
-    { id: 'ea', label: 'MT5 Connection', icon: FileCode2 },
+    { id: 'gateway', label: 'MT5 Gateway', icon: Laptop },
     { id: 'logs', label: 'Audit Log', icon: Clock },
   ];
 
@@ -79,14 +83,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                   MT5 <span className="text-cyan-400">AI COPILOT</span>
                 </span>
                 <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800/60">
-                  MCP v2.10
+                  Direct API
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-mono flex items-center gap-1.5">
-                Bridge: <span className="text-slate-300">http://127.0.0.1:7777</span>
+                Bridge: <span className="text-slate-300">http://127.0.0.1:8888</span>
                 <button
                   onClick={copyEndpoint}
-                  title="Copy local bridge URL for MT5 WebRequest"
+                  title="Copy local Python bridge URL"
                   className="hover:text-cyan-400 text-slate-500 transition-colors p-0.5"
                 >
                   {copiedEndpoint ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
@@ -99,7 +103,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <nav className="hidden md:flex items-center space-x-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = activeTab === item.id;
+              const isActive = activeTab === item.id || (item.id === 'gateway' && activeTab === 'ea');
               return (
                 <button
                   key={item.id}
@@ -136,8 +140,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
               title={
                 isEaOnline
-                  ? 'Connected to local MetaTrader 5 app via Peron Python package'
-                  : 'Peron MT5 package ready. Awaiting local MetaTrader 5 application connection.'
+                  ? 'Connected to local MetaTrader 5 app via Python package'
+                  : 'Python MT5 package ready. Awaiting local MetaTrader 5 application connection.'
               }
             >
               <span
@@ -147,7 +151,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               />
               <span className="hidden sm:inline font-semibold">MT5 App:</span>
               <span className={isEaOnline ? 'text-emerald-300 font-bold' : 'text-amber-400'}>
-                {isEaOnline ? 'CONNECTED' : 'DISCONNECTED'}
+                {isEaOnline ? 'CONNECTED' : 'STANDBY'}
               </span>
             </div>
 

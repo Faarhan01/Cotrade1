@@ -17,7 +17,7 @@ export const AsyncQueueMonitor: React.FC<AsyncQueueMonitorProps> = ({ queue }) =
               Asynchronous Order Pipeline Monitor
             </h2>
             <p className="text-xs text-slate-400 font-mono">
-              Real-time dispatch & execution status between AI Bridge and MT5 EA
+              Real-time dispatch & execution status between AI Bridge and MetaTrader 5 Terminal
             </p>
           </div>
         </div>

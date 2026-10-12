@@ -1,10 +1,9 @@
 import { DatabaseAdapter } from './databaseAdapter.ts';
-import { SqlJsAdapter } from './sqlJsAdapter.ts';
 import { NodeSqliteAdapter } from './nodeSqliteAdapter.ts';
 
 /**
  * Database factory and unified access point
- * Supports multiple database backends via configuration
+ * Powered by high-performance built-in node:sqlite (Node.js 22+)
  */
 export class Database {
   private static instance: DatabaseAdapter | null = null;
@@ -13,22 +12,20 @@ export class Database {
   private constructor() {}
 
   /**
-   * Initialize the database with the configured backend.
-   * Backend is selected via DB_TYPE env var (sqljs | node:sqlite).
-   * Falls back to sql.js if the selected backend is unavailable.
+   * Initialize the database with node:sqlite backend.
    */
   static async initialize(options?: DatabaseOptions): Promise<DatabaseAdapter> {
     if (Database.initialized && Database.instance) {
       return Database.instance;
     }
 
-    const config: DatabaseConfig = {
-      type: process.env.DB_TYPE || 'sqljs',
-      path: process.env.DB_PATH || './data/mt5_bridge.sqlite',
-      options,
-    };
+    const dbPath = process.env.DB_PATH || 'mt5_bridge.sqlite';
+    const dataDir = process.env.DATA_DIR || './data';
 
-    Database.instance = await Database.createAdapter(config.type);
+    const adapter = new NodeSqliteAdapter(dbPath, dataDir);
+    adapter.initialize();
+
+    Database.instance = adapter;
     Database.initialized = true;
     return Database.instance;
   }
@@ -38,7 +35,12 @@ export class Database {
    */
   static getInstance(): DatabaseAdapter {
     if (!Database.instance) {
-      throw new Error('Database not initialized. Call Database.initialize() first.');
+      const dbPath = process.env.DB_PATH || 'mt5_bridge.sqlite';
+      const dataDir = process.env.DATA_DIR || './data';
+      const adapter = new NodeSqliteAdapter(dbPath, dataDir);
+      adapter.initialize();
+      Database.instance = adapter;
+      Database.initialized = true;
     }
     return Database.instance;
   }
@@ -54,31 +56,9 @@ export class Database {
     Database.initialized = false;
   }
 
-  private static async createAdapter(type: string): Promise<DatabaseAdapter> {
-    switch (type) {
-      case 'node:sqlite':
-        try {
-          // dynamic import keeps node:sqlite optional (though it's built-in in Node 22+)
-          const mod = await import('./nodeSqliteAdapter.ts');
-          const Adapter = (mod as any).NodeSqliteAdapter;
-          if (Adapter) {
-            return new Adapter();
-          }
-          console.warn('node:sqlite adapter unavailable, falling back to sql.js');
-          return new SqlJsAdapter();
-        } catch (error) {
-          console.warn('node:sqlite not available, falling back to sql.js:', error);
-          return new SqlJsAdapter();
-        }
-      case 'sqljs':
-      default:
-        return new SqlJsAdapter();
-    }
-  }
-
   // Convenience delegation methods
   static async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
-    return Database.getInstance().query(sql, params);
+    return Database.getInstance().query<T>(sql, params);
   }
 
   static async execute(sql: string, params?: any[]): Promise<{ changes: number; lastInsertRowid: number }> {

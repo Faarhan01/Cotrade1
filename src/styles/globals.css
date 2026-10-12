@@ -1,8 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* Custom CSS Variables */
+/* Custom CSS Variables & Design Tokens */
 :root {
   /* Color Palette */
   --primary: #06b6d4; /* cyan-500 */
@@ -11,14 +9,14 @@
   --secondary: #10b981; /* emerald-500 */
   --secondary-dark: #059669; /* emerald-600 */
   --accent: #8b5cf6; /* violet-500 */
-  --background: #0f172a; /* slate-900 */
-  --surface: #1e293b; /* slate-800 */
-  --surface-light: #334155; /* slate-700 */
+  --background: #020617; /* slate-950 */
+  --surface: #0f172a; /* slate-900 */
+  --surface-light: #1e293b; /* slate-800 */
   --text-primary: #f8fafc; /* slate-50 */
   --text-secondary: #cbd5e1; /* slate-300 */
   --text-muted: #94a3b8; /* slate-400 */
-  --border: #334155; /* slate-700 */
-  --border-light: #475569; /* slate-600 */
+  --border: #1e293b; /* slate-800 */
+  --border-light: #334155; /* slate-700 */
   --success: #10b981; /* emerald-500 */
   --warning: #f59e0b; /* amber-500 */
   --error: #ef4444; /* red-500 */
@@ -29,61 +27,29 @@
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
 
-  /* Spacing Scale (using CSS units for flexibility) */
-  --spacing-xs: 0.5rem;
-  --spacing-sm: 0.75rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-  --spacing-2xl: 3rem;
-
   /* Typography */
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-mono: 'Fira Code', 'Courier New', monospace;
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 1.875rem;
-  --font-size-4xl: 2.25rem;
-  --font-weight-light: 300;
-  --font-weight-normal: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* Transitions */
-  --transition-fast: 150ms ease-in-out;
-  --transition: 200ms ease-in-out;
-  --transition-slow: 300ms ease-in-out;
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Base Styles */
 *, *::before, *::after {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 html {
   font-size: 16px;
   scroll-behavior: smooth;
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
   font-family: var(--font-sans);
-  font-weight: var(--font-weight-normal);
-  line-height: 1.6;
   background-color: var(--background);
   color: var(--text-primary);
   min-height: 100vh;
@@ -91,45 +57,35 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-sans);
-  font-weight: var(--font-weight-semibold);
-  line-height: 1.3;
-  margin-top: 0;
-  margin-bottom: 0.5rem;
+/* Custom scrollbar for dark financial terminal */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-h1 { font-size: var(--font-size-4xl); }
-h2 { font-size: var(--font-size-3xl); }
-h3 { font-size: var(--font-size-2xl); }
-h4 { font-size: var(--font-size-xl); }
-h5 { font-size: var(--font-size-lg); }
-h6 { font-size: var(--font-size-base); }
-
-p {
-  margin-top: 0;
-  margin-bottom: 1rem;
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
 }
 
-a {
-  color: var(--primary);
-  text-decoration: underline;
-  transition: color var(--transition-fast);
+::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.6);
+  border-radius: 3px;
 }
 
-a:hover {
-  color: var(--primary-dark);
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.9);
 }
 
-button, input, textarea, select {
-  font-family: inherit;
-  font-size: inherit;
+/* Tabular figures for financial tickers and quotes */
+.font-mono-numbers {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
-/* Utility Classes (custom, can be used alongside Tailwind) */
+/* Layout Utilities */
 .container {
   width: 100%;
-  max-width: 1280px;
+  max-width: 1400px;
   margin-left: auto;
   margin-right: auto;
   padding-left: 1rem;
@@ -150,284 +106,71 @@ button, input, textarea, select {
   }
 }
 
-.section {
-  padding-top: 4rem;
-  padding-bottom: 4rem;
-}
-
-.text-center {
-  text-align: center;
-}
-
-.text-right {
-  text-align: right;
-}
-
-.text-left {
-  text-align: left;
-}
-
-.hidden {
-  display: none !important;
-}
-
-.flex {
-  display: flex;
-}
-
-.flex-col {
-  flex-direction: column;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.justify-center {
-  justify-content: center;
-}
-
-.justify-between {
-  justify-content: space-between;
-}
-
-.gap-4 {
-  gap: 1rem;
-}
-
-.gap-6 {
-  gap: 1.5rem;
-}
-
-.rounded {
-  border-radius: var(--radius);
-}
-
-.rounded-lg {
-  border-radius: var(--radius-lg);
-}
-
-.border {
-  border-width: 1px;
-}
-
-.border-t {
-  border-top-width: 1px;
-}
-
-.border-b {
-  border-bottom-width: 1px;
-}
-
-.bg-background {
-  background-color: var(--background);
-}
-
-.bg-surface {
+/* Custom Terminal / Financial Component Styles */
+.terminal-card {
   background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  transition: border-color var(--transition);
 }
 
-.bg-surface-light {
-  background-color: var(--surface-light);
+.terminal-card:hover {
+  border-color: var(--border-light);
 }
 
-.text-primary {
-  color: var(--text-primary);
-}
-
-.text-secondary {
-  color: var(--text-secondary);
-}
-
-.text-muted {
-  color: var(--text-muted);
-}
-
-/* Button Styles */
 .btn {
-  display: inline-block;
-  font-weight: var(--font-weight-medium);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
   text-align: center;
   white-space: nowrap;
   vertical-align: middle;
   user-select: none;
   border: 1px solid transparent;
   padding: 0.5rem 1rem;
-  font-size: var(--font-size-sm);
+  font-size: 0.875rem;
   border-radius: var(--radius);
   transition: all var(--transition-fast);
   cursor: pointer;
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-primary {
   background-color: var(--primary);
-  color: white;
+  color: #020617;
+  font-weight: 600;
   border-color: var(--primary);
 }
 
-.btn-primary:hover {
-  background-color: var(--primary-dark);
-  border-color: var(--primary-dark);
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-light);
+  border-color: var(--primary-light);
 }
 
 .btn-secondary {
-  background-color: var(--surface);
-  color: var(--text-primary);
-  border-color: var(--border);
-}
-
-.btn-secondary:hover {
   background-color: var(--surface-light);
+  color: var(--text-primary);
   border-color: var(--border-light);
 }
 
-.btn-sm {
-  padding: 0.25rem 0.75rem;
-  font-size: var(--font-size-xs);
+.btn-secondary:hover:not(:disabled) {
+  background-color: #334155;
+  border-color: #475569;
 }
 
-.btn-lg {
-  padding: 0.75rem 1.5rem;
-  font-size: var(--font-size-base);
+/* Pulse indicator animation */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
 }
 
-/* Card Styles */
-.card {
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-}
-
-.card-header {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border);
-  background-color: var(--surface-light);
-}
-
-.card-body {
-  padding: 1.5rem;
-}
-
-.card-footer {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--border);
-  background-color: var(--surface-light);
-}
-
-/* Table Styles */
-.table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.table th,
-.table td {
-  padding: 0.75rem 1rem;
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-}
-
-.table th {
-  background-color: var(--surface-light);
-  font-weight: var(--font-weight-semibold);
-}
-
-.table tr:hover {
-  background-color: var(--surface-light);
-}
-
-/* Form Styles */
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: var(--font-weight-medium);
-}
-
-.form-group input,
-.form-group textarea,
-.form-group select {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background-color: var(--background);
-  color: var(--text-primary);
-  font-size: var(--font-size-base);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgb(6 182 212 / 0.25);
-}
-
-/* Alert Styles */
-.alert {
-  padding: 1rem;
-  border-radius: var(--radius);
-  margin-bottom: 1rem;
-}
-
-.alert-success {
-  background-color: rgb(16 185 129 / 0.1);
-  border: 1px solid var(--success);
-  color: var(--success);
-}
-
-.alert-warning {
-  background-color: rgb(245 158 11 / 0.1);
-  border: 1px solid var(--warning);
-  color: var(--warning);
-}
-
-.alert-error {
-  background-color: rgb(239 68 68 / 0.1);
-  border: 1px solid var(--error);
-  color: var(--error);
-}
-
-/* Responsive Breakpoints (for custom classes) */
-@media (min-width: 640px) {
-  .sm\:block {
-    display: block;
-  }
-  .sm\:flex {
-    display: flex;
-  }
-  .sm\:hidden {
-    display: none;
-  }
-}
-
-@media (min-width: 768px) {
-  .md\:block {
-    display: block;
-  }
-  .md\:flex {
-    display: flex;
-  }
-  .md\:hidden {
-    display: none;
-  }
-}
-
-@media (min-width: 1024px) {
-  .lg\:block {
-    display: block;
-  }
-  .lg\:flex {
-    display: flex;
-  }
-  .lg\:hidden {
-    display: none;
-  }
+.animate-pulse-dot {
+  animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

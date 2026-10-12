@@ -7,22 +7,18 @@ const DATA_DIR = path.resolve(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'mt5_bridge.sqlite');
 
 /**
- * Ensures that no bound parameter is undefined, which causes sql.js to throw:
- * "Wrong API use : tried to bind a value of an unknown type (undefined)"
+ * Ensures that no bound parameter is undefined for SQLite statements
  */
 export function safeParams(params: any[]): any[] {
   return params.map((p) => (p === undefined ? null : p));
 }
 
 /**
- * Persist the database to disk (for sql.js adapter)
- * Note: This is a no-op for node:sqlite adapter as it persists automatically
+ * Persist the database to disk
+ * Note: node:sqlite handles persistence automatically to the sqlite database file
  */
 export function persistDatabase() {
-  // This function is kept for backward compatibility
-  // The actual persistence is handled by the adapters themselves
-  // sql.js adapter handles persistence via saveDebounceTimer
-  // node:sqlite adapter persists automatically
+  // node:sqlite adapter persists automatically with WAL journal mode
 }
 
 /**
@@ -63,7 +59,7 @@ export async function dbPruneDatabase(): Promise<{
 
     // 1. Delete all unexecuted orders older than 24 hours (pending or dispatched)
     const countBeforeRes = await db.query(`SELECT COUNT(*) as count FROM orders WHERE status IN ('pending', 'dispatched') AND created_at < ?`, [twentyFourHoursAgo]);
-    const unexecutedCount = countBeforeRes.length > 0 && countBeforeRes[0].length > 0 && countBeforeRes[0][0].count !== undefined ? Number(countBeforeRes[0][0].count) : 0;
+    const unexecutedCount = countBeforeRes && countBeforeRes.length > 0 ? Number(countBeforeRes[0]?.count || 0) : 0;
 
     await db.execute(`DELETE FROM orders WHERE status IN ('pending', 'dispatched') AND created_at < ?`, [twentyFourHoursAgo]);
 
@@ -426,32 +422,32 @@ export async function dbGetAnalytics(): Promise<any> {
   let totalObservations = 0;
   let totalBacktests = 0;
 
-  if (totalOrdersRes.length > 0 && totalOrdersRes[0].length > 0) {
+  if (totalOrdersRes && totalOrdersRes.length > 0) {
     const row = totalOrdersRes[0];
     totalOrders = Number(row.total) || 0;
     executedOrders = Number(row.executed) || 0;
     failedOrders = Number(row.failed) || 0;
   }
 
-  if (logsRes.length > 0 && logsRes[0].length > 0) {
+  if (logsRes && logsRes.length > 0) {
     totalLogs = Number(logsRes[0].total) || 0;
   }
-  if (candlesRes.length > 0 && candlesRes[0].length > 0) {
+  if (candlesRes && candlesRes.length > 0) {
     totalCandles = Number(candlesRes[0].total) || 0;
   }
-  if (ticksRes.length > 0 && ticksRes[0].length > 0) {
+  if (ticksRes && ticksRes.length > 0) {
     totalTicks = Number(ticksRes[0].total) || 0;
   }
-  if (accountRes.length > 0 && accountRes[0].length > 0) {
+  if (accountRes && accountRes.length > 0) {
     totalAccountSnapshots = Number(accountRes[0].total) || 0;
   }
-  if (stratRes.length > 0 && stratRes[0].length > 0) {
+  if (stratRes && stratRes.length > 0) {
     totalStrategies = Number(stratRes[0].total) || 0;
   }
-  if (obsRes.length > 0 && obsRes[0].length > 0) {
+  if (obsRes && obsRes.length > 0) {
     totalObservations = Number(obsRes[0].total) || 0;
   }
-  if (btRes.length > 0 && btRes[0].length > 0) {
+  if (btRes && btRes.length > 0) {
     totalBacktests = Number(btRes[0].total) || 0;
   }
 

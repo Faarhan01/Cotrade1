@@ -7,6 +7,11 @@ coverage/
 .env*
 !.env.example
 
-# Data files (SQLite database and event logs)
-data/*.sqlite
-data/*.jsonl
+# Runtime Data & Binary Database Artifacts
+data/
+backend/data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.jsonl
+bun.lock*

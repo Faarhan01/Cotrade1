@@ -340,7 +340,7 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
                   disabled={isModifying}
                   className="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition-colors flex items-center gap-1.5"
                 >
-                  {isModifying ? 'Sending to EA...' : 'Save & Dispatch'}
+                  {isModifying ? 'Modifying on MT5...' : 'Save & Dispatch'}
                 </button>
               </div>
             </div>

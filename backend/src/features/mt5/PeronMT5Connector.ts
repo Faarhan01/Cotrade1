@@ -1,5 +1,6 @@
 import { spawn, ChildProcess } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import {
   AccountInfo,
@@ -57,6 +58,7 @@ export class PeronMT5Connector implements IMT5Connector {
   private cachedOrders: PendingOrder[] = [];
   private cachedTicks: TickData[] = [];
   private consecutiveErrors: number = 0;
+  private lastAutoConnectAttemptTime: number = 0;
 
   constructor(
     private port: number = defaultMT5Config.peronBridgePort,
@@ -186,16 +188,33 @@ export class PeronMT5Connector implements IMT5Connector {
 
   private async startPythonBridgeProcess(): Promise<void> {
     try {
-      const scriptPath = path.resolve(__dirname, '../scripts/peron_bridge.py');
-      logger.info('PeronConnector', `Spawning Python Peron Bridge: ${defaultMT5Config.pythonPath} ${scriptPath}`);
+      const candidates = [
+        path.resolve(__dirname, '../../scripts/peron_bridge.py'),
+        path.resolve(__dirname, '../../../scripts/peron_bridge.py'),
+        path.resolve(process.cwd(), 'backend/src/scripts/peron_bridge.py'),
+        path.resolve(process.cwd(), 'backend/scripts/peron_bridge.py'),
+      ];
+      const scriptPath = candidates.find((p) => fs.existsSync(p));
+      if (!scriptPath) {
+        logger.warn('PeronConnector', 'peron_bridge.py script not found, running in standalone mode');
+        return;
+      }
 
-      this.pythonProcess = spawn(defaultMT5Config.pythonPath, [scriptPath], {
+      const pythonExec = process.env.PYTHON_PATH || 'python3';
+      logger.info('PeronConnector', `Spawning Python Peron Bridge: ${pythonExec} ${scriptPath}`);
+
+      this.pythonProcess = spawn(pythonExec, [scriptPath], {
         env: {
           ...process.env,
           PERON_PORT: String(this.port),
           PERON_HOST: this.host,
         },
         stdio: ['ignore', 'pipe', 'pipe'],
+      });
+
+      this.pythonProcess.on('error', (err: any) => {
+        logger.warn('PeronConnector', `Python bridge process notice: ${err.message}. Standalone bridge mode active.`);
+        this.pythonProcess = null;
       });
 
       this.pythonProcess.stdout?.on('data', (d) => {
@@ -207,11 +226,13 @@ export class PeronMT5Connector implements IMT5Connector {
       });
 
       this.pythonProcess.on('exit', (code) => {
-        logger.warn('PeronConnector', `Python Peron Bridge exited with code ${code}`);
+        if (code !== 0 && code !== null) {
+          logger.warn('PeronConnector', `Python Peron Bridge exited with code ${code}`);
+        }
         this.pythonProcess = null;
       });
     } catch (err: any) {
-      logger.error('PeronConnector', `Failed to spawn Python Peron Bridge process: ${err.message}`);
+      logger.warn('PeronConnector', `Notice during bridge spawn: ${err.message}`);
     }
   }
 
@@ -266,8 +287,9 @@ export class PeronMT5Connector implements IMT5Connector {
       const ticks = isTerminalConnected ? this.normalizeTicks(rawTicks) : [];
       const symbols = isTerminalConnected ? this.cachedSymbols : [];
 
-      // Auto-connect to MT5 if the bridge is up but terminal isn't connected yet
-      if (!isTerminalConnected) {
+      // Auto-connect to MT5 periodically if the bridge is up but terminal isn't connected yet
+      if (!isTerminalConnected && now - this.lastAutoConnectAttemptTime > 20000) {
+        this.lastAutoConnectAttemptTime = now;
         await this.autoConnectToMT5();
       }
 

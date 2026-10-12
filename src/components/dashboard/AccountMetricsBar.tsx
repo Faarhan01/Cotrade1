@@ -27,14 +27,14 @@ export const AccountMetricsBar: React.FC<AccountMetricsBarProps> = ({ account })
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
             <span className="text-cyan-300 font-bold">
-              MetaTrader 5 Bridge Tunnel Ready:
+              MetaTrader 5 Direct Package Engine Active:
             </span>
             <span className="text-slate-300">
-              Awaiting EA heartbeat at <code className="text-cyan-400 bg-slate-900 px-1.5 py-0.5 rounded">http://127.0.0.1:7777</code>
+              Awaiting MetaTrader 5 desktop application hook via Python package
             </span>
           </div>
           <span className="text-[11px] text-slate-400">
-            Real broker account data will sync automatically upon EA attachment
+            Real broker account data will sync automatically when MT5 app is running
           </span>
         </div>
       )}

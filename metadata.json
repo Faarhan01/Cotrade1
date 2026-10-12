@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "MT5 Bridge & AI Trading Terminal",
+  "description": "High-performance MetaTrader 5 bridge, algorithmic trading terminal, and execution hub for local trading and external AI integration.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

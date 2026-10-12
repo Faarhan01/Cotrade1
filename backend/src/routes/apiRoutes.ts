@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { tradeStore } from '@services/tradeStore';
 import { handleMcpJsonRpc } from '@/services/mcpServer';
-import { addSseClient, removeSseClient, getStreamStats } from '@/services/websocketServer';
+import { addSseClient, removeSseClient, getStreamStats, broadcast } from '@/services/websocketServer';
 import { readEvents } from '@services/eventBuffer';
+import { normalizeSymbol } from '@core/utils';
 import {
   MT5Controller,
   TradeController,
@@ -10,8 +11,12 @@ import {
   DatabaseController,
   MCPController,
 } from '@controllers/index';
+import { daemonRouter } from './daemonRoutes.ts';
 
 export const apiRouter = Router();
+
+// Mount Daemon Router
+apiRouter.use('/daemon', daemonRouter);
 
 // ==========================================
 // 1. Core State & Connection Endpoints
@@ -52,9 +57,75 @@ apiRouter.post('/positions/:ticket/modify', TradeController.modifyPosition);
 apiRouter.post('/orders/:ticket/modify', TradeController.modifyOrder);
 apiRouter.post('/orders/:ticket/cancel', TradeController.cancelOrder);
 
-// Candle management endpoints (for testing/debug)
+// Candle & Tick management endpoints (for testing/debug and chart simulation)
 apiRouter.post('/candles/request', TradeController.requestHistoryFromEA);
 apiRouter.post('/candles/simulate', TradeController.seedCandles);
+
+apiRouter.post('/simulate-tick', (req, res) => {
+  const { symbol, bid, ask, spread } = req.body;
+  const sym = normalizeSymbol(symbol || 'EURUSD');
+  const now = Date.now();
+  const currentTick = tradeStore.getTicks().find((t) => t.symbol === sym);
+  const baseBid = bid !== undefined ? Number(bid) : (currentTick ? currentTick.bid + (Math.random() - 0.5) * 0.0004 : (sym === 'XAUUSD' ? 2650.0 : 1.0850));
+  const calculatedSpread = spread !== undefined ? Number(spread) : (sym.includes('JPY') ? 15 : 12);
+  const point = sym.includes('JPY') ? 0.001 : 0.0001;
+  const calculatedAsk = ask !== undefined ? Number(ask) : (baseBid + calculatedSpread * point);
+
+  const tick = {
+    symbol: sym,
+    bid: baseBid,
+    ask: calculatedAsk,
+    spread: calculatedSpread,
+    last: baseBid,
+    volume: 1,
+    time: now,
+  };
+
+  tradeStore.updateTick(tick);
+  broadcast({ type: 'tick', payload: tick });
+
+  res.json({ success: true, tick });
+});
+
+apiRouter.post('/charts/simulate-batch', (req, res) => {
+  const { symbol, count = 40, pattern = 'wave' } = req.body;
+  const sym = normalizeSymbol(symbol || 'EURUSD');
+  const basePrice = sym === 'XAUUSD' ? 2650.0 : sym === 'BTCUSD' ? 68500.0 : sym.includes('JPY') ? 154.5 : 1.0850;
+  const step = sym === 'XAUUSD' ? 0.4 : sym === 'BTCUSD' ? 20.0 : sym.includes('JPY') ? 0.04 : 0.0002;
+  const now = Date.now();
+  const generated = [];
+
+  for (let i = count; i >= 0; i--) {
+    const time = now - i * 1500;
+    const wave = pattern === 'wave' ? Math.sin(i / 4) * step * 2.5 : (Math.random() - 0.48) * step;
+    const bid = basePrice + wave + (pattern === 'uptrend' ? (count - i) * step * 0.15 : 0);
+    const spread = sym.includes('JPY') ? 15 : 12;
+    const point = sym.includes('JPY') ? 0.001 : 0.0001;
+    const ask = bid + spread * point;
+
+    const tick = {
+      symbol: sym,
+      bid: Number(bid.toFixed(sym.includes('JPY') ? 3 : 5)),
+      ask: Number(ask.toFixed(sym.includes('JPY') ? 3 : 5)),
+      spread,
+      last: Number(bid.toFixed(sym.includes('JPY') ? 3 : 5)),
+      volume: 1,
+      time,
+    };
+    tradeStore.updateTick(tick);
+    generated.push(tick);
+  }
+
+  const latest = generated[generated.length - 1];
+  broadcast({ type: 'tick', payload: latest });
+
+  res.json({
+    success: true,
+    symbol: sym,
+    count: generated.length,
+    latest,
+  });
+});
 
 apiRouter.post('/orders/check', MT5Controller.checkOrder);
 apiRouter.post('/tools/calc-margin', MT5Controller.calcMargin);

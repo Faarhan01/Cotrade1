@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Position, TickData } from '@/types';
-import { BarChart3, TrendingUp } from 'lucide-react';
+import { BarChart3, TrendingUp, Play, Zap, RefreshCw, Activity } from 'lucide-react';
+import { api } from '../../lib/api';
 
 interface LivePriceChartProps {
   symbol: string;
@@ -15,7 +16,28 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({
   currentTick,
   positions,
 }) => {
+  const [testing, setTesting] = useState(false);
+  const [testPattern, setTestPattern] = useState<'wave' | 'uptrend' | 'random'>('wave');
   const digits = symbol.toLowerCase().includes('jpy') ? 3 : symbol.toLowerCase().includes('usd') && symbol.length <= 7 ? 5 : 2;
+
+  const handleSimulateBatch = async (pattern: 'wave' | 'uptrend' | 'random' = testPattern) => {
+    try {
+      setTesting(true);
+      await api.simulateChartBatch(symbol, 45, pattern);
+    } catch (err) {
+      console.error('Failed to simulate ticks:', err);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleInjectSingleTick = async () => {
+    try {
+      await api.simulateTick(symbol);
+    } catch (err) {
+      console.error('Failed to inject tick:', err);
+    }
+  };
 
   // Compute SVG dimensions and scale
   const chartProps = useMemo(() => {
@@ -39,7 +61,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({
     let min = Math.min(...bids);
     let max = Math.max(...bids);
 
-    // Give 10% breathing room top and bottom
+    // Give 15% breathing room top and bottom
     const pad = (max - min) * 0.15 || 0.0001;
     min -= pad;
     max += pad;
@@ -48,11 +70,11 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({
     const times = history.map((h) => h.time);
     let minTime = Math.min(...times);
     let maxTime = Math.max(...times);
-    const timeRange = maxTime - minTime || 1; // Avoid division by zero
+    const timeRange = maxTime - minTime || 1;
 
     const width = 600;
     const height = 180;
-    const chartHeight = 150; // Leave space for time labels at bottom
+    const chartHeight = 150;
     const timeLabelHeight = 30;
 
     const points = history.map((pt) => {
@@ -80,43 +102,65 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({
     };
   }, [history]);
 
-  const { pathData, minPrice, maxPrice, priceRange, lastY, minTime, maxTime, width, height, chartHeight, timeLabelHeight } = chartProps;
-
+  const { pathData, minPrice, maxPrice, priceRange, lastY, minTime, maxTime, width, height, chartHeight } = chartProps;
   const relatedPositions = positions.filter((p) => p.symbol.toLowerCase() === symbol.toLowerCase());
 
   return (
     <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
           <BarChart3 className="h-4 w-4 text-cyan-400" />
           <span className="font-bold text-sm text-white font-mono">{symbol}</span>
           <span className="text-xs text-slate-400 font-mono">Real-Time Tick Movement</span>
         </div>
 
-        {currentTick && (
-          <div className="flex items-center gap-3 text-xs font-mono">
-            <span className="text-slate-400">
-              Sprd: <span className="text-cyan-300 font-bold">{currentTick.spread} pts</span>
-            </span>
-            <span className="text-slate-400">
-              Bid: <span className="text-emerald-400 font-bold">{currentTick.bid.toFixed(digits)}</span>
-            </span>
-            <span className="text-slate-400">
-              Ask: <span className="text-slate-200">{currentTick.ask.toFixed(digits)}</span>
-            </span>
+        <div className="flex items-center gap-2">
+          {/* Quick Test Controls */}
+          <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 px-2 py-0.5 rounded-lg text-xs font-mono">
+            <button
+              onClick={() => handleSimulateBatch('wave')}
+              disabled={testing}
+              className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 text-[11px] px-1 py-0.5 rounded hover:bg-slate-800"
+              title="Simulate 45-tick test trajectory"
+            >
+              <Zap className="h-3 w-3" />
+              <span>{testing ? 'Simulating...' : 'Test Wave'}</span>
+            </button>
+            <span className="text-slate-600">|</span>
+            <button
+              onClick={handleInjectSingleTick}
+              className="text-emerald-400 hover:text-emerald-300 text-[11px] px-1 py-0.5 rounded hover:bg-slate-800"
+              title="Inject single tick"
+            >
+              +Tick
+            </button>
           </div>
-        )}
+
+          {currentTick && (
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <span className="text-slate-400">
+                Sprd: <span className="text-cyan-300 font-bold">{currentTick.spread} pts</span>
+              </span>
+              <span className="text-slate-400">
+                Bid: <span className="text-emerald-400 font-bold">{currentTick.bid.toFixed(digits)}</span>
+              </span>
+              <span className="text-slate-400">
+                Ask: <span className="text-slate-200">{currentTick.ask.toFixed(digits)}</span>
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* SVG Canvas Area */}
       <div className="relative w-full h-[180px] bg-slate-950/70 border border-slate-800/80 rounded-lg overflow-hidden flex items-center justify-center">
         {history && history.length >= 2 ? (
           <>
-             <svg
-               viewBox={`0 0 ${width} ${height}`}
-               preserveAspectRatio="none"
-               className="w-full h-full stroke-cyan-400 stroke-2 fill-none overflow-visible"
-             >
+            <svg
+              viewBox={`0 0 ${width} ${height}`}
+              preserveAspectRatio="none"
+              className="w-full h-full stroke-cyan-400 stroke-2 fill-none overflow-visible"
+            >
               <defs>
                 <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.25" />
@@ -129,89 +173,87 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({
               <line x1="0" y1="90" x2="600" y2="90" stroke="#1e293b" strokeDasharray="3 3" />
               <line x1="0" y1="135" x2="600" y2="135" stroke="#1e293b" strokeDasharray="3 3" />
 
-            {/* Area under curve */}
-            <path
-              d={`${pathData} L ${chartProps.width} ${chartProps.chartHeight} L 0 ${chartProps.chartHeight} Z`}
-              fill="url(#chartGradient)"
-              stroke="none"
-            />
+              {/* Area under curve */}
+              <path
+                d={`${pathData} L ${chartProps.width} ${chartProps.chartHeight} L 0 ${chartProps.chartHeight} Z`}
+                fill="url(#chartGradient)"
+                stroke="none"
+              />
 
-            {/* Horizontal grid lines and labels */}
-            <g className="text-[9px] font-mono fill-slate-400">
-              {/* Generate 4 horizontal lines (including min and max) */}
-              {[0, 0.33, 0.66, 1].map((ratio, i) => {
-                const y = chartProps.chartHeight - ratio * chartProps.chartHeight;
-                const price = chartProps.minPrice + ratio * chartProps.priceRange;
-                return (
-                  <React.Fragment key={`h-grid-${i}`}>
-                    <line
-                      x1="0"
-                      y1={y}
-                      x2={chartProps.width}
-                      y2={y}
-                      stroke="#1e293b"
-                      strokeDasharray="2 2"
-                    />
-                    <text x="4" y={y - 4} textAnchor="start">
-                      {price.toFixed(digits)}
-                    </text>
-                  </React.Fragment>
-                );
-              })}
-            </g>
+              {/* Horizontal grid lines and labels */}
+              <g className="text-[9px] font-mono fill-slate-400">
+                {[0, 0.33, 0.66, 1].map((ratio, i) => {
+                  const y = chartProps.chartHeight - ratio * chartProps.chartHeight;
+                  const price = chartProps.minPrice + ratio * chartProps.priceRange;
+                  return (
+                    <React.Fragment key={`h-grid-${i}`}>
+                      <line
+                        x1="0"
+                        y1={y}
+                        x2={chartProps.width}
+                        y2={y}
+                        stroke="#1e293b"
+                        strokeDasharray="2 2"
+                      />
+                      <text x="4" y={y - 4} textAnchor="start">
+                        {price.toFixed(digits)}
+                      </text>
+                    </React.Fragment>
+                  );
+                })}
+              </g>
 
-            {/* Vertical time markers at bottom */}
-            <g className="text-[8px] font-mono fill-slate-400">
-              {/* Generate 5 time markers (including min and max) */}
-              {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => {
-                const x = ratio * chartProps.width;
-                const time = new Date(chartProps.minTime + ratio * (chartProps.maxTime - chartProps.minTime));
-                const timeString = time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                return (
-                  <React.Fragment key={`v-time-${i}`}>
-                    <line
-                      x1={x}
-                      y1={chartProps.chartHeight}
-                      x2={x}
-                      y2={chartProps.chartHeight + 4}
-                      stroke="#1e293b"
-                      strokeWidth="1"
-                    />
-                    <text x={x} y={chartProps.chartHeight + 16} textAnchor="middle">
-                      {timeString}
-                    </text>
-                  </React.Fragment>
-                );
-              })}
-            </g>
+              {/* Vertical time markers */}
+              <g className="text-[8px] font-mono fill-slate-400">
+                {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => {
+                  const x = ratio * chartProps.width;
+                  const time = new Date(chartProps.minTime + ratio * (chartProps.maxTime - chartProps.minTime));
+                  const timeString = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                  return (
+                    <React.Fragment key={`v-time-${i}`}>
+                      <line
+                        x1={x}
+                        y1={chartProps.chartHeight}
+                        x2={x}
+                        y2={chartProps.chartHeight + 4}
+                        stroke="#1e293b"
+                        strokeWidth="1"
+                      />
+                      <text x={x} y={chartProps.chartHeight + 16} textAnchor="middle">
+                        {timeString}
+                      </text>
+                    </React.Fragment>
+                  );
+                })}
+              </g>
 
               {/* Tick price line */}
               <path d={pathData} stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" />
 
-               {/* Position markers */}
-               {relatedPositions.map((pos) => {
-                 const posY = chartProps.chartHeight - ((pos.openPrice - (chartProps.minPrice - 0.0001)) / chartProps.priceRange) * chartProps.chartHeight;
-                 if (posY >= 0 && posY <= chartProps.chartHeight) {
-                   return (
-                     <g key={pos.ticket}>
-                       <line
-                         x1="0"
-                         y1={posY}
-                         x2={chartProps.width}
-                         y2={posY}
-                         stroke={pos.type === 'BUY' ? '#10b981' : '#f43f5e'}
-                         strokeWidth="1"
-                         strokeDasharray="4 2"
-                       />
-                     </g>
-                   );
-                 }
-                 return null;
-               })}
+              {/* Position markers */}
+              {relatedPositions.map((pos) => {
+                const posY = chartProps.chartHeight - ((pos.openPrice - (chartProps.minPrice - 0.0001)) / chartProps.priceRange) * chartProps.chartHeight;
+                if (posY >= 0 && posY <= chartProps.chartHeight) {
+                  return (
+                    <g key={pos.ticket}>
+                      <line
+                        x1="0"
+                        y1={posY}
+                        x2={chartProps.width}
+                        y2={posY}
+                        stroke={pos.type === 'BUY' ? '#10b981' : '#f43f5e'}
+                        strokeWidth="1"
+                        strokeDasharray="4 2"
+                      />
+                    </g>
+                  );
+                }
+                return null;
+              })}
 
-                {/* Current price marker dot */}
-                <circle cx={chartProps.width} cy={chartProps.lastY} r="4" fill="#38bdf8" className="animate-ping" />
-                <circle cx={chartProps.width} cy={chartProps.lastY} r="3" fill="#38bdf8" />
+              {/* Current price marker dot */}
+              <circle cx={chartProps.width} cy={chartProps.lastY} r="4" fill="#38bdf8" className="animate-ping" />
+              <circle cx={chartProps.width} cy={chartProps.lastY} r="3" fill="#38bdf8" />
             </svg>
 
             {/* Price labels */}
@@ -236,25 +278,45 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({
               </div>
             ))}
           </>
-         ) : (
-           <div className="text-slate-400 text-xs font-mono flex flex-col items-center gap-2 p-6 text-center" style={{ height: chartHeight }}>
-             <TrendingUp className="h-5 w-5 text-cyan-400" />
-             <span>Awaiting real price ticks from MetaTrader 5 for {symbol}</span>
-             <span className="text-[11px] text-slate-500">
-               Launch your local MetaTrader 5 application to stream live tick trajectory via Peron package
-             </span>
-           </div>
-         )}
+        ) : (
+          <div className="text-slate-400 text-xs font-mono flex flex-col items-center justify-center gap-3 p-6 text-center h-full">
+            <TrendingUp className="h-6 w-6 text-cyan-400" />
+            <div>
+              <div className="font-bold text-white text-sm">Awaiting Tick Stream for {symbol}</div>
+              <div className="text-[11px] text-slate-500 mt-1 max-w-sm">
+                Connect your MetaTrader 5 terminal, or test chart dynamics instantly using simulated market ticks:
+              </div>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <button
+                onClick={() => handleSimulateBatch('wave')}
+                disabled={testing}
+                className="btn btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
+              >
+                <Zap className="h-3.5 w-3.5" />
+                <span>{testing ? 'Generating...' : 'Simulate Test Trajectory'}</span>
+              </button>
+              <button
+                onClick={() => handleSimulateBatch('uptrend')}
+                disabled={testing}
+                className="btn btn-secondary text-xs py-1.5 px-3"
+              >
+                Trend Test
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-       <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 mt-2">
-         <span>
-           Window: {history.length} ticks from{" "}
-           {new Date(minTime).toLocaleTimeString()} -{" "}
-           {new Date(maxTime).toLocaleTimeString()}
-         </span>
-         <span>Resolution: Raw Tick Stream</span>
-       </div>
+      <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 mt-2">
+        <span>
+          Window: {history.length} ticks {minTime > 0 ? `(${new Date(minTime).toLocaleTimeString()} - ${new Date(maxTime).toLocaleTimeString()})` : ''}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <Activity className="h-3 w-3 text-cyan-400" />
+          <span>Interactive Tick Stream &amp; Chart Tester</span>
+        </span>
+      </div>
     </div>
   );
 };
