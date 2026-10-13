@@ -215,6 +215,7 @@ export class PeronMT5Connector implements IMT5Connector {
       this.pythonProcess.on('error', (err: any) => {
         logger.warn('PeronConnector', `Python bridge process notice: ${err.message}. Standalone bridge mode active.`);
         this.pythonProcess = null;
+        this.status.message = 'Peron Python Bridge offline - running in standalone mode';
       });
 
       this.pythonProcess.stdout?.on('data', (d) => {
@@ -230,9 +231,12 @@ export class PeronMT5Connector implements IMT5Connector {
           logger.warn('PeronConnector', `Python Peron Bridge exited with code ${code}`);
         }
         this.pythonProcess = null;
+        this.status.message = 'Peron Python Bridge offline - restarting polling cycle';
       });
     } catch (err: any) {
       logger.warn('PeronConnector', `Notice during bridge spawn: ${err.message}`);
+      this.pythonProcess = null;
+      this.status.message = 'Peron Python Bridge initialization failed - running in standalone mode';
     }
   }
 
