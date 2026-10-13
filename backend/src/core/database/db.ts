@@ -208,27 +208,38 @@ export async function dbInsertTicks(ticks: TickData[]) {
   try {
     const db = await getDatabaseAdapter();
     const stmt = db.prepare(`
-      INSERT INTO ticks_history (symbol, bid, ask, spread, timestamp, time_iso)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO ticks_history (symbol, bid, ask, last, volume, spread, timestamp, time_msc, flags, time_iso)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     try {
       for (const t of ticks) {
         if (!t) continue;
         const timeSec = t.time || Math.floor(Date.now() / 1000);
-        let timeIso: string;
-        try {
-          timeIso = new Date(timeSec * 1000).toISOString();
-        } catch {
-          timeIso = new Date().toISOString();
+        const timeMsc = t.timeMsc || t.time_msc || (timeSec * 1000);
+        let timeIso: string = t.timeIso || '';
+        if (!timeIso) {
+          try {
+            timeIso = new Date(timeMsc).toISOString();
+          } catch {
+            timeIso = new Date().toISOString();
+          }
         }
         const spread = t.spread != null ? Number(t.spread) : (t.ask != null && t.bid != null ? Math.round((t.ask - t.bid) * 100000) : 10);
+        const last = Number(t.last ?? t.bid) || 0;
+        const volume = Number(t.volume ?? t.volumeReal ?? 1) || 1;
+        const flags = Number(t.flags ?? 0) || 0;
+
         stmt.run(safeParams([
           t.symbol ? t.symbol.trim() : 'EURUSD',
           t.bid ?? 0,
           t.ask ?? 0,
+          last,
+          volume,
           spread,
           timeSec,
+          timeMsc,
+          flags,
           timeIso,
         ]));
       }
@@ -267,14 +278,14 @@ export async function dbGetCandles(symbol: string, timeframe: string, limit = 10
 // 6. Query Ticks History
 export async function dbGetTicksHistory(symbol?: string, limit = 100): Promise<any[]> {
   const db = await getDatabaseAdapter();
-  let sql = `SELECT symbol, bid, ask, spread, timestamp, time_iso FROM ticks_history`;
+  let sql = `SELECT symbol, bid, ask, last, volume, spread, timestamp, time_msc, flags, time_iso FROM ticks_history`;
   const params: any[] = [];
   
   if (symbol && symbol.trim().toLowerCase() !== 'all') {
     sql += ` WHERE symbol = ? COLLATE NOCASE`;
     params.push(symbol.trim());
   }
-  sql += ` ORDER BY timestamp DESC LIMIT ?`;
+  sql += ` ORDER BY timestamp DESC, id DESC LIMIT ?`;
   params.push(limit);
 
   const res = await db.query(sql, params);
@@ -282,10 +293,15 @@ export async function dbGetTicksHistory(symbol?: string, limit = 100): Promise<a
   return res.map((row) => {
     const item: Record<string, any> = {};
     item.symbol = row.symbol;
-    item.bid = row.bid;
-    item.ask = row.ask;
-    item.spread = row.spread;
-    item.timestamp = row.timestamp;
+    item.bid = Number(row.bid);
+    item.ask = Number(row.ask);
+    item.last = Number(row.last ?? row.bid);
+    item.volume = Number(row.volume ?? 1);
+    item.spread = Number(row.spread);
+    item.timestamp = Number(row.timestamp);
+    item.timeMsc = Number(row.time_msc || row.timestamp * 1000);
+    item.time_msc = item.timeMsc;
+    item.flags = Number(row.flags || 0);
     item.time_iso = row.time_iso;
     return item;
   });
@@ -1092,4 +1108,183 @@ export async function dbGetBotLogs(botId: string, limit = 50): Promise<any[]> {
     message: r.message,
     data: r.data_json ? JSON.parse(r.data_json) : undefined,
   }));
+}
+
+// ==========================================
+// 17. Trade Journal & Market Research Notes
+// ==========================================
+
+export async function dbSaveJournalEntry(entry: {
+  id?: string;
+  title: string;
+  content: string;
+  symbol?: string;
+  ticket?: number;
+  tags?: string[];
+  rating?: number;
+}): Promise<any> {
+  const db = await getDatabaseAdapter();
+  const id = entry.id || `jrnl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const now = Date.now();
+  await db.query(
+    `INSERT OR REPLACE INTO trade_journal (id, title, content, symbol, ticket, tags_json, rating, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    safeParams([
+      id,
+      entry.title,
+      entry.content,
+      entry.symbol || null,
+      entry.ticket || null,
+      entry.tags ? JSON.stringify(entry.tags) : null,
+      entry.rating || 5,
+      now,
+      now,
+    ])
+  );
+  return { id, ...entry, createdAt: now, updatedAt: now };
+}
+
+export async function dbGetJournalEntries(limit = 100): Promise<any[]> {
+  const db = await getDatabaseAdapter();
+  const rows = await db.query(
+    `SELECT * FROM trade_journal ORDER BY created_at DESC LIMIT ?`,
+    [limit]
+  );
+  return rows.map((r: any) => ({
+    id: r.id,
+    title: r.title,
+    content: r.content,
+    symbol: r.symbol,
+    ticket: r.ticket,
+    tags: r.tags_json ? JSON.parse(r.tags_json) : [],
+    rating: r.rating,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }));
+}
+
+export async function dbDeleteJournalEntry(id: string): Promise<boolean> {
+  const db = await getDatabaseAdapter();
+  await db.query(`DELETE FROM trade_journal WHERE id = ?`, [id]);
+  return true;
+}
+
+// ==========================================
+// 18. Bot Presets & Strategy Templates
+// ==========================================
+
+export async function dbSaveBotPreset(preset: any): Promise<void> {
+  const db = await getDatabaseAdapter();
+  const id = preset.id || `preset-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  await db.query(
+    `INSERT OR REPLACE INTO bot_presets (id, name, description, strategy_type, symbol, timeframe, allocation_json, trailing_stop_json, parameters_json, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    safeParams([
+      id,
+      preset.name,
+      preset.description || '',
+      preset.strategyType,
+      preset.symbol,
+      preset.timeframe,
+      JSON.stringify(preset.allocation || {}),
+      JSON.stringify(preset.trailingStop || {}),
+      JSON.stringify(preset.parameters || {}),
+      Date.now(),
+    ])
+  );
+}
+
+export async function dbGetBotPresets(): Promise<any[]> {
+  const db = await getDatabaseAdapter();
+  const rows = await db.query(`SELECT * FROM bot_presets ORDER BY created_at ASC`);
+  return rows.map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    description: r.description,
+    strategyType: r.strategy_type,
+    symbol: r.symbol,
+    timeframe: r.timeframe,
+    allocation: r.allocation_json ? JSON.parse(r.allocation_json) : {},
+    trailingStop: r.trailing_stop_json ? JSON.parse(r.trailing_stop_json) : {},
+    parameters: r.parameters_json ? JSON.parse(r.parameters_json) : {},
+    createdAt: r.created_at,
+  }));
+}
+
+// ==========================================
+// 19. Search Knowledge Base
+// ==========================================
+
+export async function dbSearchStrategies(query: string): Promise<any[]> {
+  const db = await getDatabaseAdapter();
+  const term = `%${query.toLowerCase()}%`;
+  const rows = await db.query(
+    `SELECT * FROM strategies WHERE LOWER(name) LIKE ? OR LOWER(description) LIKE ? OR LOWER(symbol) LIKE ? OR LOWER(tags_json) LIKE ? LIMIT 50`,
+    [term, term, term, term]
+  );
+  return rows.map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    description: r.description,
+    type: r.type,
+    symbol: r.symbol,
+    timeframe: r.timeframe,
+    parameters: JSON.parse(r.parameters_json || '{}'),
+    status: r.status,
+    tags: r.tags_json ? JSON.parse(r.tags_json) : [],
+    author: r.author,
+    notes: r.notes,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }));
+}
+
+export async function dbSearchObservations(query: string): Promise<any[]> {
+  const db = await getDatabaseAdapter();
+  const term = `%${query.toLowerCase()}%`;
+  const rows = await db.query(
+    `SELECT * FROM observations WHERE LOWER(title) LIKE ? OR LOWER(content) LIKE ? OR LOWER(tags_json) LIKE ? LIMIT 50`,
+    [term, term, term]
+  );
+  return rows.map((r: any) => ({
+    id: r.id,
+    title: r.title,
+    content: r.content,
+    symbol: r.symbol,
+    timeframe: r.timeframe,
+    category: r.category,
+    tags: r.tags_json ? JSON.parse(r.tags_json) : [],
+    metrics: r.metrics_json ? JSON.parse(r.metrics_json) : undefined,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }));
+}
+
+// ==========================================
+// 20. Comprehensive Full Database Export / Backup
+// ==========================================
+
+export async function dbExportAllData(): Promise<any> {
+  const [strategies, observations, backtests, bots, journal, risk] = await Promise.all([
+    dbGetStrategies(),
+    dbGetObservations(),
+    dbGetBacktestResults(undefined, 100),
+    dbGetBots(),
+    dbGetJournalEntries(100),
+    dbGetRiskSettings(),
+  ]);
+
+  return {
+    version: '2.5.0',
+    exportedAt: Date.now(),
+    exportedAtIso: new Date().toISOString(),
+    data: {
+      strategies,
+      observations,
+      backtests,
+      bots,
+      journal,
+      riskSettings: risk,
+    },
+  };
 }

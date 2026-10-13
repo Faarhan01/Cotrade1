@@ -56,7 +56,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ state, onRefresh }
   const riskGuard = state?.riskGuard || null;
 
   return (
-    <div className="container mx-auto px-4 space-y-6">
+    <div className="space-y-6">
       {/* 1. Real-Time MetaTrader 5 Connection Radar */}
       <MT5ConnectionRadar state={state} onRefresh={onRefresh} />
 

@@ -86,8 +86,12 @@ CREATE TABLE IF NOT EXISTS ticks_history (
   symbol TEXT NOT NULL,
   bid REAL NOT NULL,
   ask REAL NOT NULL,
+  last REAL DEFAULT 0,
+  volume REAL DEFAULT 1,
   spread INTEGER NOT NULL,
   timestamp INTEGER NOT NULL,
+  time_msc INTEGER DEFAULT 0,
+  flags INTEGER DEFAULT 0,
   time_iso TEXT
 );
 
@@ -225,6 +229,31 @@ CREATE TABLE IF NOT EXISTS bot_logs (
   data_json TEXT
 );
 
+CREATE TABLE IF NOT EXISTS trade_journal (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  symbol TEXT,
+  ticket INTEGER,
+  tags_json TEXT,
+  rating INTEGER DEFAULT 5,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS bot_presets (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  strategy_type TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  timeframe TEXT NOT NULL,
+  allocation_json TEXT NOT NULL,
+  trailing_stop_json TEXT NOT NULL,
+  parameters_json TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_candles_lookup ON candles_history(symbol, timeframe, time);
 CREATE INDEX IF NOT EXISTS idx_ticks_lookup ON ticks_history(symbol, timestamp);
 CREATE INDEX IF NOT EXISTS idx_strategies_symbol ON strategies(symbol, status);
@@ -234,6 +263,8 @@ CREATE INDEX IF NOT EXISTS idx_account_created ON account_history(created_at);
 CREATE INDEX IF NOT EXISTS idx_bots_status ON bots(status, symbol);
 CREATE INDEX IF NOT EXISTS idx_bot_exec_bot ON bot_executions(bot_id, opened_at);
 CREATE INDEX IF NOT EXISTS idx_bot_logs_time ON bot_logs(bot_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_journal_time ON trade_journal(created_at);
+CREATE INDEX IF NOT EXISTS idx_presets_type ON bot_presets(strategy_type);
 `;
 
 function sanitizeParams(params?: any[] | any): any[] {
@@ -303,6 +334,18 @@ export class NodeSqliteAdapter implements DatabaseAdapter {
       } catch {
         // column exists or new table
       }
+      try {
+        this.dbInstance.exec('ALTER TABLE ticks_history ADD COLUMN last REAL DEFAULT 0;');
+      } catch {}
+      try {
+        this.dbInstance.exec('ALTER TABLE ticks_history ADD COLUMN volume REAL DEFAULT 1;');
+      } catch {}
+      try {
+        this.dbInstance.exec('ALTER TABLE ticks_history ADD COLUMN time_msc INTEGER DEFAULT 0;');
+      } catch {}
+      try {
+        this.dbInstance.exec('ALTER TABLE ticks_history ADD COLUMN flags INTEGER DEFAULT 0;');
+      } catch {}
 
       // Initialize default risk settings if not present
       const existingRisk = this.dbInstance.prepare('SELECT id FROM risk_settings WHERE id = 1').get();

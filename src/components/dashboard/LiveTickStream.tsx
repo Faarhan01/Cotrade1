@@ -67,6 +67,18 @@ export const LiveTickStream: React.FC<LiveTickStreamProps> = ({
             const flash = flashStates[tick.symbol];
             const digits = tick.symbol.includes('JPY') ? 3 : tick.symbol.includes('USD') && tick.symbol.length <= 6 ? 5 : 2;
 
+            // Format precise timestamp (with milliseconds if available)
+            const tickTimeMs = tick.timeMsc || tick.time_msc || (tick.time ? tick.time * 1000 : 0);
+            let timeStr = '--:--:--';
+            if (tickTimeMs > 0) {
+              const d = new Date(tickTimeMs);
+              const hh = String(d.getHours()).padStart(2, '0');
+              const mm = String(d.getMinutes()).padStart(2, '0');
+              const ss = String(d.getSeconds()).padStart(2, '0');
+              const ms = String(d.getMilliseconds()).padStart(3, '0');
+              timeStr = `${hh}:${mm}:${ss}.${ms}`;
+            }
+
             return (
               <div
                 key={tick.symbol}
@@ -78,9 +90,16 @@ export const LiveTickStream: React.FC<LiveTickStreamProps> = ({
                 }`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-xs font-mono text-white tracking-wide">
-                    {tick.symbol}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-xs font-mono text-white tracking-wide">
+                      {tick.symbol}
+                    </span>
+                    {flash && (
+                      <span className={`text-[10px] font-bold ${flash === 'up' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {flash === 'up' ? '▲' : '▼'}
+                      </span>
+                    )}
+                  </div>
                   <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
                     Sprd: {tick.spread} pts
                   </span>
@@ -111,8 +130,18 @@ export const LiveTickStream: React.FC<LiveTickStreamProps> = ({
                   </div>
                 </div>
 
+                {/* Micro Meta: Timestamp & Volume */}
+                <div className="flex items-center justify-between text-[9px] font-mono text-slate-500 mt-1.5">
+                  <span className="text-slate-400 tabular-nums">
+                    🕒 {timeStr}
+                  </span>
+                  <span>
+                    Vol: {tick.volume || 1}
+                  </span>
+                </div>
+
                 {/* 24h range */}
-                <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono mt-2 pt-1 border-t border-slate-800/80">
+                <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono mt-1.5 pt-1 border-t border-slate-800/80">
                   <span className="flex items-center gap-0.5 text-slate-400">
                     L: {tick.low24h?.toFixed(digits) || tick.bid.toFixed(digits)}
                   </span>

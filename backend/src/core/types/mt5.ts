@@ -27,6 +27,11 @@ export interface TickData {
   last: number;
   volume: number;
   time: number;
+  timeMsc?: number;
+  time_msc?: number;
+  timeIso?: string;
+  flags?: number;
+  volumeReal?: number;
   high24h?: number;
   low24h?: number;
 }

@@ -48,9 +48,11 @@ apiRouter.get('/terminal', MT5Controller.getTerminal);
 apiRouter.get('/positions', MT5Controller.getPositions);
 apiRouter.get('/orders', MT5Controller.getOrders);
 apiRouter.get('/gateway/diagnostics', MT5Controller.getGatewayDiagnostics);
-apiRouter.get('/symbols-groups', MT5Controller.getSymbolGroups);
 apiRouter.post('/positions/close-all', MT5Controller.closeAllPositions);
+apiRouter.post('/positions/close-by', MT5Controller.closeByPosition);
+apiRouter.post('/positions/close-batch', MT5Controller.closePositionsBatch);
 apiRouter.post('/orders/cancel-all', MT5Controller.cancelAllOrders);
+apiRouter.post('/orders/cancel-batch', MT5Controller.cancelOrdersBatch);
 apiRouter.get('/history/deals', MT5Controller.getHistoryDeals);
 apiRouter.get('/history/orders', MT5Controller.getHistoryOrders);
 apiRouter.get('/market-depth', MT5Controller.getMarketDepth);
@@ -245,6 +247,12 @@ apiRouter.get('/database/orders', DatabaseController.getOrders.bind(DatabaseCont
 apiRouter.get('/database/candles', DatabaseController.getCandles.bind(DatabaseController));
 apiRouter.get('/database/ticks', DatabaseController.getTicks.bind(DatabaseController));
 apiRouter.get('/database/account', DatabaseController.getAccountHistory.bind(DatabaseController));
+apiRouter.get('/database/export', DatabaseController.exportDatabase.bind(DatabaseController));
+
+// Trade Journal & Research Insights
+apiRouter.get('/journal', DatabaseController.getJournal.bind(DatabaseController));
+apiRouter.post('/journal', DatabaseController.saveJournal.bind(DatabaseController));
+apiRouter.delete('/journal/:id', DatabaseController.deleteJournal.bind(DatabaseController));
 
 // ==========================================
 // 6. Event Buffering Endpoints

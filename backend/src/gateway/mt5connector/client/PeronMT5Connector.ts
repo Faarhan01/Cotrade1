@@ -336,14 +336,23 @@ export class PeronMT5Connector implements IMT5Connector {
       const bid = Number(t.bid) || 0;
       const ask = Number(t.ask) || 0;
       const spread = t.spread != null ? Number(t.spread) : (ask && bid ? Math.round((ask - bid) * 100000) : 10);
+      const timeSec = Number(t.time) || Math.floor(Date.now() / 1000);
+      const timeMsc = Number(t.timeMsc || t.time_msc || timeSec * 1000);
+      const timeIso = t.timeIso || (timeMsc ? new Date(timeMsc).toISOString() : new Date().toISOString());
+
       return {
         symbol: t.symbol || 'EURUSD',
-        time: Number(t.time) || Math.floor(Date.now() / 1000),
+        time: timeSec,
+        timeMsc,
+        time_msc: timeMsc,
+        timeIso,
         bid,
         ask,
         spread,
         last: Number(t.last ?? bid) || 0,
         volume: Number(t.volume) || 1,
+        volumeReal: Number(t.volumeReal || t.volume_real || t.volume || 1),
+        flags: Number(t.flags || 0),
         high24h: Number(t.high24h ?? ask) || 0,
         low24h: Number(t.low24h ?? bid) || 0,
       };
@@ -594,6 +603,61 @@ export class PeronMT5Connector implements IMT5Connector {
       return data;
     } catch (err: any) {
       return { success: false, message: `Close position failed: ${err.message}` };
+    }
+  }
+
+  public async closeByPosition(ticket: number, oppositeTicket: number): Promise<ExecutionResult> {
+    try {
+      const res = await fetch(`${this.bridgeUrl}/close/by`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket, oppositeTicket }),
+      });
+      const data = (await res.json()) as ExecutionResult;
+      setTimeout(() => this.syncCycle(), 100);
+      return data;
+    } catch (err: any) {
+      return { success: false, message: `Close-by position failed: ${err.message}` };
+    }
+  }
+
+  public async closePositionsBatch(filter: { symbol?: string; magic?: number; type?: string }): Promise<{ success: boolean; closedCount: number; results: any[] }> {
+    try {
+      const positions = await this.getPositions(filter.symbol);
+      const filtered = positions.filter((p) => {
+        if (filter.magic && p.magic !== filter.magic) return false;
+        if (filter.type && p.type !== filter.type) return false;
+        return true;
+      });
+
+      const results: any[] = [];
+      for (const p of filtered) {
+        const res = await this.closePosition(p.ticket, p.volume);
+        results.push({ ticket: p.ticket, symbol: p.symbol, ...res });
+      }
+      return { success: true, closedCount: results.length, results };
+    } catch (err: any) {
+      return { success: false, closedCount: 0, results: [] };
+    }
+  }
+
+  public async cancelOrdersBatch(filter: { symbol?: string; magic?: number; type?: string }): Promise<{ success: boolean; cancelledCount: number; results: any[] }> {
+    try {
+      const orders = await this.getOrders(filter.symbol);
+      const filtered = orders.filter((o) => {
+        if (filter.magic && o.magic !== filter.magic) return false;
+        if (filter.type && o.type !== filter.type) return false;
+        return true;
+      });
+
+      const results: any[] = [];
+      for (const o of filtered) {
+        const res = await this.cancelOrder(o.ticket);
+        results.push({ ticket: o.ticket, symbol: o.symbol, ...res });
+      }
+      return { success: true, cancelledCount: results.length, results };
+    } catch (err: any) {
+      return { success: false, cancelledCount: 0, results: [] };
     }
   }
 

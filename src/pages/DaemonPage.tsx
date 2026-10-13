@@ -240,7 +240,7 @@ strat = requests.post("http://localhost:3000/api/daemon/dispatch", json={
 print("Knowledge Base:", strat.json())`;
 
   return (
-    <div className="container mx-auto px-4 space-y-6">
+    <div className="space-y-6">
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-6 rounded-2xl shadow-sm">
         <div className="flex items-center gap-4">
@@ -364,7 +364,7 @@ print("Knowledge Base:", strat.json())`;
       {/* Main Content Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: AI Dispatch Dock & Watchlist */}
-        <div className="container mx-auto px-4 space-y-6">
+        <div className="space-y-6">
           {/* Dispatch Dock */}
           <div className="terminal-card p-5">
             <div className="flex items-center justify-between mb-4">

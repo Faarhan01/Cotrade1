@@ -69,7 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="border-b border-slate-800/80 bg-slate-900/95 sticky top-0 z-50 shadow-sm">
-      <div className="container">
+      <div className="container-custom">
         <div className="flex items-center justify-between gap-8 h-16">
           {/* Zone 1: Brand Wordmark (Single line, no pills) */}
           <div className="flex items-center gap-3 shrink-0">
@@ -144,7 +144,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
                 className={`whitespace-nowrap shrink-0 py-1 ${
-                  isActive ? 'text-cyan-400 font-bold' : 'text-slate-400 text-slate-300 hover:text-slate-100'
+                  isActive ? 'text-cyan-400 font-bold' : 'text-slate-400 hover:text-slate-100'
                 }`}
               >
                 {item.label}

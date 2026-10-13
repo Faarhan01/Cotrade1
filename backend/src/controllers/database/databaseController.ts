@@ -187,4 +187,48 @@ export class DatabaseController {
     const history = await db.query(`SELECT * FROM account_history ORDER BY created_at DESC LIMIT ?`, [limit]);
     res.json({ success: true, count: history.length, history });
   }
+
+  // Full Database Export
+  public static async exportDatabase(req: Request, res: Response) {
+    try {
+      const { dbExportAllData } = await import('@core/database/db.ts');
+      const backup = await dbExportAllData();
+      res.json({ success: true, backup });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // Journal endpoints
+  public static async getJournal(req: Request, res: Response) {
+    try {
+      const { dbGetJournalEntries } = await import('@core/database/db.ts');
+      const limit = Number(req.query.limit) || 100;
+      const entries = await dbGetJournalEntries(limit);
+      res.json({ success: true, count: entries.length, entries });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  public static async saveJournal(req: Request, res: Response) {
+    try {
+      const { dbSaveJournalEntry } = await import('@core/database/db.ts');
+      const entry = await dbSaveJournalEntry(req.body);
+      res.json({ success: true, entry });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  public static async deleteJournal(req: Request, res: Response) {
+    try {
+      const { dbDeleteJournalEntry } = await import('@core/database/db.ts');
+      const { id } = req.params;
+      await dbDeleteJournalEntry(id);
+      res.json({ success: true, message: `Journal entry ${id} deleted` });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
 }

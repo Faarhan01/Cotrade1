@@ -263,6 +263,118 @@ export class BotEngine {
       };
     }
 
+    if (type === 'MACD_MOMENTUM') {
+      const fast = Number(params.fastEmaPeriod) || 12;
+      const slow = Number(params.slowEmaPeriod) || 26;
+      const signalPeriod = Number(params.signalPeriod) || 9;
+
+      const macd = this.calculateMACD(candles, fast, slow, signalPeriod);
+      const indicatorValues = { ...macd, currentPrice };
+
+      if (macd.hist > 0 && macd.prevHist <= 0) {
+        return {
+          signal: 'BUY',
+          confidence: 0.90,
+          reason: `MACD histogram crossed above zero line (MACD: ${macd.macd.toFixed(4)}, Signal: ${macd.signal.toFixed(4)})`,
+          price: currentPrice,
+          indicatorValues,
+          timestamp: now,
+        };
+      } else if (macd.hist < 0 && macd.prevHist >= 0) {
+        return {
+          signal: 'SELL',
+          confidence: 0.90,
+          reason: `MACD histogram crossed below zero line (MACD: ${macd.macd.toFixed(4)}, Signal: ${macd.signal.toFixed(4)})`,
+          price: currentPrice,
+          indicatorValues,
+          timestamp: now,
+        };
+      }
+
+      return {
+        signal: 'HOLD',
+        confidence: 0.5,
+        reason: `MACD histogram neutral (${macd.hist.toFixed(5)})`,
+        price: currentPrice,
+        indicatorValues,
+        timestamp: now,
+      };
+    }
+
+    if (type === 'BOLLINGER_BANDS') {
+      const period = Number(params.bbPeriod) || 20;
+      const stdDevMult = Number(params.bbStdDev) || 2.0;
+
+      const bb = this.calculateBollingerBands(candles, period, stdDevMult);
+      const indicatorValues = { ...bb, currentPrice };
+
+      // Mean reversion / bounce logic
+      if (currentPrice <= bb.lower) {
+        return {
+          signal: 'BUY',
+          confidence: 0.89,
+          reason: `Price tested Bollinger Lower Band (${bb.lower.toFixed(4)}) - Mean Reversion Long`,
+          price: currentPrice,
+          indicatorValues,
+          timestamp: now,
+        };
+      } else if (currentPrice >= bb.upper) {
+        return {
+          signal: 'SELL',
+          confidence: 0.89,
+          reason: `Price tested Bollinger Upper Band (${bb.upper.toFixed(4)}) - Mean Reversion Short`,
+          price: currentPrice,
+          indicatorValues,
+          timestamp: now,
+        };
+      }
+
+      return {
+        signal: 'HOLD',
+        confidence: 0.5,
+        reason: `Price inside Bollinger Bands (${bb.lower.toFixed(4)} - ${bb.upper.toFixed(4)})`,
+        price: currentPrice,
+        indicatorValues,
+        timestamp: now,
+      };
+    }
+
+    if (type === 'SCALPING_FAST') {
+      const fastEma = this.calculateEMA(candles, 5);
+      const midEma = this.calculateEMA(candles, 13);
+      const rsi5 = this.calculateRSI(candles, 7);
+      const indicatorValues = { fastEma, midEma, rsi5, currentPrice };
+
+      if (fastEma > midEma && rsi5 < 45) {
+        return {
+          signal: 'BUY',
+          confidence: 0.92,
+          reason: `Fast Scalper: EMA 5/13 bullish push with short RSI pullback (${rsi5.toFixed(1)})`,
+          price: currentPrice,
+          indicatorValues,
+          timestamp: now,
+        };
+      } else if (fastEma < midEma && rsi5 > 55) {
+        return {
+          signal: 'SELL',
+          confidence: 0.92,
+          reason: `Fast Scalper: EMA 5/13 bearish push with short RSI bounce (${rsi5.toFixed(1)})`,
+          price: currentPrice,
+          indicatorValues,
+          timestamp: now,
+        };
+      }
+
+      return {
+        signal: 'HOLD',
+        confidence: 0.5,
+        reason: 'Scalper conditions waiting for micro-trend trigger',
+        price: currentPrice,
+        indicatorValues,
+        timestamp: now,
+      };
+    }
+
     // Default Multi-Indicator Consensus
     const rsiVal = this.calculateRSI(candles, 14);
     const emaFast = this.calculateEMA(candles, 9);
@@ -590,6 +702,97 @@ export class BotEngine {
       ema = closes[i] * k + ema * (1 - k);
     }
     return ema;
+  }
+
+  // MACD Calculator
+  private calculateMACD(candles: CandleData[], fastPeriod = 12, slowPeriod = 26, signalPeriod = 9) {
+    const fastEma = this.calculateEMA(candles, fastPeriod);
+    const slowEma = this.calculateEMA(candles, slowPeriod);
+    const macd = fastEma - slowEma;
+
+    const fastEmaPrev = this.calculateEMA(candles.slice(0, -1), fastPeriod);
+    const slowEmaPrev = this.calculateEMA(candles.slice(0, -1), slowPeriod);
+    const macdPrev = fastEmaPrev - slowEmaPrev;
+
+    // Approximated signal EMA
+    const signal = macd * (2 / (signalPeriod + 1)) + macdPrev * (1 - 2 / (signalPeriod + 1));
+    const hist = macd - signal;
+    const prevHist = macdPrev - signal;
+
+    return { macd, signal, hist, prevHist };
+  }
+
+  // Bollinger Bands Calculator
+  private calculateBollingerBands(candles: CandleData[], period = 20, stdDevMult = 2.0) {
+    if (candles.length < period) {
+      const p = candles[candles.length - 1]?.close || 1;
+      return { middle: p, upper: p * 1.01, lower: p * 0.99, bandwidth: 0.02 };
+    }
+    const slice = candles.slice(-period);
+    const closes = slice.map((c) => c.close);
+    const mean = closes.reduce((a, b) => a + b, 0) / period;
+    const variance = closes.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / period;
+    const stdDev = Math.sqrt(variance);
+
+    const upper = mean + stdDevMult * stdDev;
+    const lower = mean - stdDevMult * stdDev;
+    const bandwidth = mean > 0 ? (upper - lower) / mean : 0;
+
+    return { middle: mean, upper, lower, bandwidth };
+  }
+
+  /**
+   * Returns current open positions for a bot (matching magic number for LIVE or paper memory for PAPER)
+   */
+  public async getBotPositions(botId: string): Promise<any[]> {
+    const bot = botStore.getBot(botId);
+    if (!bot) return [];
+
+    if (bot.executionMode === 'LIVE') {
+      const livePositions = tradeStore.getPositions().filter((p) => p.magic === bot.magicNumber);
+      return livePositions.map((p) => ({
+        id: `live-${p.ticket}`,
+        botId,
+        ticket: p.ticket,
+        symbol: p.symbol,
+        orderType: p.type,
+        volume: p.volume,
+        entryPrice: p.openPrice,
+        currentPrice: p.currentPrice,
+        sl: p.sl,
+        tp: p.tp,
+        pnl: p.profit,
+        status: 'OPEN',
+        executionMode: 'LIVE',
+        openedAt: p.openTime ? p.openTime * 1000 : Date.now(),
+        magicNumber: p.magic,
+      }));
+    }
+
+    const paper = this.paperPositions.get(botId) || [];
+    return paper.filter((p) => p.status === 'OPEN');
+  }
+
+  /**
+   * Allows operator or AI to manually force a signal execution for immediate testing
+   */
+  public async forceSignal(botId: string, signalType: 'BUY' | 'SELL'): Promise<any> {
+    const bot = botStore.getBot(botId);
+    if (!bot) throw new Error('Bot not found');
+
+    const candles = await this.getRecentCandles(bot.symbol, bot.timeframe, 10);
+    const lastPrice = candles[candles.length - 1]?.close || (bot.symbol === 'XAUUSD' ? 2650.0 : 1.085);
+
+    const forcedSignal: BotSignalResult = {
+      signal: signalType,
+      confidence: 0.99,
+      reason: `Operator / AI Forced Execution Signal (${signalType})`,
+      price: lastPrice,
+      timestamp: Date.now(),
+    };
+
+    await this.handleTradeSignal(bot, forcedSignal);
+    return { success: true, botId, signal: forcedSignal };
   }
 }
 

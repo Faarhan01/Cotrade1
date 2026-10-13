@@ -372,4 +372,48 @@ export class MT5Controller {
     }
     res.json({ success: true, cancelledCount: count });
   }
+
+  // Close Hedged Position by Opposite Ticket
+  public static async closeByPosition(req: Request, res: Response) {
+    const { ticket, oppositeTicket } = req.body;
+    if (!ticket || !oppositeTicket) {
+      return res.status(400).json({ success: false, message: 'Both ticket and oppositeTicket are required' });
+    }
+    const connector = connectorManager.getConnector();
+    if (typeof (connector as any).closeByPosition === 'function') {
+      const result = await (connector as any).closeByPosition(Number(ticket), Number(oppositeTicket));
+      return res.json(result);
+    }
+    res.status(501).json({ success: false, message: 'Current connector does not support closeBy' });
+  }
+
+  // Batch Close Positions by Filter (Symbol, Magic, Type)
+  public static async closePositionsBatch(req: Request, res: Response) {
+    const { symbol, magic, type } = req.body;
+    const connector = connectorManager.getConnector();
+    if (typeof (connector as any).closePositionsBatch === 'function') {
+      const result = await (connector as any).closePositionsBatch({
+        symbol: symbol ? normalizeSymbol(symbol) : undefined,
+        magic: magic ? Number(magic) : undefined,
+        type,
+      });
+      return res.json(result);
+    }
+    res.json({ success: false, closedCount: 0, results: [] });
+  }
+
+  // Batch Cancel Pending Orders by Filter (Symbol, Magic, Type)
+  public static async cancelOrdersBatch(req: Request, res: Response) {
+    const { symbol, magic, type } = req.body;
+    const connector = connectorManager.getConnector();
+    if (typeof (connector as any).cancelOrdersBatch === 'function') {
+      const result = await (connector as any).cancelOrdersBatch({
+        symbol: symbol ? normalizeSymbol(symbol) : undefined,
+        magic: magic ? Number(magic) : undefined,
+        type,
+      });
+      return res.json(result);
+    }
+    res.json({ success: false, cancelledCount: 0, results: [] });
+  }
 }

@@ -17,3 +17,5 @@ botRouter.post('/:id/close-positions', BotController.closePositions);
 
 botRouter.get('/:id/executions', BotController.getExecutions);
 botRouter.get('/:id/logs', BotController.getLogs);
+botRouter.get('/:id/positions', BotController.getPositions);
+botRouter.post('/:id/force-signal', BotController.forceSignal);

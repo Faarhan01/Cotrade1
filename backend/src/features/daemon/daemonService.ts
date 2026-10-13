@@ -644,6 +644,34 @@ export class DaemonService {
       return { success: true, botId, signal };
     }
 
+    if (actionUpper === 'BOT_FORCE_SIGNAL') {
+      const botId = command.botId || command.id;
+      const sigType = (command.signal || command.orderType || 'BUY').toUpperCase() as 'BUY' | 'SELL';
+      const res = await botEngine.forceSignal(botId, sigType);
+      this.notify('AI_BOT_FORCED_SIGNAL', { botId, signal: sigType });
+      return res;
+    }
+
+    if (actionUpper === 'BOT_GET_POSITIONS') {
+      const botId = command.botId || command.id;
+      const positions = await botEngine.getBotPositions(botId);
+      return { success: true, count: positions.length, positions };
+    }
+
+    if (actionUpper === 'BOT_UPDATE_CONFIG') {
+      const botId = command.botId || command.id;
+      const existing = botStore.getBot(botId);
+      if (!existing) return { success: false, message: 'Bot not found' };
+
+      const updated = await botStore.saveBot({
+        ...existing,
+        ...command.updates,
+        id: botId,
+      });
+      this.notify('AI_BOT_CONFIG_UPDATED', { botId });
+      return { success: true, bot: updated };
+    }
+
     if (actionUpper === 'BOT_CLOSE_POSITIONS') {
       const botId = command.botId || command.id;
       const result = await botEngine.closeBotPositions(botId, command.reason || 'AI emergency close');
@@ -660,6 +688,107 @@ export class DaemonService {
       const botId = command.botId || command.id;
       const logs = await botStore.getLogs(botId, command.limit || 50);
       return { success: true, count: logs.length, logs };
+    }
+
+    // ==========================================
+    // 7. Extended Trading & Batch Controls
+    // ==========================================
+    if (actionUpper === 'CLOSE_BY') {
+      const ticket = Number(command.ticket);
+      const oppositeTicket = Number(command.oppositeTicket);
+      if (!ticket || !oppositeTicket) {
+        return { success: false, message: 'Both ticket and oppositeTicket are required' };
+      }
+      if (typeof (connector as any).closeByPosition === 'function') {
+        const res = await (connector as any).closeByPosition(ticket, oppositeTicket);
+        this.notify('AI_CLOSE_BY_EXECUTED', { ticket, oppositeTicket, res });
+        return res;
+      }
+      return { success: false, message: 'Close-by not supported by connector' };
+    }
+
+    if (actionUpper === 'CLOSE_POSITIONS_BATCH') {
+      if (typeof (connector as any).closePositionsBatch === 'function') {
+        const res = await (connector as any).closePositionsBatch({
+          symbol: command.symbol ? normalizeSymbol(command.symbol) : undefined,
+          magic: command.magic ? Number(command.magic) : undefined,
+          type: command.type,
+        });
+        this.notify('AI_BATCH_POSITIONS_CLOSED', res);
+        return res;
+      }
+      return { success: false, message: 'Batch close not supported by connector' };
+    }
+
+    if (actionUpper === 'CANCEL_ORDERS_BATCH') {
+      if (typeof (connector as any).cancelOrdersBatch === 'function') {
+        const res = await (connector as any).cancelOrdersBatch({
+          symbol: command.symbol ? normalizeSymbol(command.symbol) : undefined,
+          magic: command.magic ? Number(command.magic) : undefined,
+          type: command.type,
+        });
+        this.notify('AI_BATCH_ORDERS_CANCELLED', res);
+        return res;
+      }
+      return { success: false, message: 'Batch cancel not supported by connector' };
+    }
+
+    // ==========================================
+    // 8. Knowledge Base & Research Intelligence
+    // ==========================================
+    if (actionUpper === 'GET_KNOWLEDGE_SUMMARY') {
+      const { dbGetStrategies, dbGetObservations, dbGetBacktestResults } = await import('@features/database');
+      const [strats, obs, bts] = await Promise.all([
+        dbGetStrategies(),
+        dbGetObservations(),
+        dbGetBacktestResults(undefined, 50),
+      ]);
+      const bots = botStore.getAllBots();
+      return {
+        success: true,
+        summary: {
+          totalStrategies: strats.length,
+          totalObservations: obs.length,
+          totalBacktests: bts.length,
+          totalBots: bots.length,
+          activeBots: bots.filter((b) => b.status === 'RUNNING').length,
+          strategies: strats.map((s) => ({ id: s.id, name: s.name, type: s.type, symbol: s.symbol, timeframe: s.timeframe })),
+          bots: bots.map((b) => ({ id: b.id, name: b.name, status: b.status, symbol: b.symbol, winRate: b.stats.tradesExecuted > 0 ? Math.round((b.stats.winningTrades / b.stats.tradesExecuted) * 100) : 0 })),
+        },
+      };
+    }
+
+    if (actionUpper === 'SEARCH_STRATEGIES') {
+      const { dbSearchStrategies } = await import('@core/database/db.ts');
+      const query = command.query || command.search || '';
+      const results = await dbSearchStrategies(query);
+      return { success: true, count: results.length, strategies: results };
+    }
+
+    if (actionUpper === 'SEARCH_OBSERVATIONS') {
+      const { dbSearchObservations } = await import('@core/database/db.ts');
+      const query = command.query || command.search || '';
+      const results = await dbSearchObservations(query);
+      return { success: true, count: results.length, observations: results };
+    }
+
+    if (actionUpper === 'JOURNAL_CREATE' || actionUpper === 'SAVE_JOURNAL') {
+      const { dbSaveJournalEntry } = await import('@core/database/db.ts');
+      const entry = await dbSaveJournalEntry(command.entry || command);
+      this.notify('AI_JOURNAL_SAVED', { entryId: entry.id });
+      return { success: true, entry };
+    }
+
+    if (actionUpper === 'JOURNAL_LIST') {
+      const { dbGetJournalEntries } = await import('@core/database/db.ts');
+      const entries = await dbGetJournalEntries(command.limit || 50);
+      return { success: true, count: entries.length, entries };
+    }
+
+    if (actionUpper === 'EXPORT_DATABASE') {
+      const { dbExportAllData } = await import('@core/database/db.ts');
+      const backup = await dbExportAllData();
+      return { success: true, backup };
     }
 
     return { success: false, message: `Unknown AI action: ${command.action}` };

@@ -36,6 +36,7 @@ import {
   ExternalLink,
   ChevronRight,
   Sparkles,
+  Bot,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { StrategyDefinition, Observation, BacktestResult, CandleData, TickData } from '@/types';
@@ -57,6 +58,7 @@ export const KnowledgeBasePage: React.FC = () => {
   const [showStrategyModal, setShowStrategyModal] = useState(false);
   const [showObsModal, setShowObsModal] = useState(false);
   const [backtestingStrategyId, setBacktestingStrategyId] = useState<string | null>(null);
+  const [deployingBotId, setDeployingBotId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   // Backtest execution settings
@@ -260,6 +262,42 @@ export const KnowledgeBasePage: React.FC = () => {
     }
   };
 
+  const handleDeployAsBot = async (strategy: StrategyDefinition) => {
+    try {
+      setDeployingBotId(strategy.id);
+      const res = await api.createBot({
+        name: `${strategy.name} Auto Bot`,
+        strategyId: strategy.id,
+        strategyName: strategy.name,
+        strategyType: strategy.type,
+        symbol: strategy.symbol,
+        timeframe: strategy.timeframe,
+        executionMode: 'PAPER',
+        allocation: {
+          lotSize: Number(strategy.parameters?.lotSize) || 0.1,
+          maxPositions: 2,
+          maxDailyLoss: 150,
+          targetDailyProfit: 300,
+          stopLossPoints: Number(strategy.parameters?.stopLossPoints) || 250,
+          takeProfitPoints: Number(strategy.parameters?.takeProfitPoints) || 500,
+        },
+        trailingStop: {
+          enabled: true,
+          distancePoints: 150,
+          stepPoints: 50,
+        },
+        cooldownSeconds: 45,
+      });
+      if (res?.bot) {
+        showNotification(`Bot "${res.bot.name}" deployed to Bot Studio! You can start and monitor it now.`);
+      }
+    } catch (err: any) {
+      showNotification(`Failed to deploy bot: ${err.message}`, 'error');
+    } finally {
+      setDeployingBotId(null);
+    }
+  };
+
   const handleFetchChartHistory = async () => {
     setChartLoading(true);
     try {
@@ -442,7 +480,7 @@ export const KnowledgeBasePage: React.FC = () => {
   });
 
   return (
-    <div className="container mx-auto px-4 space-y-6">
+    <div className="space-y-6">
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-cyan-950/30 to-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -675,18 +713,33 @@ export const KnowledgeBasePage: React.FC = () => {
                           ))}
                         </div>
 
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRunBacktest(strat);
-                          }}
-                          disabled={backtestingStrategyId === strat.id}
-                          className="px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-mono flex items-center gap-1 transition-colors"
-                          title="Run backtest against historical candles"
-                        >
-                          <Play className={`h-3 w-3 ${backtestingStrategyId === strat.id ? 'animate-spin' : ''}`} />
-                          <span>Test</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeployAsBot(strat);
+                            }}
+                            disabled={deployingBotId === strat.id}
+                            className="px-2 py-1 rounded bg-slate-800 hover:bg-cyan-950 text-cyan-300 border border-slate-700 hover:border-cyan-700 text-[11px] font-mono flex items-center gap-1 transition-colors"
+                            title="Deploy as automated Bot"
+                          >
+                            <Bot className={`h-3 w-3 ${deployingBotId === strat.id ? 'animate-spin' : ''}`} />
+                            <span>Bot</span>
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRunBacktest(strat);
+                            }}
+                            disabled={backtestingStrategyId === strat.id}
+                            className="px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-mono flex items-center gap-1 transition-colors"
+                            title="Run backtest against historical candles"
+                          >
+                            <Play className={`h-3 w-3 ${backtestingStrategyId === strat.id ? 'animate-spin' : ''}`} />
+                            <span>Test</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -716,6 +769,16 @@ export const KnowledgeBasePage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleDeployAsBot(selectedStrategy)}
+                      disabled={deployingBotId === selectedStrategy.id}
+                      className="px-3 py-1.5 rounded-lg bg-cyan-950 text-cyan-300 border border-cyan-800/80 hover:bg-cyan-900/60 text-xs font-mono font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                      title="Deploy this strategy to Bot Studio for autonomous trading"
+                    >
+                      <Bot className={`h-3.5 w-3.5 ${deployingBotId === selectedStrategy.id ? 'animate-spin' : ''}`} />
+                      <span>Deploy as Bot</span>
+                    </button>
+
                     <button
                       onClick={() => {
                         setStratForm({
@@ -876,7 +939,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
       {/* SUBTAB 2: BACKTEST LAB RESULTS */}
       {activeSubTab === 'backtests' && (
-        <div className="container mx-auto px-4 space-y-6">
+        <div className="space-y-6">
           {activeBacktestResult ? (
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6 shadow-sm">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
@@ -1080,7 +1143,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
       {/* SUBTAB 3: CHART DATA & HISTORY INSPECTOR */}
       {activeSubTab === 'chart_history' && (
-        <div className="container mx-auto px-4 space-y-6">
+        <div className="space-y-6">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
@@ -1667,7 +1730,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
       {/* SUBTAB 5: METATRADER 5 PACKAGE API REFERENCE */}
       {activeSubTab === 'api_reference' && (
-        <div className="container mx-auto px-4 space-y-6">
+        <div className="space-y-6">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
             <h2 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
               <Code className="h-4 w-4 text-cyan-400" />

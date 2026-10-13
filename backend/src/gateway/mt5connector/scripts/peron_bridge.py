@@ -661,6 +661,124 @@ class MT5Engine:
         except Exception as e:
             return {"success": False, "message": f"Exception modifying order: {str(e)}"}
 
+    def close_all_positions(self, symbol=None):
+        if not HAVE_NATIVE_MT5 or mt5 is None:
+            return {"success": False, "message": "MetaTrader 5 terminal is not connected", "closedCount": 0}
+
+        try:
+            positions = mt5.positions_get(symbol=symbol) if symbol else mt5.positions_get()
+            if not positions or len(positions) == 0:
+                return {"success": True, "message": "No positions to close", "closedCount": 0, "closedTickets": []}
+
+            closed_tickets = []
+            errors = []
+            for pos in positions:
+                ticket = pos.ticket
+                res = self.close_position(ticket)
+                if res.get("success"):
+                    closed_tickets.append(ticket)
+                else:
+                    errors.append(f"Ticket #{ticket}: {res.get('message')}")
+
+            return {
+                "success": len(closed_tickets) > 0 or len(errors) == 0,
+                "closedCount": len(closed_tickets),
+                "closedTickets": closed_tickets,
+                "errors": errors,
+                "message": f"Closed {len(closed_tickets)} positions"
+            }
+        except Exception as e:
+            return {"success": False, "message": f"Exception in close_all: {str(e)}", "closedCount": 0}
+
+    def cancel_all_orders(self, symbol=None):
+        if not HAVE_NATIVE_MT5 or mt5 is None:
+            return {"success": False, "message": "MetaTrader 5 terminal is not connected", "cancelledCount": 0}
+
+        try:
+            orders = mt5.orders_get(symbol=symbol) if symbol else mt5.orders_get()
+            if not orders or len(orders) == 0:
+                return {"success": True, "message": "No pending orders to cancel", "cancelledCount": 0, "cancelledTickets": []}
+
+            cancelled_tickets = []
+            errors = []
+            for order in orders:
+                ticket = order.ticket
+                res = self.cancel_order(ticket)
+                if res.get("success"):
+                    cancelled_tickets.append(ticket)
+                else:
+                    errors.append(f"Ticket #{ticket}: {res.get('message')}")
+
+            return {
+                "success": len(cancelled_tickets) > 0 or len(errors) == 0,
+                "cancelledCount": len(cancelled_tickets),
+                "cancelledTickets": cancelled_tickets,
+                "errors": errors,
+                "message": f"Cancelled {len(cancelled_tickets)} pending orders"
+            }
+        except Exception as e:
+            return {"success": False, "message": f"Exception in cancel_all: {str(e)}", "cancelledCount": 0}
+
+    def close_by_position(self, ticket, opposite_ticket):
+        if not HAVE_NATIVE_MT5 or mt5 is None:
+            return {"success": False, "message": "MetaTrader 5 terminal is not connected"}
+
+        try:
+            request = {
+                "action": mt5.TRADE_ACTION_CLOSE_BY,
+                "position": int(ticket),
+                "position_by": int(opposite_ticket),
+            }
+            result = mt5.order_send(request)
+            if result is None:
+                err = mt5.last_error()
+                return {"success": False, "message": f"Close by returned None: {err}"}
+
+            success = (result.retcode == mt5.TRADE_RETCODE_DONE)
+            return {
+                "success": success,
+                "ticket": result.order,
+                "dealTicket": result.deal,
+                "retcode": result.retcode,
+                "comment": result.comment,
+                "message": f"Position #{ticket} closed by #{opposite_ticket}" if success else f"Close by failed: {result.comment}"
+            }
+        except Exception as e:
+            return {"success": False, "message": f"Exception in close_by: {str(e)}"}
+
+    def get_symbols_total(self):
+        if HAVE_NATIVE_MT5 and mt5 is not None:
+            try:
+                return mt5.symbols_total()
+            except Exception:
+                pass
+        return 0
+
+    def get_symbol_info_tick(self, symbol):
+        if HAVE_NATIVE_MT5 and mt5 is not None:
+            try:
+                tick = mt5.symbol_info_tick(symbol)
+                if tick:
+                    now_ms = int(time.time() * 1000)
+                    time_sec = int(tick.time)
+                    time_msc = int(getattr(tick, "time_msc", time_sec * 1000))
+                    spread = int(getattr(tick, "spread", 0) or round((tick.ask - tick.bid) / 0.00001))
+                    return {
+                        "symbol": symbol,
+                        "time": time_sec,
+                        "timeMsc": time_msc,
+                        "timeIso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time_sec)),
+                        "bid": float(tick.bid),
+                        "ask": float(tick.ask),
+                        "last": float(tick.last or tick.bid),
+                        "volume": int(getattr(tick, "volume", 1)),
+                        "flags": int(getattr(tick, "flags", 0)),
+                        "spread": spread,
+                    }
+            except Exception:
+                pass
+        return None
+
     def get_history_deals(self, date_from=None, date_to=None, count=100):
         if not HAVE_NATIVE_MT5 or mt5 is None:
             return []
@@ -950,6 +1068,11 @@ class BridgeHTTPHandler(BaseHTTPRequestHandler):
         elif path == "/symbol/info":
             sym = qs.get("symbol", [None])[0]
             self._send_json(200, engine.get_symbol_info(sym) if sym else None)
+        elif path == "/symbols/total":
+            self._send_json(200, {"total": engine.get_symbols_total()})
+        elif path == "/tick/last":
+            sym = qs.get("symbol", [None])[0]
+            self._send_json(200, engine.get_symbol_info_tick(sym) if sym else None)
         elif path == "/depth":
             sym = qs.get("symbol", ["EURUSD"])[0]
             self._send_json(200, engine.get_market_depth(sym))
@@ -991,6 +1114,12 @@ class BridgeHTTPHandler(BaseHTTPRequestHandler):
         elif path == "/close":
             res = engine.close_position(body.get("ticket"), body.get("volume"))
             self._send_json(200 if res.get("success") else 400, res)
+        elif path == "/close/all":
+            res = engine.close_all_positions(body.get("symbol"))
+            self._send_json(200 if res.get("success") else 400, res)
+        elif path == "/close/by":
+            res = engine.close_by_position(body.get("ticket"), body.get("oppositeTicket"))
+            self._send_json(200 if res.get("success") else 400, res)
         elif path == "/modify":
             res = engine.modify_position(body.get("ticket"), body.get("sl"), body.get("tp"))
             self._send_json(200 if res.get("success") else 400, res)
@@ -999,6 +1128,9 @@ class BridgeHTTPHandler(BaseHTTPRequestHandler):
             self._send_json(200 if res.get("success") else 400, res)
         elif path == "/cancel":
             res = engine.cancel_order(body.get("ticket"))
+            self._send_json(200 if res.get("success") else 400, res)
+        elif path == "/cancel/all":
+            res = engine.cancel_all_orders(body.get("symbol"))
             self._send_json(200 if res.get("success") else 400, res)
         elif path == "/calc/margin":
             res = engine.calc_margin(body.get("action", "BUY"), body.get("symbol"), body.get("volume", 0.1), body.get("price"))

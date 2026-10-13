@@ -399,4 +399,69 @@ export const api = {
     const res = await fetch(`/api/bots/${id}/logs?limit=${limit}`);
     return res.json();
   },
+
+  async getBotPositions(id: string) {
+    const res = await fetch(`/api/bots/${id}/positions`);
+    return res.json();
+  },
+
+  async forceBotSignal(id: string, signal: 'BUY' | 'SELL') {
+    const res = await fetch(`/api/bots/${id}/force-signal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signal }),
+    });
+    return res.json();
+  },
+
+  async closeByPositions(ticket: number, oppositeTicket: number) {
+    const res = await fetch('/api/positions/close-by', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticket, oppositeTicket }),
+    });
+    return res.json();
+  },
+
+  async closePositionsBatch(filter: { symbol?: string; magic?: number; type?: string }) {
+    const res = await fetch('/api/positions/close-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(filter),
+    });
+    return res.json();
+  },
+
+  async cancelOrdersBatch(filter: { symbol?: string; magic?: number; type?: string }) {
+    const res = await fetch('/api/orders/cancel-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(filter),
+    });
+    return res.json();
+  },
+
+  async getJournal(limit = 100) {
+    const res = await fetch(`/api/journal?limit=${limit}`);
+    return res.json();
+  },
+
+  async saveJournal(entry: any) {
+    const res = await fetch('/api/journal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry),
+    });
+    return res.json();
+  },
+
+  async deleteJournal(id: string) {
+    const res = await fetch(`/api/journal/${id}`, { method: 'DELETE' });
+    return res.json();
+  },
+
+  async exportDatabase() {
+    const res = await fetch('/api/database/export');
+    return res.json();
+  },
 };

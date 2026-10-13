@@ -16,6 +16,7 @@ import {
   dbGetStrategyById,
 } from '@features/database';
 import { logger } from '@core/utils/logger.ts';
+import { normalizeSymbol } from '@core/utils';
 
 export class BotStore {
   private static instance: BotStore;
@@ -93,8 +94,49 @@ export class BotStore {
       },
     };
 
+    const goldBot: BotInstance = {
+      id: 'bot-gold-trend-alpha',
+      name: 'XAUUSD Trend Rider (Gold Alpha)',
+      strategyId: 'strat-ema-crossover-xauusd',
+      strategyName: 'EMA 9/21 Trend Scalper',
+      strategyType: 'EMA_CROSSOVER',
+      symbol: 'XAUUSD',
+      timeframe: 'M5',
+      status: 'IDLE',
+      executionMode: 'PAPER',
+      magicNumber: 881002,
+      allocation: {
+        lotSize: 0.05,
+        maxPositions: 2,
+        maxDailyLoss: 250,
+        targetDailyProfit: 500,
+        stopLossPoints: 400,
+        takeProfitPoints: 800,
+      },
+      trailingStop: {
+        enabled: true,
+        distancePoints: 200,
+        stepPoints: 60,
+      },
+      cooldownSeconds: 60,
+      createdAt: Date.now() - 3600000,
+      updatedAt: Date.now() - 3600000,
+      stats: {
+        tradesExecuted: 0,
+        winningTrades: 0,
+        losingTrades: 0,
+        realizedPnl: 0,
+        unrealizedPnl: 0,
+      },
+      parametersOverride: {
+        fastEmaPeriod: 9,
+        slowEmaPeriod: 21,
+      },
+    };
+
     await this.saveBot(demoBot);
-    logger.info('BotStore', 'Seeded initial default trading bot');
+    await this.saveBot(goldBot);
+    logger.info('BotStore', 'Seeded initial default trading bots');
   }
 
   public getAllBots(): BotInstance[] {
@@ -143,7 +185,7 @@ export class BotStore {
       strategyId: data.strategyId || 'custom',
       strategyName,
       strategyType,
-      symbol: (data.symbol || 'EURUSD').toUpperCase(),
+      symbol: normalizeSymbol(data.symbol || 'EURUSD'),
       timeframe: data.timeframe || 'M1',
       status: data.status || 'IDLE',
       executionMode: data.executionMode || 'PAPER',

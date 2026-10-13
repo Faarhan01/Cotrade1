@@ -137,4 +137,25 @@ export class BotController {
       res.status(500).json({ success: false, error: err.message });
     }
   }
+
+  public static async getPositions(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const positions = await botEngine.getBotPositions(id);
+      res.json({ success: true, count: positions.length, positions });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  public static async forceSignal(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const signalType = (req.body.signal || 'BUY').toUpperCase() as 'BUY' | 'SELL';
+      const result = await botEngine.forceSignal(id, signalType);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
 }
