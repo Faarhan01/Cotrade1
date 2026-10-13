@@ -784,4 +784,64 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
       },
     },
   },
+  {
+    name: 'mt5_bot_list',
+    description: 'List all automated trading bots, their execution status (RUNNING, PAUSED, STOPPED), bound strategy, symbol, win rate, and realized P&L.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'mt5_bot_create',
+    description: 'Deploy a new automated algorithmic trading bot bound to a Knowledge Base strategy. Configures symbol, timeframe, lot size, daily loss limit, and execution mode (LIVE or PAPER).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Bot name' },
+        strategyId: { type: 'string', description: 'Strategy ID from Knowledge Base' },
+        symbol: { type: 'string', description: 'Symbol to trade (e.g. EURUSD, XAUUSD)' },
+        timeframe: { type: 'string', description: 'Timeframe: M1, M5, M15, H1' },
+        lotSize: { type: 'number', description: 'Lot size (e.g. 0.05, 0.1)' },
+        maxDailyLoss: { type: 'number', description: 'Max daily loss USD before auto-pausing' },
+        executionMode: { type: 'string', enum: ['LIVE', 'PAPER', 'DRY_RUN'], description: 'LIVE or PAPER' },
+      },
+      required: ['name', 'symbol'],
+    },
+  },
+  {
+    name: 'mt5_bot_control',
+    description: 'Control an automated trading bot instance: start, pause, stop, or delete.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        botId: { type: 'string', description: 'Bot identifier' },
+        action: { type: 'string', enum: ['START', 'PAUSE', 'STOP', 'DELETE'], description: 'Action to execute' },
+      },
+      required: ['botId', 'action'],
+    },
+  },
+  {
+    name: 'mt5_bot_evaluate',
+    description: 'Trigger immediate algorithmic signal calculation for a bot and retrieve indicator readings.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        botId: { type: 'string', description: 'Bot identifier' },
+      },
+      required: ['botId'],
+    },
+  },
+  {
+    name: 'mt5_bot_close_positions',
+    description: 'Close all open positions currently managed by a specific automated trading bot.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        botId: { type: 'string', description: 'Bot identifier' },
+        reason: { type: 'string', description: 'Reason for closure' },
+      },
+      required: ['botId'],
+    },
+  },
 ];

@@ -797,6 +797,66 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
       },
     },
   },
+  {
+    name: 'mt5_bot_list',
+    description: 'List all automated trading bots, their execution status (RUNNING, PAUSED, STOPPED), bound strategy, symbol, win rate, and realized P&L.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'mt5_bot_create',
+    description: 'Deploy a new automated algorithmic trading bot bound to a Knowledge Base strategy. Configures symbol, timeframe, lot size, daily loss limit, and execution mode (LIVE or PAPER).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Bot name' },
+        strategyId: { type: 'string', description: 'Strategy ID from Knowledge Base' },
+        symbol: { type: 'string', description: 'Symbol to trade (e.g. EURUSD, XAUUSD)' },
+        timeframe: { type: 'string', description: 'Timeframe: M1, M5, M15, H1' },
+        lotSize: { type: 'number', description: 'Lot size (e.g. 0.05, 0.1)' },
+        maxDailyLoss: { type: 'number', description: 'Max daily loss USD before auto-pausing' },
+        executionMode: { type: 'string', enum: ['LIVE', 'PAPER', 'DRY_RUN'], description: 'LIVE or PAPER' },
+      },
+      required: ['name', 'symbol'],
+    },
+  },
+  {
+    name: 'mt5_bot_control',
+    description: 'Control an automated trading bot instance: start, pause, stop, or delete.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        botId: { type: 'string', description: 'Bot identifier' },
+        action: { type: 'string', enum: ['START', 'PAUSE', 'STOP', 'DELETE'], description: 'Action to execute' },
+      },
+      required: ['botId', 'action'],
+    },
+  },
+  {
+    name: 'mt5_bot_evaluate',
+    description: 'Trigger immediate algorithmic signal calculation for a bot and retrieve indicator readings.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        botId: { type: 'string', description: 'Bot identifier' },
+      },
+      required: ['botId'],
+    },
+  },
+  {
+    name: 'mt5_bot_close_positions',
+    description: 'Close all open positions currently managed by a specific automated trading bot.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        botId: { type: 'string', description: 'Bot identifier' },
+        reason: { type: 'string', description: 'Reason for closure' },
+      },
+      required: ['botId'],
+    },
+  },
 ];
 
 export async function executeMcpTool(name: string, args: Record<string, any> = {}): Promise<any> {
@@ -1456,6 +1516,52 @@ export async function executeMcpTool(name: string, args: Record<string, any> = {
       case 'mt5_daemon_heartbeat': {
         const { daemonService } = await import('@features/daemon/daemonService.ts');
         return daemonService.registerHeartbeat(args.aiName, args.sessionId, args.metadata);
+      }
+
+      case 'mt5_bot_list': {
+        const { botStore } = await import('@features/bot');
+        const bots = botStore.getAllBots();
+        return { count: bots.length, bots };
+      }
+
+      case 'mt5_bot_create': {
+        const { botStore } = await import('@features/bot');
+        const bot = await botStore.createBot(args);
+        return { success: true, bot };
+      }
+
+      case 'mt5_bot_control': {
+        const { botStore } = await import('@features/bot');
+        const { botId, action } = args;
+        const act = (action || '').toUpperCase();
+        if (act === 'START') {
+          const bot = await botStore.updateBotStatus(botId, 'RUNNING', 'Started via MCP');
+          return { success: Boolean(bot), bot };
+        } else if (act === 'PAUSE') {
+          const bot = await botStore.updateBotStatus(botId, 'PAUSED', 'Paused via MCP');
+          return { success: Boolean(bot), bot };
+        } else if (act === 'STOP') {
+          const bot = await botStore.updateBotStatus(botId, 'STOPPED', 'Stopped via MCP');
+          return { success: Boolean(bot), bot };
+        } else if (act === 'DELETE') {
+          const deleted = await botStore.deleteBot(botId);
+          return { success: deleted };
+        }
+        return { success: false, message: `Unknown bot action: ${action}` };
+      }
+
+      case 'mt5_bot_evaluate': {
+        const { botStore, botEngine } = await import('@features/bot');
+        const bot = botStore.getBot(args.botId);
+        if (!bot) return { success: false, message: 'Bot not found' };
+        const signal = await botEngine.processBot(bot);
+        return { success: true, botId: args.botId, signal };
+      }
+
+      case 'mt5_bot_close_positions': {
+        const { botEngine } = await import('@features/bot');
+        const res = await botEngine.closeBotPositions(args.botId, args.reason || 'Closed via MCP');
+        return { success: true, ...res };
       }
 
     default:

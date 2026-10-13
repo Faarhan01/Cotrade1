@@ -58,6 +58,15 @@ async function startServer() {
     logger.warn('Server', `Connector initialization notice: ${err.message}`);
   }
 
+  // Initialize Automated Bot Execution Engine
+  try {
+    const { botEngine } = await import('./backend/src/features/bot/botEngine.ts');
+    await botEngine.start();
+    logger.info('Server', 'Automated Bot Execution Engine initialized and running');
+  } catch (err: any) {
+    logger.warn('Server', `Bot engine initialization notice: ${err.message}`);
+  }
+
   // Vite middleware in dev or static files in production
   if (!isProd) {
     const vite = await createViteServer({

@@ -175,12 +175,65 @@ CREATE TABLE IF NOT EXISTS backtest_results (
   evaluated_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS bots (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  strategy_id TEXT NOT NULL,
+  strategy_name TEXT NOT NULL,
+  strategy_type TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  timeframe TEXT NOT NULL,
+  status TEXT NOT NULL,
+  execution_mode TEXT NOT NULL,
+  magic_number INTEGER NOT NULL,
+  allocation_json TEXT NOT NULL,
+  trailing_stop_json TEXT NOT NULL,
+  cooldown_seconds INTEGER NOT NULL,
+  parameters_override_json TEXT,
+  stats_json TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS bot_executions (
+  id TEXT PRIMARY KEY,
+  bot_id TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  order_type TEXT NOT NULL,
+  volume REAL NOT NULL,
+  entry_price REAL NOT NULL,
+  exit_price REAL,
+  sl REAL,
+  tp REAL,
+  ticket INTEGER,
+  deal_ticket INTEGER,
+  pnl REAL,
+  status TEXT NOT NULL,
+  execution_mode TEXT NOT NULL,
+  opened_at INTEGER NOT NULL,
+  closed_at INTEGER,
+  reason TEXT,
+  magic_number INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS bot_logs (
+  id TEXT PRIMARY KEY,
+  bot_id TEXT NOT NULL,
+  timestamp INTEGER NOT NULL,
+  level TEXT NOT NULL,
+  message TEXT NOT NULL,
+  data_json TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_candles_lookup ON candles_history(symbol, timeframe, time);
 CREATE INDEX IF NOT EXISTS idx_ticks_lookup ON ticks_history(symbol, timestamp);
 CREATE INDEX IF NOT EXISTS idx_strategies_symbol ON strategies(symbol, status);
 CREATE INDEX IF NOT EXISTS idx_backtest_strategy ON backtest_results(strategy_id, evaluated_at);
 CREATE INDEX IF NOT EXISTS idx_observations_cat ON observations(category, created_at);
 CREATE INDEX IF NOT EXISTS idx_account_created ON account_history(created_at);
+CREATE INDEX IF NOT EXISTS idx_bots_status ON bots(status, symbol);
+CREATE INDEX IF NOT EXISTS idx_bot_exec_bot ON bot_executions(bot_id, opened_at);
+CREATE INDEX IF NOT EXISTS idx_bot_logs_time ON bot_logs(bot_id, timestamp);
 `;
 
 function sanitizeParams(params?: any[] | any): any[] {

@@ -12,11 +12,13 @@ import {
   MCPController,
 } from '@controllers/index';
 import { daemonRouter } from './daemonRoutes.ts';
+import { botRouter } from '@features/bot';
 
 export const apiRouter = Router();
 
-// Mount Daemon Router
+// Mount Daemon & Automated Bot Routers
 apiRouter.use('/daemon', daemonRouter);
+apiRouter.use('/bots', botRouter);
 
 // ==========================================
 // 1. Core State & Connection Endpoints

@@ -8,6 +8,7 @@ import { logger } from '@core/utils';
 class ConnectorManager {
   private activeConnector: IMT5Connector;
   private currentProvider: MT5ProviderType = defaultMT5Config.provider;
+  private customConnectors: Map<string, IMT5Connector> = new Map();
 
   constructor() {
     this.activeConnector = new PeronMT5Connector();
@@ -102,6 +103,26 @@ class ConnectorManager {
     }
 
     this.currentProvider = type;
+    this.setupActiveConnector();
+    return await this.activeConnector.initialize();
+  }
+
+  /**
+   * Registers a custom broker or API connector (e.g. cTrader, CCXT, FixAPI, Interactive Brokers)
+   */
+  public registerCustomConnector(name: string, connector: IMT5Connector): void {
+    logger.info('ConnectorManager', `Registered custom connector provider: ${name}`);
+    this.customConnectors.set(name, connector);
+  }
+
+  public async setCustomProvider(name: string): Promise<boolean> {
+    const custom = this.customConnectors.get(name);
+    if (!custom) {
+      throw new Error(`Custom connector '${name}' not found`);
+    }
+    await this.activeConnector.shutdown();
+    this.activeConnector = custom;
+    this.currentProvider = name as any;
     this.setupActiveConnector();
     return await this.activeConnector.initialize();
   }

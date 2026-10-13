@@ -58,6 +58,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const navItems = [
     { id: 'dashboard', label: 'Terminal' },
     { id: 'knowledge', label: 'Knowledge Base' },
+    { id: 'bots', label: 'Bot Studio' },
     { id: 'daemon', label: 'AI Daemon' },
     { id: 'mcp', label: 'MCP Hub' },
     { id: 'risk', label: 'Risk Guard' },

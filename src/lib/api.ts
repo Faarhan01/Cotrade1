@@ -326,4 +326,77 @@ export const api = {
     const res = await fetch('/api/orders/cancel-all', { method: 'POST' });
     return res.json();
   },
+
+  // Automated Algorithmic Bots API
+  async getBots() {
+    const res = await fetch('/api/bots');
+    return res.json();
+  },
+
+  async getBot(id: string) {
+    const res = await fetch(`/api/bots/${id}`);
+    return res.json();
+  },
+
+  async createBot(data: any) {
+    const res = await fetch('/api/bots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  async updateBot(id: string, data: any) {
+    const res = await fetch(`/api/bots/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  async startBot(id: string) {
+    const res = await fetch(`/api/bots/${id}/start`, { method: 'POST' });
+    return res.json();
+  },
+
+  async pauseBot(id: string) {
+    const res = await fetch(`/api/bots/${id}/pause`, { method: 'POST' });
+    return res.json();
+  },
+
+  async stopBot(id: string) {
+    const res = await fetch(`/api/bots/${id}/stop`, { method: 'POST' });
+    return res.json();
+  },
+
+  async deleteBot(id: string) {
+    const res = await fetch(`/api/bots/${id}`, { method: 'DELETE' });
+    return res.json();
+  },
+
+  async evaluateBot(id: string) {
+    const res = await fetch(`/api/bots/${id}/evaluate`, { method: 'POST' });
+    return res.json();
+  },
+
+  async closeBotPositions(id: string, reason?: string) {
+    const res = await fetch(`/api/bots/${id}/close-positions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    });
+    return res.json();
+  },
+
+  async getBotExecutions(id: string, limit = 50) {
+    const res = await fetch(`/api/bots/${id}/executions?limit=${limit}`);
+    return res.json();
+  },
+
+  async getBotLogs(id: string, limit = 50) {
+    const res = await fetch(`/api/bots/${id}/logs?limit=${limit}`);
+    return res.json();
+  },
 };

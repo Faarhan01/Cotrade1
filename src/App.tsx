@@ -7,6 +7,7 @@ import { RiskManagementPage } from './pages/RiskManagementPage';
 import { DatabaseExplorer } from './components/database/DatabaseExplorer';
 import { KnowledgeBasePage } from './pages/KnowledgeBasePage';
 import { DaemonPage } from './pages/DaemonPage';
+import { BotStudioPage } from './pages/BotStudioPage';
 import { MT5GatewayPage } from './components/gateway/MT5GatewayPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { Activity, ShieldCheck, Terminal, Cpu } from 'lucide-react';
@@ -30,6 +31,7 @@ export default function App() {
       <main className="flex-1 container-custom py-6">
         {activeTab === 'dashboard' && <DashboardPage state={state} onRefresh={reloadState} />}
         {(activeTab === 'knowledge' || activeTab === 'strategies') && <KnowledgeBasePage />}
+        {activeTab === 'bots' && <BotStudioPage />}
         {activeTab === 'daemon' && <DaemonPage />}
         {activeTab === 'mcp' && <McpConsole />}
         {activeTab === 'risk' && <RiskManagementPage state={state} />}

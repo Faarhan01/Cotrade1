@@ -888,3 +888,208 @@ export async function dbGetBacktestById(id: string): Promise<any | null> {
     evaluatedAt: row.evaluated_at,
   };
 }
+
+// ==========================================
+// Bot Management & Execution Persistence
+// ==========================================
+
+export async function dbGetBots(): Promise<any[]> {
+  const db = await getDatabaseAdapter();
+  const rows = await db.query(`SELECT * FROM bots ORDER BY updated_at DESC`);
+  return rows.map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    strategyId: r.strategy_id,
+    strategyName: r.strategy_name,
+    strategyType: r.strategy_type,
+    symbol: r.symbol,
+    timeframe: r.timeframe,
+    status: r.status,
+    executionMode: r.execution_mode,
+    magicNumber: r.magic_number,
+    allocation: r.allocation_json ? JSON.parse(r.allocation_json) : {},
+    trailingStop: r.trailing_stop_json ? JSON.parse(r.trailing_stop_json) : { enabled: false, distancePoints: 0, stepPoints: 0 },
+    cooldownSeconds: r.cooldown_seconds,
+    parametersOverride: r.parameters_override_json ? JSON.parse(r.parameters_override_json) : undefined,
+    stats: r.stats_json ? JSON.parse(r.stats_json) : {},
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }));
+}
+
+export async function dbGetBotById(id: string): Promise<any | null> {
+  const db = await getDatabaseAdapter();
+  const res = await db.query(`SELECT * FROM bots WHERE id = ? LIMIT 1`, [id]);
+  if (!res || res.length === 0) return null;
+  const r = res[0];
+  return {
+    id: r.id,
+    name: r.name,
+    strategyId: r.strategy_id,
+    strategyName: r.strategy_name,
+    strategyType: r.strategy_type,
+    symbol: r.symbol,
+    timeframe: r.timeframe,
+    status: r.status,
+    executionMode: r.execution_mode,
+    magicNumber: r.magic_number,
+    allocation: r.allocation_json ? JSON.parse(r.allocation_json) : {},
+    trailingStop: r.trailing_stop_json ? JSON.parse(r.trailing_stop_json) : { enabled: false, distancePoints: 0, stepPoints: 0 },
+    cooldownSeconds: r.cooldown_seconds,
+    parametersOverride: r.parameters_override_json ? JSON.parse(r.parameters_override_json) : undefined,
+    stats: r.stats_json ? JSON.parse(r.stats_json) : {},
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+export async function dbSaveBot(bot: any): Promise<void> {
+  const db = await getDatabaseAdapter();
+  const now = Date.now();
+  await db.query(
+    `INSERT INTO bots (
+      id, name, strategy_id, strategy_name, strategy_type, symbol, timeframe,
+      status, execution_mode, magic_number, allocation_json, trailing_stop_json,
+      cooldown_seconds, parameters_override_json, stats_json, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      strategy_id = excluded.strategy_id,
+      strategy_name = excluded.strategy_name,
+      strategy_type = excluded.strategy_type,
+      symbol = excluded.symbol,
+      timeframe = excluded.timeframe,
+      status = excluded.status,
+      execution_mode = excluded.execution_mode,
+      magic_number = excluded.magic_number,
+      allocation_json = excluded.allocation_json,
+      trailing_stop_json = excluded.trailing_stop_json,
+      cooldown_seconds = excluded.cooldown_seconds,
+      parameters_override_json = excluded.parameters_override_json,
+      stats_json = excluded.stats_json,
+      updated_at = excluded.updated_at`,
+    safeParams([
+      bot.id,
+      bot.name,
+      bot.strategyId,
+      bot.strategyName,
+      bot.strategyType,
+      bot.symbol,
+      bot.timeframe,
+      bot.status,
+      bot.executionMode || 'PAPER',
+      bot.magicNumber || 881001,
+      JSON.stringify(bot.allocation || {}),
+      JSON.stringify(bot.trailingStop || { enabled: false, distancePoints: 0, stepPoints: 0 }),
+      bot.cooldownSeconds || 60,
+      bot.parametersOverride ? JSON.stringify(bot.parametersOverride) : null,
+      JSON.stringify(bot.stats || {}),
+      bot.createdAt || now,
+      now,
+    ])
+  );
+}
+
+export async function dbDeleteBot(id: string): Promise<void> {
+  const db = await getDatabaseAdapter();
+  await db.query(`DELETE FROM bots WHERE id = ?`, [id]);
+  await db.query(`DELETE FROM bot_executions WHERE bot_id = ?`, [id]);
+  await db.query(`DELETE FROM bot_logs WHERE bot_id = ?`, [id]);
+}
+
+export async function dbSaveBotExecution(exec: any): Promise<void> {
+  const db = await getDatabaseAdapter();
+  await db.query(
+    `INSERT INTO bot_executions (
+      id, bot_id, symbol, order_type, volume, entry_price, exit_price,
+      sl, tp, ticket, deal_ticket, pnl, status, execution_mode,
+      opened_at, closed_at, reason, magic_number
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      exit_price = excluded.exit_price,
+      pnl = excluded.pnl,
+      status = excluded.status,
+      closed_at = excluded.closed_at`,
+    safeParams([
+      exec.id,
+      exec.botId,
+      exec.symbol,
+      exec.orderType,
+      exec.volume,
+      exec.entryPrice,
+      exec.exitPrice || null,
+      exec.sl || null,
+      exec.tp || null,
+      exec.ticket || null,
+      exec.dealTicket || null,
+      exec.pnl || null,
+      exec.status,
+      exec.executionMode || 'PAPER',
+      exec.openedAt,
+      exec.closedAt || null,
+      exec.reason || '',
+      exec.magicNumber || 881001,
+    ])
+  );
+}
+
+export async function dbGetBotExecutions(botId?: string, limit = 100): Promise<any[]> {
+  const db = await getDatabaseAdapter();
+  const sql = botId
+    ? `SELECT * FROM bot_executions WHERE bot_id = ? ORDER BY opened_at DESC LIMIT ?`
+    : `SELECT * FROM bot_executions ORDER BY opened_at DESC LIMIT ?`;
+  const params = botId ? [botId, limit] : [limit];
+  const rows = await db.query(sql, params);
+  return rows.map((r: any) => ({
+    id: r.id,
+    botId: r.bot_id,
+    symbol: r.symbol,
+    orderType: r.order_type,
+    volume: r.volume,
+    entryPrice: r.entry_price,
+    exitPrice: r.exit_price,
+    sl: r.sl,
+    tp: r.tp,
+    ticket: r.ticket,
+    dealTicket: r.deal_ticket,
+    pnl: r.pnl,
+    status: r.status,
+    executionMode: r.execution_mode,
+    openedAt: r.opened_at,
+    closedAt: r.closed_at,
+    reason: r.reason,
+    magicNumber: r.magic_number,
+  }));
+}
+
+export async function dbSaveBotLog(log: any): Promise<void> {
+  const db = await getDatabaseAdapter();
+  await db.query(
+    `INSERT INTO bot_logs (id, bot_id, timestamp, level, message, data_json)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    safeParams([
+      log.id || `blog-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      log.botId,
+      log.timestamp || Date.now(),
+      log.level,
+      log.message,
+      log.data ? JSON.stringify(log.data) : null,
+    ])
+  );
+}
+
+export async function dbGetBotLogs(botId: string, limit = 50): Promise<any[]> {
+  const db = await getDatabaseAdapter();
+  const rows = await db.query(
+    `SELECT * FROM bot_logs WHERE bot_id = ? ORDER BY timestamp DESC LIMIT ?`,
+    [botId, limit]
+  );
+  return rows.map((r: any) => ({
+    id: r.id,
+    botId: r.bot_id,
+    timestamp: r.timestamp,
+    level: r.level,
+    message: r.message,
+    data: r.data_json ? JSON.parse(r.data_json) : undefined,
+  }));
+}

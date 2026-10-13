@@ -18,6 +18,7 @@ import {
   pruneDatabase,
 } from '@features/database';
 import { runStrategyBacktest } from '@features/strategies';
+import { botStore, botEngine } from '@features/bot';
 
 export interface DaemonConfig {
   heartbeatTimeoutMs: number;
@@ -593,11 +594,72 @@ export class DaemonService {
       return { success: true, message: 'Daemon and automated trading halted' };
     }
 
-    if (actionUpper === 'RESUME') {
-      this.isRunning = true;
-      tradeStore.triggerKillSwitch(false);
-      this.notify('AI_DAEMON_RESUMED', { message: 'Daemon resumed' });
-      return { success: true, message: 'Daemon operations resumed' };
+    // ==========================================
+    // 6. Automated Bot Orchestration (AI Controlled)
+    // ==========================================
+    if (actionUpper === 'BOT_LIST' || actionUpper === 'LIST_BOTS') {
+      const bots = botStore.getAllBots();
+      return { success: true, count: bots.length, bots };
+    }
+
+    if (actionUpper === 'BOT_CREATE' || actionUpper === 'DEPLOY_BOT') {
+      const created = await botStore.createBot(command.bot || command);
+      this.notify('AI_BOT_CREATED', { botId: created.id, name: created.name });
+      return { success: true, bot: created };
+    }
+
+    if (actionUpper === 'BOT_START') {
+      const botId = command.botId || command.id;
+      const bot = await botStore.updateBotStatus(botId, 'RUNNING', 'Started via AI dispatch');
+      this.notify('AI_BOT_STARTED', { botId });
+      return { success: Boolean(bot), bot };
+    }
+
+    if (actionUpper === 'BOT_PAUSE') {
+      const botId = command.botId || command.id;
+      const bot = await botStore.updateBotStatus(botId, 'PAUSED', 'Paused via AI dispatch');
+      this.notify('AI_BOT_PAUSED', { botId });
+      return { success: Boolean(bot), bot };
+    }
+
+    if (actionUpper === 'BOT_STOP') {
+      const botId = command.botId || command.id;
+      const bot = await botStore.updateBotStatus(botId, 'STOPPED', 'Stopped via AI dispatch');
+      this.notify('AI_BOT_STOPPED', { botId });
+      return { success: Boolean(bot), bot };
+    }
+
+    if (actionUpper === 'BOT_DELETE') {
+      const botId = command.botId || command.id;
+      const deleted = await botStore.deleteBot(botId);
+      this.notify('AI_BOT_DELETED', { botId });
+      return { success: deleted };
+    }
+
+    if (actionUpper === 'BOT_EVALUATE') {
+      const botId = command.botId || command.id;
+      const bot = botStore.getBot(botId);
+      if (!bot) return { success: false, message: 'Bot not found' };
+      const signal = await botEngine.processBot(bot);
+      return { success: true, botId, signal };
+    }
+
+    if (actionUpper === 'BOT_CLOSE_POSITIONS') {
+      const botId = command.botId || command.id;
+      const result = await botEngine.closeBotPositions(botId, command.reason || 'AI emergency close');
+      return { success: true, ...result };
+    }
+
+    if (actionUpper === 'BOT_GET_EXECUTIONS') {
+      const botId = command.botId || command.id;
+      const executions = await botStore.getExecutions(botId, command.limit || 50);
+      return { success: true, count: executions.length, executions };
+    }
+
+    if (actionUpper === 'BOT_GET_LOGS') {
+      const botId = command.botId || command.id;
+      const logs = await botStore.getLogs(botId, command.limit || 50);
+      return { success: true, count: logs.length, logs };
     }
 
     return { success: false, message: `Unknown AI action: ${command.action}` };
@@ -624,6 +686,23 @@ export class DaemonService {
       mt5: {
         provider: connectorManager.getProviderName(),
         status: connector.getStatus(),
+      },
+      bots: {
+        total: botStore.getAllBots().length,
+        active: botStore.getActiveBots().length,
+        instances: botStore.getAllBots().map((b) => ({
+          id: b.id,
+          name: b.name,
+          symbol: b.symbol,
+          timeframe: b.timeframe,
+          status: b.status,
+          strategyType: b.strategyType,
+          executionMode: b.executionMode,
+          tradesExecuted: b.stats.tradesExecuted,
+          realizedPnl: b.stats.realizedPnl,
+          lastSignal: b.stats.lastSignal,
+          lastSignalTime: b.stats.lastSignalTime,
+        })),
       },
       config: this.config,
       watchlist: this.watchlist,
@@ -663,6 +742,16 @@ export class DaemonService {
         'PRUNE_DATABASE',
         'EMERGENCY_HALT',
         'RESUME',
+        'BOT_LIST',
+        'BOT_CREATE',
+        'BOT_START',
+        'BOT_PAUSE',
+        'BOT_STOP',
+        'BOT_DELETE',
+        'BOT_EVALUATE',
+        'BOT_CLOSE_POSITIONS',
+        'BOT_GET_EXECUTIONS',
+        'BOT_GET_LOGS',
       ],
     };
   }
