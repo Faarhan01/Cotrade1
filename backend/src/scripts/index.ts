@@ -1,2 +1,1 @@
-// Scripts (peron bridge runner, etc.)
-export {};
+export * from '../gateway/mt5connector/scripts/index.ts';

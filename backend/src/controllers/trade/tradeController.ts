@@ -228,11 +228,27 @@ export class TradeController {
      });
    }
 
-   // Request historical candles from EA
+   // Request historical candles from MetaTrader 5 via package / bridge
    public static async requestHistoryFromEA(req: Request, res: Response) {
      const { symbol, timeframe, count } = req.body;
-     const result = tradeStore.requestHistoryFromEA(symbol || 'EURUSD', timeframe || 'M1', count || 100);
-     res.json({ success: true, commandId: result.commandId });
+     const sym = normalizeSymbol(symbol || 'EURUSD');
+     const tf = timeframe || 'M1';
+     const cnt = Number(count) || 100;
+
+     try {
+       const connector = connectorManager.getConnector();
+       const candles = await connector.getCandles(sym, tf, cnt);
+       if (candles && candles.length > 0) {
+         const { dbInsertCandles } = await import('@core/database/db.ts');
+         await dbInsertCandles(sym, tf, candles);
+         return res.json({ success: true, count: candles.length, candles, source: 'mt5_package' });
+       }
+     } catch (err) {
+       // Fallback to command queue
+     }
+
+     const result = tradeStore.requestHistoryFromEA(sym, tf, cnt);
+     res.json({ success: true, commandId: result.commandId, source: 'command_queue' });
    }
 
    // Seed synthetic candles for testing

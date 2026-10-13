@@ -144,24 +144,24 @@ export const ApiConnectionRadar: React.FC<ApiConnectionRadarProps> = ({ state, o
         <div className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-2.5 flex items-start gap-2">
           <span className="h-5 w-5 rounded bg-cyan-950 text-cyan-400 font-bold flex items-center justify-center shrink-0 text-[10px]">1</span>
           <div>
-            <div className="font-bold text-slate-200 text-[11px]">Compile in MT5 MetaEditor (Optional)</div>
-            <p className="text-slate-500 text-[10px] mt-0.5">If using the EA: Copy <code className="text-cyan-400">backend/ea/AIMT5Bridge.mq5</code> into MQL5/Experts and press F7.</p>
+            <div className="font-bold text-slate-200 text-[11px]">Launch MT5 Terminal</div>
+            <p className="text-slate-500 text-[10px] mt-0.5">Start your MetaTrader 5 desktop terminal and verify account login and Algo Trading enabled.</p>
           </div>
         </div>
 
         <div className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-2.5 flex items-start gap-2">
           <span className="h-5 w-5 rounded bg-cyan-950 text-cyan-400 font-bold flex items-center justify-center shrink-0 text-[10px]">2</span>
           <div>
-            <div className="font-bold text-slate-200 text-[11px]">Allow WebRequest in MT5 (Optional)</div>
-            <p className="text-slate-500 text-[10px] mt-0.5">Tools → Options → Expert Advisors → add <code className="text-cyan-400">http://127.0.0.1:3000</code></p>
+            <div className="font-bold text-slate-200 text-[11px]">MetaTrader 5 Python IPC</div>
+            <p className="text-slate-500 text-[10px] mt-0.5">Native <code className="text-cyan-400">MetaTrader5</code> package connects over IPC with zero MQL5 EA requirements.</p>
           </div>
         </div>
 
         <div className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-2.5 flex items-start gap-2">
           <span className="h-5 w-5 rounded bg-cyan-950 text-cyan-400 font-bold flex items-center justify-center shrink-0 text-[10px]">3</span>
           <div>
-            <div className="font-bold text-slate-200 text-[11px]">Direct API Connection (Primary)</div>
-            <p className="text-slate-500 text-[10px] mt-0.5">Ensure the MT5 terminal is running and the bridge is able to connect via the MetaTrader5 Python package.</p>
+            <div className="font-bold text-slate-200 text-[11px]">Live WebSocket & Daemon</div>
+            <p className="text-slate-500 text-[10px] mt-0.5">Real-time market depth, tick feed, positions, and AI daemon commands stream instantly.</p>
           </div>
         </div>
       </div>

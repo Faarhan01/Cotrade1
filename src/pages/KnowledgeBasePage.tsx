@@ -75,6 +75,18 @@ export const KnowledgeBasePage: React.FC = () => {
   const [chartDataSource, setChartDataSource] = useState<string>('');
   const [availableSymbols, setAvailableSymbols] = useState<string[]>(['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD', 'BTCUSD']);
 
+  // Chart Testing Workbench State
+  const [hoveredCandle, setHoveredCandle] = useState<CandleData | null>(null);
+  const [simulatingBatch, setSimulatingBatch] = useState(false);
+  const [chartSimOrder, setChartSimOrder] = useState<{
+    type: 'BUY' | 'SELL';
+    openPrice: number;
+    closePrice: number;
+    volume: number;
+    pnl: number;
+    margin: number;
+  } | null>(null);
+
   // Strategy Form
   const [stratForm, setStratForm] = useState<{
     id?: string;
@@ -271,6 +283,63 @@ export const KnowledgeBasePage: React.FC = () => {
     } finally {
       setChartLoading(false);
     }
+  };
+
+  const handleSimulateBatch = async (pattern: 'wave' | 'uptrend' | 'breakout') => {
+    try {
+      setSimulatingBatch(true);
+      await api.simulateChartBatch(chartSymbol, 50, pattern);
+      showNotification(`Simulated 50 ${pattern} bars for ${chartSymbol}`);
+      await handleFetchChartHistory();
+    } catch (err: any) {
+      showNotification(`Simulation notice: ${err.message}`, 'error');
+    } finally {
+      setSimulatingBatch(false);
+    }
+  };
+
+  const handleSeedChartCandles = async () => {
+    try {
+      setSimulatingBatch(true);
+      const res = await fetch('/api/candles/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol: chartSymbol, timeframe: chartTimeframe, count: 60 }),
+      });
+      const data = await res.json();
+      showNotification(`Seeded ${data.count || 60} candles for ${chartSymbol}`);
+      await handleFetchChartHistory();
+    } catch (err: any) {
+      showNotification(`Seed notice: ${err.message}`, 'error');
+    } finally {
+      setSimulatingBatch(false);
+    }
+  };
+
+  const handleRunTestTrade = (tradeType: 'BUY' | 'SELL') => {
+    if (fetchedCandles.length < 2) {
+      showNotification('Pull or simulate chart data first before running a test trade', 'error');
+      return;
+    }
+    const last = fetchedCandles[fetchedCandles.length - 1];
+    const prev = fetchedCandles[Math.max(0, fetchedCandles.length - 10)];
+    const openPrice = prev.close;
+    const closePrice = last.close;
+    const volume = 0.1;
+    const contractSize = chartSymbol === 'XAUUSD' ? 100 : chartSymbol === 'BTCUSD' ? 1 : 100000;
+    const pnl = tradeType === 'BUY'
+      ? (closePrice - openPrice) * volume * contractSize
+      : (openPrice - closePrice) * volume * contractSize;
+    const margin = (openPrice * volume * contractSize) / 100;
+    setChartSimOrder({
+      type: tradeType,
+      openPrice,
+      closePrice,
+      volume,
+      pnl: Math.round(pnl * 100) / 100,
+      margin: Math.round(margin * 100) / 100,
+    });
+    showNotification(`Executed test ${tradeType} trade! Projected P&L: $${pnl.toFixed(2)}`);
   };
 
   const handleExportData = (format: 'json' | 'csv') => {
@@ -1150,6 +1219,269 @@ export const KnowledgeBasePage: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Interactive Chart Testing & Simulation Workbench */}
+          {chartDataMode === 'candles' && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-3 border-b border-slate-800/80">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-cyan-400" />
+                    <h3 className="text-sm font-bold text-white font-mono tracking-tight">
+                      Visual Chart & Pattern Testing Workbench ({chartSymbol} {chartTimeframe})
+                    </h3>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                    Test live price dynamics, technical indicator response, pattern surges, and simulated orders.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap font-mono text-xs">
+                  <span className="text-[11px] text-slate-400">Simulate:</span>
+                  <button
+                    onClick={() => handleSimulateBatch('uptrend')}
+                    disabled={simulatingBatch}
+                    className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-900/50 flex items-center gap-1 transition-colors"
+                  >
+                    <ArrowUpRight className="h-3 w-3" />
+                    <span>Uptrend Surge</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleSimulateBatch('wave')}
+                    disabled={simulatingBatch}
+                    className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-900/50 flex items-center gap-1 transition-colors"
+                  >
+                    <Activity className="h-3 w-3" />
+                    <span>Oscillator Wave</span>
+                  </button>
+
+                  <button
+                    onClick={handleSeedChartCandles}
+                    disabled={simulatingBatch}
+                    className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 transition-colors"
+                  >
+                    <Database className="h-3 w-3" />
+                    <span>Seed 60 Bars</span>
+                  </button>
+
+                  <div className="h-4 w-px bg-slate-800 mx-1"></div>
+
+                  <button
+                    onClick={() => handleRunTestTrade('BUY')}
+                    className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-colors"
+                  >
+                    Test Buy
+                  </button>
+
+                  <button
+                    onClick={() => handleRunTestTrade('SELL')}
+                    className="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white font-bold transition-colors"
+                  >
+                    Test Sell
+                  </button>
+                </div>
+              </div>
+
+              {/* Candlestick SVG Canvas */}
+              {fetchedCandles.length > 0 ? (
+                (() => {
+                  const display = fetchedCandles.slice(-60);
+                  const minPrice = Math.min(...display.map((c) => c.low));
+                  const maxPrice = Math.max(...display.map((c) => c.high));
+                  const priceRange = maxPrice - minPrice || 0.0001;
+                  const maxVol = Math.max(...display.map((c) => c.volume || 1), 1);
+                  const width = 860;
+                  const height = 240;
+                  const priceHeight = 180;
+                  const barWidth = Math.max(5, Math.floor(width / display.length) - 3);
+
+                  // Calculate SMA 20 points
+                  const smaPoints: { x: number; y: number }[] = [];
+                  for (let i = 0; i < display.length; i++) {
+                    const startIdx = Math.max(0, i - 19);
+                    const slice = display.slice(startIdx, i + 1);
+                    const avg = slice.reduce((acc, c) => acc + c.close, 0) / slice.length;
+                    const x = i * (width / display.length) + barWidth / 2;
+                    const y = priceHeight - ((avg - minPrice) / priceRange) * (priceHeight - 30) - 15;
+                    smaPoints.push({ x, y });
+                  }
+                  const smaPolyline = smaPoints.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+                  // Current RSI estimate
+                  let gains = 0;
+                  let losses = 0;
+                  for (let i = 1; i < Math.min(15, display.length); i++) {
+                    const diff = display[display.length - i].close - display[display.length - i - 1].close;
+                    if (diff > 0) gains += diff;
+                    else losses += Math.abs(diff);
+                  }
+                  const avgGain = gains / 14 || 0.0001;
+                  const avgLoss = losses / 14 || 0.0001;
+                  const rs = avgGain / avgLoss;
+                  const rsi = Math.round(100 - (100 / (1 + rs)));
+
+                  const lastCandle = display[display.length - 1];
+
+                  return (
+                    <div className="space-y-3">
+                      {/* Candlestick & Volume SVG */}
+                      <div className="bg-slate-950 border border-slate-800 rounded-lg p-2 overflow-x-auto relative">
+                        <svg
+                          viewBox={`0 0 ${width} ${height}`}
+                          className="w-full h-56 font-mono text-[9px] select-none"
+                        >
+                          {/* Grid Lines */}
+                          <line x1="0" y1="40" x2={width} y2="40" stroke="#1e293b" strokeDasharray="4 4" />
+                          <line x1="0" y1="100" x2={width} y2="100" stroke="#1e293b" strokeDasharray="4 4" />
+                          <line x1="0" y1="160" x2={width} y2="160" stroke="#1e293b" strokeDasharray="4 4" />
+                          <line x1="0" y1="190" x2={width} y2="190" stroke="#334155" />
+
+                          {/* Price Labels */}
+                          <text x={width - 50} y="35" fill="#64748b">{maxPrice.toFixed(4)}</text>
+                          <text x={width - 50} y="95" fill="#64748b">{((maxPrice + minPrice) / 2).toFixed(4)}</text>
+                          <text x={width - 50} y="155" fill="#64748b">{minPrice.toFixed(4)}</text>
+
+                          {/* Candlesticks & Volume */}
+                          {display.map((c, i) => {
+                            const x = i * (width / display.length) + 4;
+                            const isBull = c.close >= c.open;
+                            const color = isBull ? '#10b981' : '#f43f5e';
+
+                            const highY = priceHeight - ((c.high - minPrice) / priceRange) * (priceHeight - 30) - 15;
+                            const lowY = priceHeight - ((c.low - minPrice) / priceRange) * (priceHeight - 30) - 15;
+                            const openY = priceHeight - ((c.open - minPrice) / priceRange) * (priceHeight - 30) - 15;
+                            const closeY = priceHeight - ((c.close - minPrice) / priceRange) * (priceHeight - 30) - 15;
+
+                            const bodyY = Math.min(openY, closeY);
+                            const bodyHeight = Math.max(2, Math.abs(openY - closeY));
+
+                            const volY = height - ((c.volume || 1) / maxVol) * 45;
+                            const volHeight = Math.max(2, height - volY);
+
+                            return (
+                              <g
+                                key={i}
+                                onMouseEnter={() => setHoveredCandle(c)}
+                                onMouseLeave={() => setHoveredCandle(null)}
+                                className="cursor-crosshair"
+                              >
+                                {/* Volume bar */}
+                                <rect
+                                  x={x}
+                                  y={volY}
+                                  width={barWidth}
+                                  height={volHeight}
+                                  fill={color}
+                                  opacity="0.3"
+                                />
+
+                                {/* Wick line */}
+                                <line
+                                  x1={x + barWidth / 2}
+                                  y1={highY}
+                                  x2={x + barWidth / 2}
+                                  y2={lowY}
+                                  stroke={color}
+                                  strokeWidth="1.2"
+                                />
+
+                                {/* Candle body */}
+                                <rect
+                                  x={x}
+                                  y={bodyY}
+                                  width={barWidth}
+                                  height={bodyHeight}
+                                  fill={color}
+                                />
+                              </g>
+                            );
+                          })}
+
+                          {/* 20-Period SMA Line */}
+                          {smaPoints.length > 1 && (
+                            <polyline
+                              fill="none"
+                              stroke="#06b6d4"
+                              strokeWidth="1.5"
+                              points={smaPolyline}
+                            />
+                          )}
+                        </svg>
+
+                        {/* Hover Tooltip Overlay */}
+                        {hoveredCandle && (
+                          <div className="absolute top-3 left-4 bg-slate-900/95 border border-cyan-500/50 rounded-lg p-2 font-mono text-[11px] text-white shadow-xl flex items-center gap-3 backdrop-blur-sm">
+                            <span className="text-cyan-400">{hoveredCandle.timeIso || new Date(hoveredCandle.time * 1000).toLocaleTimeString()}</span>
+                            <span>O: <span className="text-slate-300">{hoveredCandle.open}</span></span>
+                            <span>H: <span className="text-emerald-400">{hoveredCandle.high}</span></span>
+                            <span>L: <span className="text-rose-400">{hoveredCandle.low}</span></span>
+                            <span>C: <span className="text-cyan-300 font-bold">{hoveredCandle.close}</span></span>
+                            <span>Vol: <span className="text-slate-400">{hoveredCandle.volume}</span></span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Technical Indicators HUD & Signal Banner */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
+                        <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                          <span className="text-[10px] text-slate-500 block">LATEST PRICE</span>
+                          <span className="text-sm font-bold text-white">{lastCandle?.close.toFixed(4)}</span>
+                        </div>
+
+                        <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                          <span className="text-[10px] text-slate-500 block">RSI (14 BARS)</span>
+                          <span className={`text-sm font-bold ${rsi > 70 ? 'text-rose-400' : rsi < 30 ? 'text-emerald-400' : 'text-cyan-300'}`}>
+                            {rsi} {rsi > 70 ? '(Overbought)' : rsi < 30 ? '(Oversold)' : '(Neutral)'}
+                          </span>
+                        </div>
+
+                        <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                          <span className="text-[10px] text-slate-500 block">20-SMA TREND</span>
+                          <span className="text-sm font-bold text-cyan-400">
+                            {smaPoints.length > 0 ? ((minPrice + (priceHeight - smaPoints[smaPoints.length - 1].y) * (priceRange / (priceHeight - 30)))).toFixed(4) : 'Calculating...'}
+                          </span>
+                        </div>
+
+                        <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                          <span className="text-[10px] text-slate-500 block">CHART VOLATILITY</span>
+                          <span className="text-sm font-bold text-amber-400">
+                            {((priceRange / minPrice) * 100).toFixed(2)}% Range
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Simulated Trade Execution Outcome */}
+                      {chartSimOrder && (
+                        <div className="p-3 rounded-lg bg-slate-950 border border-cyan-800/60 font-mono text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${chartSimOrder.type === 'BUY' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}`}>
+                              {chartSimOrder.type} 0.1 LOT
+                            </span>
+                            <span className="text-slate-300">
+                              Entry @ {chartSimOrder.openPrice} → Exit @ {chartSimOrder.closePrice}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-4 text-xs">
+                            <span className="text-slate-400">Margin: <strong className="text-white">${chartSimOrder.margin}</strong></span>
+                            <span className="text-slate-400">Projected P&L: <strong className={chartSimOrder.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>${chartSimOrder.pnl.toFixed(2)}</strong></span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="border border-dashed border-slate-800 rounded-lg p-8 text-center text-slate-400 font-mono text-xs space-y-2">
+                  <p>No candlestick bars currently in view.</p>
+                  <p className="text-slate-500">
+                    Click "Pull History" above or "Uptrend Surge" / "Seed 60 Bars" to generate an interactive testing canvas.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Results Table */}
           {chartDataMode === 'candles' ? (

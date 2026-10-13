@@ -24,7 +24,8 @@
       "@controllers/*": ["./backend/src/controllers/*"],
       "@routes/*": ["./backend/src/routes/*"],
       "@middleware/*": ["./backend/src/middleware/*"],
-      "@integrations/*": ["./backend/src/integrations/*"]
+      "@integrations/*": ["./backend/src/integrations/*"],
+      "@gateway/*": ["./backend/src/gateway/*"]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true

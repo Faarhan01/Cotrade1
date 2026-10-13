@@ -108,7 +108,7 @@ def call_mt5_mcp(tool_name: str, args: dict):
     response = requests.post(BRIDGE_MCP_URL, json=payload)
     return response.json()
 
-# 1. External AI inspects live market data from MT5 EA
+# 1. External AI inspects live market data from MetaTrader 5
 market_data = call_mt5_mcp("mt5_get_market_data", {"symbol": "EURUSD"})
 print("Market Price Quote:", market_data)
 
@@ -125,7 +125,7 @@ trade_res = call_mt5_mcp("mt5_execute_trade", {
     "tp": 1.0920,
     "comment": "EXTERNAL_AI_MCP_SIGNAL"
 })
-print("Asynchronous Order Dispatched to EA:", trade_res)
+print("Asynchronous Order Dispatched to MetaTrader 5:", trade_res)
 `;
 
   const cursorSnippet = JSON.stringify(

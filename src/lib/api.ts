@@ -305,4 +305,25 @@ export const api = {
     });
     return res.json();
   },
+
+  // Gateway Diagnostics & Bulk Operations
+  async getGatewayDiagnostics() {
+    const res = await fetch('/api/gateway/diagnostics');
+    return res.json();
+  },
+
+  async getSymbolGroups() {
+    const res = await fetch('/api/symbols-groups');
+    return res.json();
+  },
+
+  async closeAllPositions() {
+    const res = await fetch('/api/positions/close-all', { method: 'POST' });
+    return res.json();
+  },
+
+  async cancelAllOrders() {
+    const res = await fetch('/api/orders/cancel-all', { method: 'POST' });
+    return res.json();
+  },
 };

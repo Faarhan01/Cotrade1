@@ -8,7 +8,7 @@ import { setupWebSocketServer } from './backend/src/services/websocketServer/web
 import { mt5Router } from './backend/src/routes/mt5Routes.ts';
 import { apiRouter } from './backend/src/routes/apiRoutes.ts';
 import { corsMiddleware, requestLogger, errorHandler } from './backend/src/middleware/index.ts';
-import { connectorManager } from './backend/src/features/mt5/ConnectorManager.ts';
+import { connectorManager } from './backend/src/gateway/index.ts';
 import { logger } from './backend/src/core/utils/logger.ts';
 import { Database } from './backend/src/core/database/database.ts';
 

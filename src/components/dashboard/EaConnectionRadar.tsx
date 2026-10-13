@@ -33,7 +33,7 @@ export const MT5ConnectionRadar: React.FC<MT5ConnectionRadarProps> = ({ state, o
   const chartSymbol = state?.connection.chartSymbol;
   const chartTimeframe = state?.connection.chartTimeframe;
 
-  const bridgeCommand = 'python3 backend/src/scripts/peron_bridge.py';
+  const bridgeCommand = 'python3 backend/src/gateway/mt5connector/scripts/peron_bridge.py';
 
   const copyCommand = () => {
     navigator.clipboard.writeText(bridgeCommand);
@@ -173,7 +173,7 @@ export const MT5ConnectionRadar: React.FC<MT5ConnectionRadarProps> = ({ state, o
           <span className="h-5 w-5 rounded bg-cyan-950 text-cyan-400 font-bold flex items-center justify-center shrink-0 text-[10px]">3</span>
           <div>
             <div className="font-bold text-slate-200 text-[11px]">Direct Bridge Stream</div>
-            <p className="text-slate-500 text-[10px] mt-0.5">Run <code className="text-cyan-400">python3 backend/src/scripts/peron_bridge.py</code></p>
+            <p className="text-slate-500 text-[10px] mt-0.5">Run <code className="text-cyan-400">python3 backend/src/gateway/mt5connector/scripts/peron_bridge.py</code></p>
           </div>
         </div>
       </div>

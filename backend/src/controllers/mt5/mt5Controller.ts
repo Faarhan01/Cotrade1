@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { connectorManager } from '@features/mt5';
+import { connectorManager, MT5PackageDetector } from '@/gateway';
 import { tradeStore } from '@services/tradeStore';
 import { normalizeSymbol } from '@core/utils';
 
@@ -287,5 +287,89 @@ export class MT5Controller {
       symbol,
       spec,
     });
+  }
+
+  // Get Gateway & MetaTrader5 Python Package Diagnostics
+  public static async getGatewayDiagnostics(req: Request, res: Response) {
+    try {
+      const packageInfo = await MT5PackageDetector.inspect();
+      const connector = connectorManager.getConnector();
+      const status = connector.getStatus();
+      const terminal = await connector.getTerminalInfo();
+      res.json({
+        success: true,
+        package: packageInfo,
+        connectorStatus: status,
+        terminal,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // Get Categorized Symbol Groups
+  public static async getSymbolGroups(req: Request, res: Response) {
+    const connector = connectorManager.getConnector();
+    const allSymbols = await connector.getSymbols();
+    const groups: Record<string, typeof allSymbols> = {
+      Forex: [],
+      Metals: [],
+      Crypto: [],
+      Indices: [],
+      Other: [],
+    };
+
+    for (const s of allSymbols) {
+      const upper = s.symbol.toUpperCase();
+      if (upper.includes('XAU') || upper.includes('XAG') || upper.includes('GOLD') || upper.includes('SILV')) {
+        groups.Metals.push(s);
+      } else if (upper.includes('BTC') || upper.includes('ETH') || upper.includes('SOL') || upper.includes('CRYPTO')) {
+        groups.Crypto.push(s);
+      } else if (upper.includes('US30') || upper.includes('NAS') || upper.includes('SPX') || upper.includes('GER') || upper.includes('JP225')) {
+        groups.Indices.push(s);
+      } else if (upper.length === 6 && (upper.includes('USD') || upper.includes('EUR') || upper.includes('GBP') || upper.includes('JPY') || upper.includes('AUD') || upper.includes('CAD') || upper.includes('CHF') || upper.includes('NZD'))) {
+        groups.Forex.push(s);
+      } else {
+        groups.Other.push(s);
+      }
+    }
+
+    res.json({
+      success: true,
+      totalSymbols: allSymbols.length,
+      groups,
+    });
+  }
+
+  // Emergency Close All Positions
+  public static async closeAllPositions(req: Request, res: Response) {
+    const connector = connectorManager.getConnector();
+    if (typeof (connector as any).closeAllPositions === 'function') {
+      const result = await (connector as any).closeAllPositions();
+      return res.json(result);
+    }
+    const positions = await connector.getPositions();
+    const results: any[] = [];
+    for (const p of positions) {
+      const resClose = await connector.closePosition(p.ticket, p.volume);
+      results.push({ ticket: p.ticket, ...resClose });
+    }
+    res.json({ success: true, closedCount: results.length, results });
+  }
+
+  // Cancel All Pending Orders
+  public static async cancelAllOrders(req: Request, res: Response) {
+    const connector = connectorManager.getConnector();
+    if (typeof (connector as any).cancelAllOrders === 'function') {
+      const result = await (connector as any).cancelAllOrders();
+      return res.json(result);
+    }
+    const orders = await connector.getOrders();
+    let count = 0;
+    for (const o of orders) {
+      const resCancel = await connector.cancelOrder(o.ticket);
+      if (resCancel.success) count++;
+    }
+    res.json({ success: true, cancelledCount: count });
   }
 }

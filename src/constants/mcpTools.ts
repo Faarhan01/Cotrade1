@@ -178,7 +178,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
   },
   {
     name: 'mt5_get_current_chart',
-    description: 'Retrieve real-time details of the active chart and symbol that the MT5 EA is attached to (symbol, timeframe, spread, bid, ask, digits, contract size, min/max lot sizes).',
+    description: 'Retrieve real-time details of the active chart and symbol from MetaTrader 5 (symbol, timeframe, spread, bid, ask, digits, contract size, min/max lot sizes).',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -186,7 +186,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
   },
   {
     name: 'mt5_get_all_symbols',
-    description: 'Retrieve all symbols that the MT5 EA is transmitting market quotes and broker specifications for.',
+    description: 'Retrieve all symbols available from MetaTrader 5 with real-time market quotes and broker specifications.',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -275,7 +275,7 @@ export const MCP_TOOLS: MCPToolDefinition[] = [
   },
   {
     name: 'mt5_request_chart_history',
-    description: 'Trigger an on-demand historical candle pull from MetaTrader 5 for any symbol, timeframe (M1, M5, M15, H1, etc.), and count. The EA fetches CopyRates from MT5 and uploads to the database.',
+    description: 'Trigger an on-demand historical candle pull from MetaTrader 5 for any symbol, timeframe (M1, M5, M15, H1, etc.), and count using the MetaTrader 5 package API.',
     inputSchema: {
       type: 'object',
       properties: {
