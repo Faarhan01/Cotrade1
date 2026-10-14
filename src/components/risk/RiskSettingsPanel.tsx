@@ -51,10 +51,10 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
   };
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-sm space-y-5">
+    <div className="card-panel space-y-5">
       <div className="flex items-center justify-between pb-3 border-b border-slate-800">
         <div className="flex items-center gap-2">
-          <ShieldAlert className="h-5 w-5 text-cyan-400" />
+          <ShieldAlert className="h-5 w-5 text-indigo-400" />
           <div>
             <h2 className="text-base font-bold text-white uppercase tracking-wider font-mono">
               Risk Guard & Trailing Engine
@@ -68,7 +68,7 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all shadow-md shadow-cyan-950/40"
+          className="btn btn-primary"
         >
           {savedSuccess ? (
             <>
@@ -92,7 +92,7 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
             Global Take Profit & Stop Loss
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-slate-950/70 border border-slate-800 p-3 rounded-lg">
+            <div className="card-panel">
               <label className="block text-xs font-mono text-slate-400 mb-1">
                 Global Take Profit ($ USD)
               </label>
@@ -104,7 +104,7 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
                   onChange={(e) =>
                     setFormData({ ...formData, globalTakeProfitUSD: parseFloat(e.target.value) || 0 })
                   }
-                  className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 pl-7 text-sm font-mono text-emerald-400 focus:border-cyan-500 focus:outline-none"
+                  className="input-control w-full"
                 />
               </div>
               <p className="text-[10px] text-slate-500 font-mono mt-1">
@@ -112,7 +112,7 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
               </p>
             </div>
 
-            <div className="bg-slate-950/70 border border-slate-800 p-3 rounded-lg">
+            <div className="card-panel">
               <label className="block text-xs font-mono text-slate-400 mb-1">
                 Global Stop Loss ($ USD)
               </label>
@@ -124,7 +124,7 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
                   onChange={(e) =>
                     setFormData({ ...formData, globalStopLossUSD: parseFloat(e.target.value) || 0 })
                   }
-                  className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 pl-7 text-sm font-mono text-rose-400 focus:border-cyan-500 focus:outline-none"
+                  className="input-control w-full"
                 />
               </div>
               <p className="text-[10px] text-slate-500 font-mono mt-1">
@@ -132,7 +132,7 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
               </p>
             </div>
 
-            <div className="bg-slate-950/70 border border-slate-800 p-3 rounded-lg">
+            <div className="card-panel">
               <label className="block text-xs font-mono text-slate-400 mb-1">
                 Max Daily Drawdown (% of Balance)
               </label>
@@ -144,7 +144,7 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
                   onChange={(e) =>
                     setFormData({ ...formData, maxDrawdownPercent: parseFloat(e.target.value) || 0 })
                   }
-                  className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm font-mono text-amber-400 focus:border-cyan-500 focus:outline-none"
+                  className="input-control w-full"
                 />
               </div>
               <p className="text-[10px] text-slate-500 font-mono mt-1">
@@ -157,11 +157,11 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
         {/* Section 2: Trailing Stop Engine */}
         <div>
           <h3 className="text-xs font-mono uppercase text-slate-400 mb-3 flex items-center gap-1.5 font-bold">
-            <Sliders className="h-3.5 w-3.5 text-cyan-400" />
+            <Sliders className="h-3.5 w-3.5 text-indigo-400" />
             Dynamic Trailing Stop Sequence Engine
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-slate-950/70 border border-slate-800 p-3 rounded-lg flex flex-col justify-between">
+            <div className="card-panel flex flex-col justify-between">
               <div>
                 <label className="block text-xs font-mono text-slate-400 mb-1">
                   Trailing Stop Engine State
@@ -187,7 +187,7 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
               </div>
             </div>
 
-            <div className="bg-slate-950/70 border border-slate-800 p-3 rounded-lg">
+            <div className="card-panel">
               <label className="block text-xs font-mono text-slate-400 mb-1">
                 Trailing Distance (Points)
               </label>
@@ -200,14 +200,14 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
                     trailingStopDistancePoints: parseInt(e.target.value) || 0,
                   })
                 }
-                className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm font-mono text-white focus:border-cyan-500 focus:outline-none"
+                className="input-control w-full"
               />
               <p className="text-[10px] text-slate-500 font-mono mt-1">
                 Distance behind market price (e.g. 150 points = 15 pips).
               </p>
             </div>
 
-            <div className="bg-slate-950/70 border border-slate-800 p-3 rounded-lg">
+            <div className="card-panel">
               <label className="block text-xs font-mono text-slate-400 mb-1">
                 Trailing Step (Points)
               </label>
@@ -220,7 +220,7 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
                     trailingStopStepPoints: parseInt(e.target.value) || 0,
                   })
                 }
-                className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm font-mono text-white focus:border-cyan-500 focus:outline-none"
+                className="input-control w-full"
               />
               <p className="text-[10px] text-slate-500 font-mono mt-1">
                 Minimum profit advance before moving Stop Loss higher.
@@ -236,7 +236,7 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
             Position & Margin Caps
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-slate-950/70 border border-slate-800 p-3 rounded-lg">
+            <div className="card-panel">
               <label className="block text-xs font-mono text-slate-400 mb-1">
                 Max Lot Size per Order
               </label>
@@ -247,14 +247,14 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
                 onChange={(e) =>
                   setFormData({ ...formData, maxLotSizePerTrade: parseFloat(e.target.value) || 0.1 })
                 }
-                className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm font-mono text-white focus:border-cyan-500 focus:outline-none"
+                className="input-control w-full"
               />
               <p className="text-[10px] text-slate-500 font-mono mt-1">
                 Rejects AI commands specifying lots higher than this ceiling.
               </p>
             </div>
 
-            <div className="bg-slate-950/70 border border-slate-800 p-3 rounded-lg">
+            <div className="card-panel">
               <label className="block text-xs font-mono text-slate-400 mb-1">
                 Max Open Positions Limit
               </label>
@@ -264,14 +264,14 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
                 onChange={(e) =>
                   setFormData({ ...formData, maxOpenPositions: parseInt(e.target.value) || 1 })
                 }
-                className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm font-mono text-white focus:border-cyan-500 focus:outline-none"
+                className="input-control w-full"
               />
               <p className="text-[10px] text-slate-500 font-mono mt-1">
                 Limits total simultaneous open trades in MT5.
               </p>
             </div>
 
-            <div className="bg-slate-950/70 border border-slate-800 p-3 rounded-lg">
+            <div className="card-panel">
               <label className="block text-xs font-mono text-slate-400 mb-1">
                 Margin Call Cutoff (%)
               </label>
@@ -284,7 +284,7 @@ export const RiskSettingsPanel: React.FC<RiskSettingsPanelProps> = ({ riskGuard 
                     autoCloseOnMarginLevelBelow: parseInt(e.target.value) || 0,
                   })
                 }
-                className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm font-mono text-white focus:border-cyan-500 focus:outline-none"
+                className="input-control w-full"
               />
               <p className="text-[10px] text-slate-500 font-mono mt-1">
                 Emergency close all if MT5 margin level drops under this percentage.

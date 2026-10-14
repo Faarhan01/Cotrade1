@@ -42,10 +42,10 @@ export const AllTrackedSymbolsTable: React.FC<AllTrackedSymbolsTableProps> = ({
   );
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+    <div className="card-panel space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
         <div className="flex items-center gap-2">
-          <Layers className="h-5 w-5 text-cyan-400" />
+          <Layers className="h-5 w-5 text-indigo-400" />
           <div>
             <h2 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
               All Tracked Broker Symbols ({displaySymbols.length})
@@ -63,7 +63,7 @@ export const AllTrackedSymbolsTable: React.FC<AllTrackedSymbolsTableProps> = ({
             placeholder="Search symbols..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs font-mono text-white focus:border-cyan-500 focus:outline-none w-48"
+            className="input-control w-48"
           />
         </div>
       </div>
@@ -78,19 +78,19 @@ export const AllTrackedSymbolsTable: React.FC<AllTrackedSymbolsTableProps> = ({
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
+        <div className="data-table-container">
+          <table className="data-table">
             <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
-                <th className="py-2.5 px-3">Symbol</th>
-                <th className="py-2.5 px-3">Live Bid</th>
-                <th className="py-2.5 px-3">Live Ask</th>
-                <th className="py-2.5 px-3">Spread</th>
-                <th className="py-2.5 px-3">24h / Session Range</th>
-                <th className="py-2.5 px-3">Min - Max Lot</th>
-                <th className="py-2.5 px-3">Contract Size</th>
-                <th className="py-2.5 px-3">Trading</th>
-                <th className="py-2.5 px-3 text-right">Direct Actions</th>
+                <th className="data-table-th">Symbol</th>
+                <th className="data-table-th">Live Bid</th>
+                <th className="data-table-th">Live Ask</th>
+                <th className="data-table-th">Spread</th>
+                <th className="data-table-th">24h / Session Range</th>
+                <th className="data-table-th">Min - Max Lot</th>
+                <th className="data-table-th">Contract Size</th>
+                <th className="data-table-th">Trading</th>
+                <th className="data-table-th text-right">Direct Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -108,10 +108,10 @@ const high = item.sessionHigh || item.high24h || ticks.find(t => t.symbol === it
                   <tr
                     key={item.symbol}
                     className={`hover:bg-slate-800/50 transition-colors ${
-                      isSelected ? 'bg-cyan-950/20' : ''
+                      isSelected ? 'bg-indigo-950/20' : ''
                     }`}
                   >
-                    <td className="py-2.5 px-3">
+                    <td className="data-table-td">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-white text-xs">{item.symbol}</span>
                         {item.isCurrentChart && (
@@ -121,16 +121,16 @@ const high = item.sessionHigh || item.high24h || ticks.find(t => t.symbol === it
                         )}
                       </div>
                     </td>
-                    <td className="py-2.5 px-3 font-semibold text-emerald-400">
+                    <td className="data-table-td font-semibold text-emerald-400">
                       {item.bid != null && item.bid > 0 ? item.bid.toFixed(digits) : '—'}
                     </td>
-                    <td className="py-2.5 px-3 text-slate-200">
+                    <td className="data-table-td text-slate-200">
                       {item.ask != null && item.ask > 0 ? item.ask.toFixed(digits) : '—'}
                     </td>
-                    <td className="py-2.5 px-3 text-cyan-300 font-bold">
+                    <td className="data-table-td text-indigo-300 font-bold">
                       {spread} pts
                     </td>
-                    <td className="py-2.5 px-3 text-slate-400">
+                    <td className="data-table-td text-slate-400">
                       {high != null && low != null && high > 0 ? (
                         <div className="text-[11px]">
                           <span className="text-rose-400">{low.toFixed(digits)}</span>
@@ -141,13 +141,13 @@ const high = item.sessionHigh || item.high24h || ticks.find(t => t.symbol === it
                         '—'
                       )}
                     </td>
-                    <td className="py-2.5 px-3 text-slate-400">
+                    <td className="data-table-td text-slate-400">
                       {minLot} - {maxLot}
                     </td>
-                    <td className="py-2.5 px-3 text-slate-400">
+                    <td className="data-table-td text-slate-400">
                       {contractSizeStr}
                     </td>
-                    <td className="py-2.5 px-3">
+                    <td className="data-table-td">
                       {item.tradeAllowed ? (
                         <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded">
                           Enabled
@@ -158,12 +158,12 @@ const high = item.sessionHigh || item.high24h || ticks.find(t => t.symbol === it
                         </span>
                       )}
                     </td>
-                    <td className="py-2.5 px-3 text-right">
+                    <td className="data-table-td text-right">
                       <button
                         onClick={() => onSelectSymbol(item.symbol)}
                         className={`px-2.5 py-1 rounded text-xs font-bold transition-all inline-flex items-center gap-1 ${
                           isSelected
-                            ? 'bg-cyan-600 text-white shadow'
+                            ? 'bg-indigo-600 text-white shadow'
                             : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white'
                         }`}
                       >

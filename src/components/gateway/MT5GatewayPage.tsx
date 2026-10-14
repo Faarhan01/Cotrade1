@@ -161,9 +161,9 @@ export const MT5GatewayPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-6 rounded-2xl shadow-sm">
+      <div className="card-panel flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-cyan-950/80 border border-cyan-700/60 flex items-center justify-center text-cyan-400 shadow-md">
+          <div className="h-12 w-12 rounded-xl bg-indigo-950/80 border border-indigo-700/60 flex items-center justify-center text-indigo-400 shadow-md">
             <Laptop className="h-6 w-6" />
           </div>
           <div>
@@ -172,18 +172,18 @@ export const MT5GatewayPage: React.FC = () => {
                 MetaTrader 5 Direct Terminal Gateway
               </h1>
               <span
-                className={`text-[10px] font-mono px-2 py-0.5 rounded-full border uppercase font-bold ${
-                  isConnected
-                    ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700'
-                    : 'bg-amber-950/80 text-amber-300 border-amber-700'
-                }`}
+                className={`badge ${
+                   isConnected
+                     ? 'badge-success'
+                     : 'badge-warning'
+                 }`}
               >
                 {isConnected ? 'TERMINAL CONNECTED' : 'STANDBY SANDBOX ACTIVE'}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
               High-performance direct gateway powered by the official Python{' '}
-              <code className="text-cyan-400 font-mono">MetaTrader5</code> package. Real-time IPC streaming &amp; dual-mode execution.
+              <code className="text-indigo-400 font-mono">MetaTrader5</code> package. Real-time IPC streaming &amp; dual-mode execution.
             </p>
           </div>
         </div>
@@ -238,9 +238,9 @@ export const MT5GatewayPage: React.FC = () => {
 
       {/* Terminal Diagnostics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="terminal-card p-4">
+        <div className="card-panel">
           <div className="text-xs text-slate-400 mb-1">Gateway Engine</div>
-          <div className="text-base font-bold font-mono text-cyan-400 flex items-center gap-2">
+          <div className="text-base font-bold font-mono text-indigo-400 flex items-center gap-2">
             <Cpu className="h-4 w-4" />
             <span>MetaTrader5 Package</span>
           </div>
@@ -249,7 +249,7 @@ export const MT5GatewayPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="terminal-card p-4">
+        <div className="card-panel">
           <div className="text-xs text-slate-400 mb-1">Package Availability</div>
           <div className="text-base font-bold font-mono text-white flex items-center gap-2">
             <span
@@ -264,7 +264,7 @@ export const MT5GatewayPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="terminal-card p-4">
+        <div className="card-panel">
           <div className="text-xs text-slate-400 mb-1">Terminal Handshake</div>
           <div className="text-base font-bold font-mono text-white truncate">
             {status?.terminal?.name || (isConnected ? 'MetaTrader 5' : 'Desktop Standby')}
@@ -274,7 +274,7 @@ export const MT5GatewayPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="terminal-card p-4">
+        <div className="card-panel">
           <div className="text-xs text-slate-400 mb-1">Broker Account</div>
           <div className="text-base font-bold font-mono text-white">
             {status?.login ? `#${status.login}` : (isConnected ? 'Logged In' : 'Sandbox #88204192')}
@@ -286,10 +286,10 @@ export const MT5GatewayPage: React.FC = () => {
       </div>
 
       {/* Package Capabilities Badges */}
-      <div className="terminal-card p-4">
+      <div className="card-panel">
         <div className="text-xs font-mono text-slate-400 mb-2 flex items-center justify-between">
           <span className="font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-            <Zap className="h-3.5 w-3.5 text-cyan-400" />
+            <Zap className="h-3.5 w-3.5 text-indigo-400" />
             Direct MetaTrader 5 Package Capabilities
           </span>
           <span className="text-[11px] text-slate-500">
@@ -316,7 +316,7 @@ export const MT5GatewayPage: React.FC = () => {
           ).map((cap: string) => (
             <span
               key={cap}
-              className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-cyan-300"
+              className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-indigo-300"
             >
               ✓ {cap.replace(/_/g, ' ')}
             </span>
@@ -329,7 +329,7 @@ export const MT5GatewayPage: React.FC = () => {
         {/* Left Column: Direct Connection Form */}
         <div className="terminal-card p-5 space-y-4">
           <div className="flex items-center gap-2 mb-2">
-            <Zap className="h-4 w-4 text-cyan-400" />
+            <Zap className="h-4 w-4 text-indigo-400" />
             <h2 className="text-sm font-bold text-white uppercase tracking-wider">
               Direct Terminal Auto-Connect
             </h2>
@@ -347,7 +347,7 @@ export const MT5GatewayPage: React.FC = () => {
                   placeholder="e.g. 10582910"
                   value={connForm.login}
                   onChange={(e) => setConnForm({ ...connForm, login: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
+                  className="input-control w-full"
                 />
               </div>
 
@@ -358,7 +358,7 @@ export const MT5GatewayPage: React.FC = () => {
                   placeholder="Broker password"
                   value={connForm.password}
                   onChange={(e) => setConnForm({ ...connForm, password: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
+                  className="input-control w-full"
                 />
               </div>
             </div>
@@ -371,7 +371,7 @@ export const MT5GatewayPage: React.FC = () => {
                   placeholder="e.g. MetaQuotes-Demo"
                   value={connForm.server}
                   onChange={(e) => setConnForm({ ...connForm, server: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
+                  className="input-control w-full"
                 />
               </div>
 
@@ -382,7 +382,7 @@ export const MT5GatewayPage: React.FC = () => {
                   placeholder="C:\Program Files\MetaTrader 5\terminal64.exe"
                   value={connForm.path}
                   onChange={(e) => setConnForm({ ...connForm, path: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
+                  className="input-control w-full"
                 />
               </div>
             </div>
@@ -397,7 +397,7 @@ export const MT5GatewayPage: React.FC = () => {
           </form>
 
           <div className="p-3 rounded-lg bg-slate-950/70 border border-slate-800/80 text-[11px] font-mono text-slate-400 space-y-1.5">
-            <div className="text-cyan-400 font-bold flex items-center gap-1.5">
+            <div className="text-indigo-400 font-bold flex items-center gap-1.5">
               <Activity className="h-3.5 w-3.5" />
               <span>Zero-Lag Direct Process Memory Channel</span>
             </div>
@@ -418,24 +418,24 @@ export const MT5GatewayPage: React.FC = () => {
 
           <div className="space-y-3">
             {/* Step 1 */}
-            <div className="p-3 rounded-lg bg-slate-950 border border-slate-800/80">
+            <div className="card-panel">
               <div className="flex items-center justify-between text-xs font-mono text-slate-300 font-bold mb-1">
                 <span>1. Install MetaTrader 5 Python Package</span>
                 <button
                   onClick={() => handleCopy(pipInstallCmd, 'pip')}
-                  className="text-cyan-400 hover:text-cyan-300 text-[11px] flex items-center gap-1"
+                  className="text-indigo-400 hover:text-indigo-300 text-[11px] flex items-center gap-1"
                 >
                   {copiedId === 'pip' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   <span>{copiedId === 'pip' ? 'Copied' : 'Copy'}</span>
                 </button>
               </div>
-              <pre className="text-[11px] font-mono text-cyan-300 bg-slate-900/60 p-2 rounded overflow-x-auto">
+              <pre className="text-[11px] font-mono text-indigo-300 bg-slate-900/60 p-2 rounded overflow-x-auto">
                 {pipInstallCmd}
               </pre>
             </div>
 
             {/* Step 2 */}
-            <div className="p-3 rounded-lg bg-slate-950 border border-slate-800/80">
+            <div className="card-panel">
               <div className="text-xs font-mono text-slate-300 font-bold mb-1">
                 2. Open MetaTrader 5 Desktop Application
               </div>
@@ -445,18 +445,18 @@ export const MT5GatewayPage: React.FC = () => {
             </div>
 
             {/* Step 3 */}
-            <div className="p-3 rounded-lg bg-slate-950 border border-slate-800/80">
+            <div className="card-panel">
               <div className="flex items-center justify-between text-xs font-mono text-slate-300 font-bold mb-1">
                 <span>3. Start the High-Speed Python Bridge</span>
                 <button
                   onClick={() => handleCopy(pythonBridgeRunCmd, 'bridge')}
-                  className="text-cyan-400 hover:text-cyan-300 text-[11px] flex items-center gap-1"
+                  className="text-indigo-400 hover:text-indigo-300 text-[11px] flex items-center gap-1"
                 >
                   {copiedId === 'bridge' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   <span>{copiedId === 'bridge' ? 'Copied' : 'Copy'}</span>
                 </button>
               </div>
-              <pre className="text-[11px] font-mono text-cyan-300 bg-slate-900/60 p-2 rounded overflow-x-auto">
+              <pre className="text-[11px] font-mono text-indigo-300 bg-slate-900/60 p-2 rounded overflow-x-auto">
                 {pythonBridgeRunCmd}
               </pre>
             </div>
@@ -468,7 +468,7 @@ export const MT5GatewayPage: React.FC = () => {
       <div className="terminal-card p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-cyan-400" />
+            <BarChart3 className="h-4 w-4 text-indigo-400" />
             <h2 className="text-sm font-bold text-white uppercase tracking-wider">
               Broker Symbol Specification Explorer
             </h2>
@@ -485,7 +485,7 @@ export const MT5GatewayPage: React.FC = () => {
                 onClick={() => setSelectedGroup(grp)}
                 className={`text-[10px] font-mono px-2.5 py-1 rounded transition-colors ${
                   selectedGroup === grp
-                    ? 'bg-cyan-500 text-slate-950 font-bold'
+                    ? 'bg-indigo-500 text-slate-950 font-bold'
                     : 'bg-slate-800 text-slate-400 hover:text-white'
                 }`}
               >
@@ -501,7 +501,7 @@ export const MT5GatewayPage: React.FC = () => {
                 placeholder="Search symbol..."
                 value={symbolSearch}
                 onChange={(e) => setSymbolSearch(e.target.value)}
-                className="bg-slate-950 border border-slate-800 rounded-lg pl-7 pr-2.5 py-1 text-xs text-white font-mono uppercase focus:border-cyan-500 w-32"
+                className="input-control"
               />
             </div>
           </div>
@@ -513,7 +513,7 @@ export const MT5GatewayPage: React.FC = () => {
             filteredSymbols.map((s: any) => (
               <div
                 key={s.symbol}
-                className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 font-mono text-xs hover:border-slate-700 transition-colors"
+                className="card-panel font-mono text-xs hover:border-slate-700 transition-colors"
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-1.5">
@@ -522,7 +522,7 @@ export const MT5GatewayPage: React.FC = () => {
                       {s.group || 'Forex'}
                     </span>
                   </div>
-                  <span className="text-[11px] text-cyan-400 font-bold">
+                  <span className="text-[11px] text-indigo-400 font-bold">
                     Spread: {s.spread ?? 12} pts
                   </span>
                 </div>

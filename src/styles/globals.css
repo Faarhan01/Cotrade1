@@ -1,97 +1,216 @@
-@import "tailwindcss";
+@theme {
+  /* Brand palette */
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
 
-/* Custom CSS Variables & Design Tokens */
+  /* Neutral palette (Deep Financial Slate) */
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-150: #eef1f6;
+  --color-slate-200: #e2e8f0;
+  --color-slate-250: #d8dce6;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-750: #283548;
+  --color-slate-800: #1e293b;
+  --color-slate-850: #1a2332;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
+
+  /* Semantic trading accents */
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #059669;
+
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+
+  --color-rose-400: #fb7185;
+  --color-rose-500: #f43f5e;
+  --color-rose-600: #e11d48;
+
+  --color-indigo-400: #22d3ee;
+  --color-indigo-500: #06b6d4;
+  --color-indigo-600: #0891b2;
+
+  /* Typography tokens */
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
 :root {
-  /* Color Palette */
-  --primary: #06b6d4; /* cyan-500 */
-  --primary-dark: #0891b2; /* cyan-600 */
-  --primary-light: #67e8f9; /* cyan-300 */
-  --secondary: #10b981; /* emerald-500 */
-  --secondary-dark: #059669; /* emerald-600 */
-  --accent: #8b5cf6; /* violet-500 */
-  --background: #020617; /* slate-950 */
-  --surface: #0f172a; /* slate-900 */
-  --surface-light: #1e293b; /* slate-800 */
-  --text-primary: #f8fafc; /* slate-50 */
-  --text-secondary: #cbd5e1; /* slate-300 */
-  --text-muted: #94a3b8; /* slate-400 */
-  --border: #1e293b; /* slate-800 */
-  --border-light: #334155; /* slate-700 */
-  --success: #10b981; /* emerald-500 */
-  --warning: #f59e0b; /* amber-500 */
-  --error: #ef4444; /* red-500 */
+  /* Semantic surfaces */
+  --bg-primary: #0f172a;
+  --bg-surface: #1e293b;
+  --bg-elevated: #283548;
+  --bg-subtle: #020617;
+  --border-hairline: rgba(51, 65, 85, 0.7);
+  --border-strong: rgba(71, 85, 105, 0.85);
 
-  /* Border Radius */
-  --radius-sm: 0.375rem;
-  --radius: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  /* Semantic text hierarchy */
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-faint: #64748b;
 
-  /* Typography */
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* Trading accents */
+  --accent-brand: #6366f1;
+  --accent-bullish: #10b981;
+  --accent-bearish: #f43f5e;
+  --accent-warning: #f59e0b;
+  --accent-info: #06b6d4;
 
-  /* Transitions */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* Motion & easing curve */
+  --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 150ms var(--ease-smooth);
 }
 
-/* Base Styles */
-*, *::before, *::after {
-  box-sizing: border-box;
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    text-wrap: balance;
+    letter-spacing: -0.015em;
+  }
+
+  code, pre, .font-mono, .tabular-nums, table {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent-brand);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--accent-brand);
+    color: #ffffff;
+  }
+
+  /* Cross-browser Scrollbars */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: #334155 #0f172a;
+  }
+
+  /* Custom WebKit Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0f172a;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
 }
 
-html {
-  font-size: 16px;
-  scroll-behavior: smooth;
-  color-scheme: dark;
+/* Reduced Motion Support for Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
-body {
-  margin: 0;
-  font-family: var(--font-sans);
-  background-color: var(--background);
-  color: var(--text-primary);
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* Radiant Glow Utilities */
+.glow-brand {
+  box-shadow: 0 0 15px -2px rgba(99, 102, 241, 0.35);
 }
 
-/* Custom scrollbar for dark financial terminal */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.glow-emerald {
+  box-shadow: 0 0 15px -2px rgba(16, 185, 129, 0.35);
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+.glow-rose {
+  box-shadow: 0 0 15px -2px rgba(244, 63, 94, 0.35);
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(71, 85, 105, 0.6);
-  border-radius: 3px;
+.glow-amber {
+  box-shadow: 0 0 15px -2px rgba(245, 158, 11, 0.35);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.9);
+/* Subtle Technical Grid Background for Financial Charts & Dashboards */
+.trading-grid-background {
+  background-size: 24px 24px;
+  background-image: 
+    linear-gradient(to right, rgba(51, 65, 85, 0.15) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(51, 65, 85, 0.15) 1px, transparent 1px);
 }
 
-/* Tabular figures for financial tickers and quotes */
-.font-mono-numbers {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* Layout Utilities */
-.container {
-  width: 100%;
-  max-width: 1400px;
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: 1rem;
-  padding-right: 1rem;
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
+.animate-fade-in {
+  animation: fadeIn 0.2s var(--ease-smooth) forwards;
+}
+
+/* Cotrade layout utilities (preserved) */
 .container-custom {
   width: 100%;
   max-width: 1600px;
@@ -102,7 +221,6 @@ body {
 }
 
 @media (min-width: 640px) {
-  .container,
   .container-custom {
     padding-left: 1.5rem;
     padding-right: 1.5rem;
@@ -110,78 +228,21 @@ body {
 }
 
 @media (min-width: 1024px) {
-  .container,
   .container-custom {
     padding-left: 2rem;
     padding-right: 2rem;
   }
 }
 
-/* Custom Terminal / Financial Component Styles */
 .terminal-card {
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  background-color: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(51, 65, 85, 0.7);
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2);
   overflow: hidden;
-  transition: border-color var(--transition);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .terminal-card:hover {
-  border-color: var(--border-light);
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 500;
-  text-align: center;
-  white-space: nowrap;
-  vertical-align: middle;
-  user-select: none;
-  border: 1px solid transparent;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  border-radius: var(--radius);
-  transition: all var(--transition-fast);
-  cursor: pointer;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background-color: var(--primary);
-  color: #020617;
-  font-weight: 600;
-  border-color: var(--primary);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--primary-light);
-  border-color: var(--primary-light);
-}
-
-.btn-secondary {
-  background-color: var(--surface-light);
-  color: var(--text-primary);
-  border-color: var(--border-light);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background-color: #334155;
-  border-color: #475569;
-}
-
-/* Pulse indicator animation */
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.85); }
-}
-
-.animate-pulse-dot {
-  animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  border-color: rgba(71, 85, 105, 0.8);
 }

@@ -75,11 +75,11 @@ export const TradeHistoryViewer: React.FC<TradeHistoryViewerProps> = ({ onSelect
     filteredDeals.length > 0 ? ((profitableDeals / (profitableDeals + losingDeals || 1)) * 100).toFixed(1) : '0.0';
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm space-y-4">
+    <div className="card-panel space-y-4">
       {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <History className="h-4 w-4 text-cyan-400" />
+          <History className="h-4 w-4 text-indigo-400" />
           <div>
             <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               MT5 Trade History & Closed Deals
@@ -95,14 +95,14 @@ export const TradeHistoryViewer: React.FC<TradeHistoryViewerProps> = ({ onSelect
 
         <div className="flex items-center gap-2 flex-wrap">
           {/* Time range selector */}
-          <div className="flex items-center bg-slate-950 rounded-lg p-0.5 border border-slate-800 text-xs font-mono">
+          <div className="card-panel flex items-center text-xs font-mono">
             {(['24h', '7d', '30d', 'all'] as const).map((range) => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
                 className={`px-2 py-1 rounded transition-colors ${
                   timeRange === range
-                    ? 'bg-cyan-500/20 text-cyan-300 font-bold'
+                    ? 'bg-indigo-500/20 text-indigo-300 font-bold'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -116,7 +116,7 @@ export const TradeHistoryViewer: React.FC<TradeHistoryViewerProps> = ({ onSelect
             <select
               value={filterSymbol}
               onChange={(e) => setFilterSymbol(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs font-mono text-slate-300 focus:outline-none focus:border-cyan-500"
+              className="input-control"
             >
               <option value="ALL">All Symbols ({symbols.length})</option>
               {symbols.map((sym) => (
@@ -130,16 +130,16 @@ export const TradeHistoryViewer: React.FC<TradeHistoryViewerProps> = ({ onSelect
           <button
             onClick={fetchDeals}
             disabled={loading}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+            className="btn btn-secondary p-1.5"
             title="Refresh history from MT5"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-cyan-400' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
           </button>
         </div>
       </div>
 
       {/* KPI Performance Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950/70 border border-slate-800/80 rounded-lg p-3 font-mono text-xs">
+      <div className="card-panel grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
         <div>
           <span className="text-slate-500 text-[10px] block uppercase">Net Realized PnL</span>
           <span
@@ -174,7 +174,7 @@ export const TradeHistoryViewer: React.FC<TradeHistoryViewerProps> = ({ onSelect
 
         <div>
           <span className="text-slate-500 text-[10px] block uppercase">Sync Status</span>
-          <span className="text-xs text-cyan-400 flex items-center gap-1">
+          <span className="text-xs text-indigo-400 flex items-center gap-1">
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
             {brokerTotals ? `${brokerTotals.ordersTotal} orders in range` : lastFetched ? `${Math.floor((Date.now() - lastFetched) / 1000)}s ago` : 'Connected'}
           </span>
@@ -192,21 +192,21 @@ export const TradeHistoryViewer: React.FC<TradeHistoryViewerProps> = ({ onSelect
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
+        <div className="data-table-container">
+          <table className="data-table">
             <thead className="bg-slate-950/60 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
-                <th className="py-2.5 px-3">Deal #</th>
-                <th className="py-2.5 px-3">Order #</th>
-                <th className="py-2.5 px-3">Symbol</th>
-                <th className="py-2.5 px-3">Type</th>
-                <th className="py-2.5 px-3">Direction</th>
-                <th className="py-2.5 px-3">Volume</th>
-                <th className="py-2.5 px-3">Exec Price</th>
-                <th className="py-2.5 px-3">Commission</th>
-                <th className="py-2.5 px-3">Swap</th>
-                <th className="py-2.5 px-3">Profit ($)</th>
-                <th className="py-2.5 px-3">Date / Time</th>
+                <th className="data-table-th">Deal #</th>
+                <th className="data-table-th">Order #</th>
+                <th className="data-table-th">Symbol</th>
+                <th className="data-table-th">Type</th>
+                <th className="data-table-th">Direction</th>
+                <th className="data-table-th">Volume</th>
+                <th className="data-table-th">Exec Price</th>
+                <th className="data-table-th">Commission</th>
+                <th className="data-table-th">Swap</th>
+                <th className="data-table-th">Profit ($)</th>
+                <th className="data-table-th">Date / Time</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -223,16 +223,16 @@ export const TradeHistoryViewer: React.FC<TradeHistoryViewerProps> = ({ onSelect
                   : '—';
 
                 return (
-                  <tr key={deal.ticket} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-2 px-3 font-semibold text-slate-300">#{deal.ticket}</td>
-                    <td className="py-2 px-3 text-slate-400">{deal.order ? `#${deal.order}` : '—'}</td>
+                  <tr key={deal.ticket} className="btn btn-secondary">
+                    <td className="data-table-td font-semibold text-slate-300">#{deal.ticket}</td>
+                    <td className="data-table-td text-slate-400">{deal.order ? `#${deal.order}` : '—'}</td>
                     <td
-                      className="py-2 px-3 font-bold text-white cursor-pointer hover:text-cyan-400"
+                      className="data-table-td font-bold text-white cursor-pointer hover:text-indigo-400"
                       onClick={() => onSelectSymbol?.(deal.symbol)}
                     >
                       {deal.symbol}
                     </td>
-                    <td className="py-2 px-3">
+                    <td className="data-table-td">
                       <span
                         className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                           deal.type === 'BUY'
@@ -243,23 +243,23 @@ export const TradeHistoryViewer: React.FC<TradeHistoryViewerProps> = ({ onSelect
                         {deal.type}
                       </span>
                     </td>
-                    <td className="py-2 px-3 text-slate-400 text-[11px]">{deal.entry || 'IN/OUT'}</td>
-                    <td className="py-2 px-3 font-semibold text-slate-200">
+                    <td className="data-table-td text-slate-400 text-[11px]">{deal.entry || 'IN/OUT'}</td>
+                    <td className="data-table-td font-semibold text-slate-200">
                       {deal.volume !== undefined ? deal.volume.toFixed(2) : '—'}
                     </td>
-                    <td className="py-2 px-3 text-slate-200 font-bold">{deal.price ? deal.price.toFixed(5) : '—'}</td>
-                    <td className="py-2 px-3 text-slate-400">
+                    <td className="data-table-td text-slate-200 font-bold">{deal.price ? deal.price.toFixed(5) : '—'}</td>
+                    <td className="data-table-td text-slate-400">
                       {deal.commission ? `-$${Math.abs(deal.commission).toFixed(2)}` : '$0.00'}
                     </td>
-                    <td className="py-2 px-3 text-slate-400">
+                    <td className="data-table-td text-slate-400">
                       {deal.swap ? `${deal.swap >= 0 ? '+' : ''}$${deal.swap.toFixed(2)}` : '$0.00'}
                     </td>
-                    <td className="py-2 px-3 font-bold">
+                    <td className="data-table-td font-bold">
                       <span className={isProfit ? 'text-emerald-400' : 'text-rose-400'}>
                         {isProfit ? '+' : ''}${deal.profit !== undefined ? deal.profit.toFixed(2) : '0.00'}
                       </span>
                     </td>
-                    <td className="py-2 px-3 text-slate-400 text-[11px] whitespace-nowrap">{timeStr}</td>
+                    <td className="data-table-td text-slate-400 text-[11px] whitespace-nowrap">{timeStr}</td>
                   </tr>
                 );
               })}

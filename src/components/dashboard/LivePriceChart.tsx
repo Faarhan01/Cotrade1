@@ -106,10 +106,10 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({
   const relatedPositions = positions.filter((p) => p.symbol.toLowerCase() === symbol.toLowerCase());
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
+    <div className="card-panel flex flex-col justify-between">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-cyan-400" />
+          <BarChart3 className="h-4 w-4 text-indigo-400" />
           <span className="font-bold text-sm text-white font-mono">{symbol}</span>
           <span className="text-xs text-slate-400 font-mono">Real-Time Tick Movement</span>
         </div>
@@ -120,7 +120,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({
             <button
               onClick={() => handleSimulateBatch('wave')}
               disabled={testing}
-              className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 text-[11px] px-1 py-0.5 rounded hover:bg-slate-800"
+              className="btn btn-secondary gap-1"
               title="Simulate 45-tick test trajectory"
             >
               <Zap className="h-3 w-3" />
@@ -129,7 +129,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({
             <span className="text-slate-600">|</span>
             <button
               onClick={handleInjectSingleTick}
-              className="text-emerald-400 hover:text-emerald-300 text-[11px] px-1 py-0.5 rounded hover:bg-slate-800"
+              className="btn btn-secondary"
               title="Inject single tick"
             >
               +Tick
@@ -139,7 +139,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({
           {currentTick && (
             <div className="flex items-center gap-2 text-xs font-mono">
               <span className="text-slate-400">
-                Sprd: <span className="text-cyan-300 font-bold">{currentTick.spread} pts</span>
+                Sprd: <span className="text-indigo-300 font-bold">{currentTick.spread} pts</span>
               </span>
               <span className="text-slate-400">
                 Bid: <span className="text-emerald-400 font-bold">{currentTick.bid.toFixed(digits)}</span>
@@ -159,7 +159,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({
             <svg
               viewBox={`0 0 ${width} ${height}`}
               preserveAspectRatio="none"
-              className="w-full h-full stroke-cyan-400 stroke-2 fill-none overflow-visible"
+              className="w-full h-full stroke-indigo-400 stroke-2 fill-none overflow-visible"
             >
               <defs>
                 <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
@@ -257,7 +257,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({
             </svg>
 
             {/* Price labels */}
-            <div className="absolute right-2 top-2 bg-slate-900/90 border border-slate-700/80 px-1.5 py-0.5 rounded text-[10px] font-mono text-cyan-300">
+            <div className="absolute right-2 top-2 bg-slate-900/90 border border-slate-700/80 px-1.5 py-0.5 rounded text-[10px] font-mono text-indigo-300">
               High: {maxPrice.toFixed(digits)}
             </div>
             <div className="absolute right-2 bottom-2 bg-slate-900/90 border border-slate-700/80 px-1.5 py-0.5 rounded text-[10px] font-mono text-slate-400">
@@ -280,7 +280,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({
           </>
         ) : (
           <div className="text-slate-400 text-xs font-mono flex flex-col items-center justify-center gap-3 p-6 text-center h-full">
-            <TrendingUp className="h-6 w-6 text-cyan-400" />
+            <TrendingUp className="h-6 w-6 text-indigo-400" />
             <div>
               <div className="font-bold text-white text-sm">Awaiting Tick Stream for {symbol}</div>
               <div className="text-[11px] text-slate-500 mt-1 max-w-sm">
@@ -313,7 +313,7 @@ export const LivePriceChart: React.FC<LivePriceChartProps> = ({
           Window: {history.length} ticks {minTime > 0 ? `(${new Date(minTime).toLocaleTimeString()} - ${new Date(maxTime).toLocaleTimeString()})` : ''}
         </span>
         <span className="flex items-center gap-1.5">
-          <Activity className="h-3 w-3 text-cyan-400" />
+          <Activity className="h-3 w-3 text-indigo-400" />
           <span>Interactive Tick Stream &amp; Chart Tester</span>
         </span>
       </div>

@@ -98,7 +98,7 @@ export const BotStudioPage: React.FC = () => {
     title: string;
     message: string;
     confirmText?: string;
-    confirmColor?: 'rose' | 'amber' | 'cyan';
+    confirmColor?: 'rose' | 'amber' | 'indigo';
     onConfirm: () => void;
   } | null>(null);
 
@@ -514,12 +514,12 @@ print("AI Signal:", eval_res.json())`;
             ? 'bg-emerald-950/90 text-emerald-300 border-emerald-800'
             : toast.type === 'error'
             ? 'bg-rose-950/90 text-rose-300 border-rose-800'
-            : 'bg-cyan-950/90 text-cyan-300 border-cyan-800'
+            : 'bg-indigo-950/90 text-indigo-300 border-indigo-800'
         }`}>
           <div className="flex items-center gap-2">
             {toast.type === 'success' && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />}
             {toast.type === 'error' && <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />}
-            {toast.type === 'info' && <Activity className="h-4 w-4 shrink-0 text-cyan-400" />}
+            {toast.type === 'info' && <Activity className="h-4 w-4 shrink-0 text-indigo-400" />}
             <span>{toast.text}</span>
           </div>
           <button onClick={() => setToast(null)} className="text-slate-400 hover:text-white ml-3 text-xs">
@@ -529,16 +529,16 @@ print("AI Signal:", eval_res.json())`;
       )}
 
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-sm">
+      <div className="card-panel flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-cyan-950/80 border border-cyan-700/60 flex items-center justify-center text-cyan-400 shadow-md shrink-0">
+          <div className="h-12 w-12 rounded-xl bg-indigo-950/80 border border-indigo-700/60 flex items-center justify-center text-indigo-400 shadow-md shrink-0">
             <Bot className="h-6 w-6" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold text-white tracking-tight">Algorithmic Bot Studio</h1>
               <span aria-hidden="true" className="text-slate-600">·</span>
-              <span className="text-xs font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/80">
+              <span className="text-xs font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/80">
                 AI Autonomous Daemon Controlled
               </span>
             </div>
@@ -552,7 +552,7 @@ print("AI Signal:", eval_res.json())`;
           <button
             onClick={loadData}
             disabled={loading}
-            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono flex items-center gap-1.5 transition-colors border border-slate-700"
+            className="btn btn-secondary gap-1.5"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -560,7 +560,7 @@ print("AI Signal:", eval_res.json())`;
 
           <button
             onClick={() => setShowDeployModal(true)}
-            className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-mono font-bold flex items-center gap-1.5 transition-colors shadow-md shadow-cyan-950/60"
+            className="btn btn-primary gap-1.5"
           >
             <Plus className="h-4 w-4" />
             <span>Deploy Custom Bot</span>
@@ -570,13 +570,13 @@ print("AI Signal:", eval_res.json())`;
 
       {/* Metric Cards HUD */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
+        <div className="card-panel space-y-1">
           <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Total Bots</span>
           <span className="text-lg font-bold text-white font-mono">{totalBots}</span>
           <span className="text-[10px] text-slate-500 block">Configured instances</span>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
+        <div className="card-panel space-y-1">
           <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Active Running</span>
           <div className="flex items-center gap-2">
             <span className="text-lg font-bold text-emerald-400 font-mono">{activeBotsCount}</span>
@@ -585,7 +585,7 @@ print("AI Signal:", eval_res.json())`;
           <span className="text-[10px] text-slate-500 block">3s automated loop</span>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
+        <div className="card-panel space-y-1">
           <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Realized Bot P&L</span>
           <span className={`text-lg font-bold font-mono ${totalRealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
             ${totalRealizedPnl.toFixed(2)}
@@ -593,24 +593,24 @@ print("AI Signal:", eval_res.json())`;
           <span className="text-[10px] text-slate-500 block">Net performance</span>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
+        <div className="card-panel space-y-1">
           <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Total Trades</span>
           <span className="text-lg font-bold text-white font-mono">{totalTrades}</span>
           <span className="text-[10px] text-slate-500 block">Executed fills</span>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
+        <div className="card-panel space-y-1">
           <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Win Rate</span>
-          <span className="text-lg font-bold text-cyan-400 font-mono">{winRate}%</span>
+          <span className="text-lg font-bold text-indigo-400 font-mono">{winRate}%</span>
           <span className="text-[10px] text-slate-500 block">{totalWins} wins / {Math.max(0, totalTrades - totalWins)} losses</span>
         </div>
       </div>
 
       {/* 1-Click Quick Deploy Presets */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 font-mono text-xs space-y-3">
+      <div className="card-panel font-mono text-xs space-y-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-cyan-300 font-bold">
-            <Sparkles className="h-4 w-4 text-cyan-400" />
+          <div className="flex items-center gap-2 text-indigo-300 font-bold">
+            <Sparkles className="h-4 w-4 text-indigo-400" />
             <span>Instant Algorithmic Bot Presets</span>
           </div>
           <span className="text-[11px] text-slate-500">1-Click Automated Setup</span>
@@ -626,11 +626,11 @@ print("AI Signal:", eval_res.json())`;
               sl: 200,
               tp: 400,
             })}
-            className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-cyan-500/60 text-left transition-colors group"
+            className="card-panel hover:border-indigo-500/60 text-left transition-colors group"
           >
             <div className="flex items-center justify-between">
-              <span className="font-bold text-white group-hover:text-cyan-300">EURUSD Scalper</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">M1</span>
+              <span className="font-bold text-white group-hover:text-indigo-300">EURUSD Scalper</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-950 text-indigo-400 border border-indigo-800">M1</span>
             </div>
             <p className="text-[10px] text-slate-400 mt-1">RSI Oversold/Overbought Pullback</p>
           </button>
@@ -645,7 +645,7 @@ print("AI Signal:", eval_res.json())`;
               sl: 400,
               tp: 800,
             })}
-            className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-amber-500/60 text-left transition-colors group"
+            className="card-panel hover:border-amber-500/60 text-left transition-colors group"
           >
             <div className="flex items-center justify-between">
               <span className="font-bold text-white group-hover:text-amber-300">Gold Trend Rider</span>
@@ -664,7 +664,7 @@ print("AI Signal:", eval_res.json())`;
               sl: 500,
               tp: 1000,
             })}
-            className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-emerald-500/60 text-left transition-colors group"
+            className="card-panel hover:border-emerald-500/60 text-left transition-colors group"
           >
             <div className="flex items-center justify-between">
               <span className="font-bold text-white group-hover:text-emerald-300">BTC Momentum</span>
@@ -683,7 +683,7 @@ print("AI Signal:", eval_res.json())`;
               sl: 250,
               tp: 500,
             })}
-            className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-purple-500/60 text-left transition-colors group"
+            className="card-panel hover:border-purple-500/60 text-left transition-colors group"
           >
             <div className="flex items-center justify-between">
               <span className="font-bold text-white group-hover:text-purple-300">Consensus Engine</span>
@@ -698,17 +698,17 @@ print("AI Signal:", eval_res.json())`;
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-white font-mono tracking-tight flex items-center gap-2">
-            <Layers className="h-4 w-4 text-cyan-400" />
+            <Layers className="h-4 w-4 text-indigo-400" />
             <span>Deployed Bot Instances ({bots.length})</span>
           </h2>
         </div>
 
         {bots.length === 0 ? (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center font-mono text-xs text-slate-400 space-y-3">
+          <div className="card-panel text-center font-mono text-xs text-slate-400 space-y-3">
             <p>No automated trading bots currently configured.</p>
             <button
               onClick={() => setShowDeployModal(true)}
-              className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition-colors"
+              className="btn btn-primary"
             >
               Deploy Your First Bot
             </button>
@@ -725,7 +725,7 @@ print("AI Signal:", eval_res.json())`;
                   onClick={() => setSelectedBotId(b.id)}
                   className={`bg-slate-900 border rounded-xl p-4 space-y-3 transition-all cursor-pointer ${
                     isSelected
-                      ? 'border-cyan-500/80 shadow-md shadow-cyan-950/40 ring-1 ring-cyan-500/30'
+                      ? 'border-indigo-500/80 shadow-md shadow-indigo-950/40 ring-1 ring-indigo-500/30'
                       : 'border-slate-800 hover:border-slate-700'
                   }`}
                 >
@@ -749,7 +749,7 @@ print("AI Signal:", eval_res.json())`;
                         {b.status}
                       </span>
                       <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${
-                        b.executionMode === 'LIVE' ? 'bg-rose-950 text-rose-300 border border-rose-800/60' : 'bg-slate-950 text-cyan-300 border border-cyan-800/60'
+                        b.executionMode === 'LIVE' ? 'bg-rose-950 text-rose-300 border border-rose-800/60' : 'bg-slate-950 text-indigo-300 border border-indigo-800/60'
                       }`}>
                         {b.executionMode}
                       </span>
@@ -758,7 +758,7 @@ print("AI Signal:", eval_res.json())`;
 
                   {/* Badges */}
                   <div className="flex items-center gap-1.5 flex-wrap font-mono text-[10px]">
-                    <span className="px-2 py-0.5 rounded bg-slate-950 text-cyan-400 border border-slate-800 font-bold">
+                    <span className="px-2 py-0.5 rounded bg-slate-950 text-indigo-400 border border-slate-800 font-bold">
                       {b.symbol} {b.timeframe}
                     </span>
                     <span className="px-2 py-0.5 rounded bg-slate-950 text-slate-300 border border-slate-800">
@@ -775,7 +775,7 @@ print("AI Signal:", eval_res.json())`;
                   </div>
 
                   {/* Real-time Signal Readout */}
-                  <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80 font-mono text-xs space-y-1">
+                  <div className="card-panel font-mono text-xs space-y-1">
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="text-slate-400">Latest Signal:</span>
                       <span className={`font-bold ${
@@ -783,7 +783,7 @@ print("AI Signal:", eval_res.json())`;
                           ? 'text-emerald-400'
                           : b.stats.lastSignal === 'SELL'
                           ? 'text-rose-400'
-                          : 'text-cyan-300'
+                          : 'text-indigo-300'
                       }`}>
                         {b.stats.lastSignal || 'NEUTRAL / EVALUATING'}
                       </span>
@@ -838,7 +838,7 @@ print("AI Signal:", eval_res.json())`;
                     <button
                       onClick={(e) => { e.stopPropagation(); handleEvaluateNow(b.id); }}
                       disabled={evaluatingBotId === b.id}
-                      className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 flex items-center gap-1 transition-colors"
+                      className="btn btn-secondary gap-1"
                       title="Trigger immediate evaluation"
                     >
                       <Activity className={`h-3 w-3 ${evaluatingBotId === b.id ? 'animate-spin' : ''}`} />
@@ -847,7 +847,7 @@ print("AI Signal:", eval_res.json())`;
 
                     <button
                       onClick={(e) => { e.stopPropagation(); handleOpenEditModal(b); }}
-                      className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
+                      className="btn btn-secondary p-1"
                       title="Edit bot configuration"
                     >
                       <Edit2 className="h-3.5 w-3.5" />
@@ -855,7 +855,7 @@ print("AI Signal:", eval_res.json())`;
 
                     <button
                       onClick={(e) => { e.stopPropagation(); handleClosePositions(b.id, 0); }}
-                      className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 flex items-center gap-1 transition-colors"
+                      className="btn btn-secondary gap-1"
                       title="Emergency close positions"
                     >
                       <Square className="h-3 w-3" />
@@ -864,7 +864,7 @@ print("AI Signal:", eval_res.json())`;
 
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDeleteBot(b.id, b.name); }}
-                      className="p-1 rounded bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-400 border border-slate-700 transition-colors"
+                      className="btn btn-secondary p-1"
                       title="Delete bot"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -879,7 +879,7 @@ print("AI Signal:", eval_res.json())`;
 
       {/* Selected Bot Detailed Inspector */}
       {selectedBot && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 font-mono">
+        <div className="card-panel space-y-6 font-mono">
           {/* Header of Selected Bot */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
             <div>
@@ -924,7 +924,7 @@ print("AI Signal:", eval_res.json())`;
             <button
               onClick={() => setActiveTab('positions')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                activeTab === 'positions' ? 'bg-cyan-950 text-cyan-300 border border-cyan-800' : 'text-slate-400 hover:text-white'
+                activeTab === 'positions' ? 'bg-indigo-950 text-indigo-300 border border-indigo-800' : 'text-slate-400 hover:text-white'
               }`}
             >
               Active Positions ({botPositions.length})
@@ -932,7 +932,7 @@ print("AI Signal:", eval_res.json())`;
             <button
               onClick={() => setActiveTab('executions')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                activeTab === 'executions' ? 'bg-cyan-950 text-cyan-300 border border-cyan-800' : 'text-slate-400 hover:text-white'
+                activeTab === 'executions' ? 'bg-indigo-950 text-indigo-300 border border-indigo-800' : 'text-slate-400 hover:text-white'
               }`}
             >
               Execution Fills ({botExecutions.length})
@@ -940,7 +940,7 @@ print("AI Signal:", eval_res.json())`;
             <button
               onClick={() => setActiveTab('logs')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                activeTab === 'logs' ? 'bg-cyan-950 text-cyan-300 border border-cyan-800' : 'text-slate-400 hover:text-white'
+                activeTab === 'logs' ? 'bg-indigo-950 text-indigo-300 border border-indigo-800' : 'text-slate-400 hover:text-white'
               }`}
             >
               Signal & Audit Logs ({botLogs.length})
@@ -948,7 +948,7 @@ print("AI Signal:", eval_res.json())`;
             <button
               onClick={() => setActiveTab('ai')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                activeTab === 'ai' ? 'bg-cyan-950 text-cyan-300 border border-cyan-800' : 'text-slate-400 hover:text-white'
+                activeTab === 'ai' ? 'bg-indigo-950 text-indigo-300 border border-indigo-800' : 'text-slate-400 hover:text-white'
               }`}
             >
               External AI Control API
@@ -976,39 +976,39 @@ print("AI Signal:", eval_res.json())`;
                 </div>
               ) : (
                 <div className="overflow-x-auto border border-slate-800 rounded-lg">
-                  <table className="w-full text-left text-xs">
+                  <table className="data-table">
                     <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
                       <tr>
-                        <th className="py-2.5 px-3">Ticket</th>
-                        <th className="py-2.5 px-3">Symbol</th>
-                        <th className="py-2.5 px-3">Type</th>
-                        <th className="py-2.5 px-3">Volume</th>
-                        <th className="py-2.5 px-3">Entry Price</th>
-                        <th className="py-2.5 px-3">Current Price</th>
-                        <th className="py-2.5 px-3">SL</th>
-                        <th className="py-2.5 px-3">TP</th>
-                        <th className="py-2.5 px-3">Unrealized P&L</th>
-                        <th className="py-2.5 px-3">Mode</th>
+                        <th className="data-table-th">Ticket</th>
+                        <th className="data-table-th">Symbol</th>
+                        <th className="data-table-th">Type</th>
+                        <th className="data-table-th">Volume</th>
+                        <th className="data-table-th">Entry Price</th>
+                        <th className="data-table-th">Current Price</th>
+                        <th className="data-table-th">SL</th>
+                        <th className="data-table-th">TP</th>
+                        <th className="data-table-th">Unrealized P&L</th>
+                        <th className="data-table-th">Mode</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 bg-slate-900/40 text-[11px]">
                       {botPositions.map((pos) => (
-                        <tr key={pos.id || pos.ticket} className="hover:bg-slate-800/40">
-                          <td className="py-2 px-3 text-cyan-400 font-bold">#{pos.ticket}</td>
-                          <td className="py-2 px-3 text-white">{pos.symbol}</td>
+                        <tr key={pos.id || pos.ticket} className="btn btn-secondary">
+                          <td className="data-table-td text-indigo-400 font-bold">#{pos.ticket}</td>
+                          <td className="data-table-td text-white">{pos.symbol}</td>
                           <td className={`py-2 px-3 font-bold ${pos.orderType === 'BUY' ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {pos.orderType}
                           </td>
-                          <td className="py-2 px-3 text-white">{pos.volume}</td>
-                          <td className="py-2 px-3 text-slate-300">{Number(pos.entryPrice).toFixed(4)}</td>
-                          <td className="py-2 px-3 text-slate-300">{pos.currentPrice ? Number(pos.currentPrice).toFixed(4) : '-'}</td>
-                          <td className="py-2 px-3 text-slate-400">{pos.sl ? Number(pos.sl).toFixed(4) : '-'}</td>
-                          <td className="py-2 px-3 text-slate-400">{pos.tp ? Number(pos.tp).toFixed(4) : '-'}</td>
+                          <td className="data-table-td text-white">{pos.volume}</td>
+                          <td className="data-table-td text-slate-300">{Number(pos.entryPrice).toFixed(4)}</td>
+                          <td className="data-table-td text-slate-300">{pos.currentPrice ? Number(pos.currentPrice).toFixed(4) : '-'}</td>
+                          <td className="data-table-td text-slate-400">{pos.sl ? Number(pos.sl).toFixed(4) : '-'}</td>
+                          <td className="data-table-td text-slate-400">{pos.tp ? Number(pos.tp).toFixed(4) : '-'}</td>
                           <td className={`py-2 px-3 font-bold ${Number(pos.pnl) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {pos.pnl !== undefined ? `$${Number(pos.pnl).toFixed(2)}` : '$0.00'}
                           </td>
-                          <td className="py-2 px-3">
-                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-950 text-cyan-300 border border-cyan-800/60">
+                          <td className="data-table-td">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-950 text-indigo-300 border border-indigo-800/60">
                               {pos.executionMode}
                             </span>
                           </td>
@@ -1024,17 +1024,17 @@ print("AI Signal:", eval_res.json())`;
           {/* Tab 2: Execution Fills History */}
           {activeTab === 'executions' && (
             <div className="overflow-x-auto border border-slate-800 rounded-lg max-h-96">
-              <table className="w-full text-left text-xs">
+              <table className="data-table">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] sticky top-0 border-b border-slate-800">
                   <tr>
-                    <th className="py-2.5 px-3">Time</th>
-                    <th className="py-2.5 px-3">Type</th>
-                    <th className="py-2.5 px-3">Vol</th>
-                    <th className="py-2.5 px-3">Entry</th>
-                    <th className="py-2.5 px-3">Exit</th>
-                    <th className="py-2.5 px-3">P&L</th>
-                    <th className="py-2.5 px-3">Status</th>
-                    <th className="py-2.5 px-3">Reason / Logic</th>
+                    <th className="data-table-th">Time</th>
+                    <th className="data-table-th">Type</th>
+                    <th className="data-table-th">Vol</th>
+                    <th className="data-table-th">Entry</th>
+                    <th className="data-table-th">Exit</th>
+                    <th className="data-table-th">P&L</th>
+                    <th className="data-table-th">Status</th>
+                    <th className="data-table-th">Reason / Logic</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 bg-slate-900/40 text-[11px]">
@@ -1046,25 +1046,25 @@ print("AI Signal:", eval_res.json())`;
                     </tr>
                   ) : (
                     botExecutions.map((e) => (
-                      <tr key={e.id} className="hover:bg-slate-800/40">
-                        <td className="py-2 px-3 text-slate-400">{new Date(e.openedAt).toLocaleTimeString()}</td>
+                      <tr key={e.id} className="btn btn-secondary">
+                        <td className="data-table-td text-slate-400">{new Date(e.openedAt).toLocaleTimeString()}</td>
                         <td className={`py-2 px-3 font-bold ${e.orderType === 'BUY' ? 'text-emerald-400' : 'text-rose-400'}`}>
                           {e.orderType}
                         </td>
-                        <td className="py-2 px-3 text-white">{e.volume}</td>
-                        <td className="py-2 px-3 text-slate-300">{Number(e.entryPrice).toFixed(4)}</td>
-                        <td className="py-2 px-3 text-slate-300">{e.exitPrice ? Number(e.exitPrice).toFixed(4) : '-'}</td>
+                        <td className="data-table-td text-white">{e.volume}</td>
+                        <td className="data-table-td text-slate-300">{Number(e.entryPrice).toFixed(4)}</td>
+                        <td className="data-table-td text-slate-300">{e.exitPrice ? Number(e.exitPrice).toFixed(4) : '-'}</td>
                         <td className={`py-2 px-3 font-bold ${Number(e.pnl) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                           {e.pnl !== undefined ? `$${Number(e.pnl).toFixed(2)}` : '-'}
                         </td>
-                        <td className="py-2 px-3">
+                        <td className="data-table-td">
                           <span className={`px-1.5 py-0.5 rounded text-[10px] ${
                             e.status === 'OPEN' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-slate-950 text-slate-400 border border-slate-800'
                           }`}>
                             {e.status}
                           </span>
                         </td>
-                        <td className="py-2 px-3 text-slate-400 max-w-xs truncate">{e.reason || '-'}</td>
+                        <td className="data-table-td text-slate-400 max-w-xs truncate">{e.reason || '-'}</td>
                       </tr>
                     ))
                   )}
@@ -1075,7 +1075,7 @@ print("AI Signal:", eval_res.json())`;
 
           {/* Tab 3: Signal & Audit Logs */}
           {activeTab === 'logs' && (
-            <div className="overflow-y-auto border border-slate-800 rounded-lg p-3 max-h-96 space-y-1.5 bg-slate-950">
+            <div className="card-panel overflow-y-auto max-h-96 space-y-1.5">
               {botLogs.length === 0 ? (
                 <div className="py-8 text-center text-slate-500 text-xs">
                   No log entries recorded yet.
@@ -1089,7 +1089,7 @@ print("AI Signal:", eval_res.json())`;
                         ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
                         : l.level === 'error'
                         ? 'bg-rose-950 text-rose-400 border border-rose-800'
-                        : 'bg-slate-900 text-cyan-300 border border-slate-800'
+                        : 'bg-slate-900 text-indigo-300 border border-slate-800'
                     }`}>
                       {l.level}
                     </span>
@@ -1107,13 +1107,13 @@ print("AI Signal:", eval_res.json())`;
                 <span className="text-xs text-slate-400">Control this specific bot programmatically via External AI Daemon</span>
                 <button
                   onClick={() => handleCopy(pythonAiBotSnippet, 'bot-py')}
-                  className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs flex items-center gap-1"
+                  className="btn btn-secondary gap-1"
                 >
                   {copiedCode === 'bot-py' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   <span>{copiedCode === 'bot-py' ? 'Copied' : 'Copy Python'}</span>
                 </button>
               </div>
-              <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-cyan-300 overflow-x-auto">
+              <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-indigo-300 overflow-x-auto">
 {`# External AI control payload for Bot #${selectedBot.id}
 import requests
 
@@ -1150,7 +1150,7 @@ requests.post(API_URL, json={
       {/* Confirmation Modal (Replaces window.confirm) */}
       {confirmDialog && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl font-mono">
+          <div className="card-panel w-full max-w-md space-y-4 font-mono">
             <div className="flex items-center gap-3 text-white">
               <AlertTriangle className={`h-5 w-5 ${confirmDialog.confirmColor === 'rose' ? 'text-rose-400' : 'text-amber-400'}`} />
               <h3 className="text-base font-bold">{confirmDialog.title}</h3>
@@ -1161,7 +1161,7 @@ requests.post(API_URL, json={
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
               <button
                 onClick={() => setConfirmDialog(null)}
-                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors"
+                className="btn btn-secondary"
               >
                 Cancel
               </button>
@@ -1181,10 +1181,10 @@ requests.post(API_URL, json={
       {/* Modal: Edit Existing Bot Configuration */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-5 shadow-2xl font-mono">
+          <div className="card-panel w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-5 font-mono">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
-                <Settings className="h-5 w-5 text-cyan-400" />
+                <Settings className="h-5 w-5 text-indigo-400" />
                 <h2 className="text-base font-bold text-white">Edit Bot Configuration</h2>
               </div>
               <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-white text-sm">
@@ -1200,7 +1200,7 @@ requests.post(API_URL, json={
                   required
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                  className="input-control w-full"
                 />
               </div>
 
@@ -1212,7 +1212,7 @@ requests.post(API_URL, json={
                     required
                     value={editForm.symbol}
                     onChange={(e) => setEditForm({ ...editForm, symbol: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
                 <div>
@@ -1220,7 +1220,7 @@ requests.post(API_URL, json={
                   <select
                     value={editForm.timeframe}
                     onChange={(e) => setEditForm({ ...editForm, timeframe: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                    className="input-control w-full"
                   >
                     <option value="M1">M1</option>
                     <option value="M5">M5</option>
@@ -1234,7 +1234,7 @@ requests.post(API_URL, json={
                   <select
                     value={editForm.executionMode}
                     onChange={(e) => setEditForm({ ...editForm, executionMode: e.target.value as any })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                    className="input-control w-full"
                   >
                     <option value="PAPER">PAPER</option>
                     <option value="LIVE">LIVE</option>
@@ -1251,7 +1251,7 @@ requests.post(API_URL, json={
                     min="0.01"
                     value={editForm.lotSize}
                     onChange={(e) => setEditForm({ ...editForm, lotSize: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
                 <div>
@@ -1262,7 +1262,7 @@ requests.post(API_URL, json={
                     max="5"
                     value={editForm.maxPositions}
                     onChange={(e) => setEditForm({ ...editForm, maxPositions: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
               </div>
@@ -1274,7 +1274,7 @@ requests.post(API_URL, json={
                     type="number"
                     value={editForm.stopLossPoints}
                     onChange={(e) => setEditForm({ ...editForm, stopLossPoints: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
                 <div>
@@ -1283,19 +1283,19 @@ requests.post(API_URL, json={
                     type="number"
                     value={editForm.takeProfitPoints}
                     onChange={(e) => setEditForm({ ...editForm, takeProfitPoints: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
               </div>
 
-              <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-2">
+              <div className="card-panel space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-300 font-bold">Dynamic Trailing Stop</span>
                   <input
                     type="checkbox"
                     checked={editForm.trailingEnabled}
                     onChange={(e) => setEditForm({ ...editForm, trailingEnabled: e.target.checked })}
-                    className="rounded border-slate-800 text-cyan-500 focus:ring-0"
+                    className="rounded border-slate-800 text-indigo-500 focus:ring-0"
                   />
                 </div>
                 {editForm.trailingEnabled && (
@@ -1326,13 +1326,13 @@ requests.post(API_URL, json={
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold transition-colors"
+                  className="btn btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition-colors shadow-md shadow-cyan-950/60"
+                  className="btn btn-primary"
                 >
                   Save Changes
                 </button>
@@ -1345,10 +1345,10 @@ requests.post(API_URL, json={
       {/* Modal: Deploy New Trading Bot */}
       {showDeployModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 space-y-5 shadow-2xl font-mono">
+          <div className="card-panel w-full max-w-xl max-h-[90vh] overflow-y-auto space-y-5 font-mono">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
-                <Bot className="h-5 w-5 text-cyan-400" />
+                <Bot className="h-5 w-5 text-indigo-400" />
                 <h2 className="text-base font-bold text-white">Deploy Automated Trading Bot</h2>
               </div>
               <button
@@ -1368,7 +1368,7 @@ requests.post(API_URL, json={
                   value={deployForm.name}
                   onChange={(e) => setDeployForm({ ...deployForm, name: e.target.value })}
                   placeholder="e.g. EURUSD RSI Scalper Alpha"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                  className="input-control w-full"
                 />
               </div>
 
@@ -1378,7 +1378,7 @@ requests.post(API_URL, json={
                   <select
                     value={deployForm.strategyId}
                     onChange={(e) => setDeployForm({ ...deployForm, strategyId: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                    className="input-control w-full"
                   >
                     {strategies.map((s) => (
                       <option key={s.id} value={s.id}>
@@ -1396,7 +1396,7 @@ requests.post(API_URL, json={
                     value={deployForm.symbol}
                     onChange={(e) => setDeployForm({ ...deployForm, symbol: e.target.value })}
                     placeholder="e.g. EURUSD, XAUUSD, BTCUSDm..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
               </div>
@@ -1407,7 +1407,7 @@ requests.post(API_URL, json={
                   <select
                     value={deployForm.timeframe}
                     onChange={(e) => setDeployForm({ ...deployForm, timeframe: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                    className="input-control w-full"
                   >
                     <option value="M1">M1 (1m)</option>
                     <option value="M5">M5 (5m)</option>
@@ -1427,7 +1427,7 @@ requests.post(API_URL, json={
                     min="0.01"
                     value={deployForm.lotSize}
                     onChange={(e) => setDeployForm({ ...deployForm, lotSize: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
 
@@ -1436,7 +1436,7 @@ requests.post(API_URL, json={
                   <select
                     value={deployForm.executionMode}
                     onChange={(e) => setDeployForm({ ...deployForm, executionMode: e.target.value as any })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                    className="input-control w-full"
                   >
                     <option value="PAPER">PAPER (Simulation)</option>
                     <option value="LIVE">LIVE (MetaTrader 5)</option>
@@ -1452,7 +1452,7 @@ requests.post(API_URL, json={
                     min="10"
                     value={deployForm.maxDailyLoss}
                     onChange={(e) => setDeployForm({ ...deployForm, maxDailyLoss: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
 
@@ -1464,19 +1464,19 @@ requests.post(API_URL, json={
                     max="5"
                     value={deployForm.maxPositions}
                     onChange={(e) => setDeployForm({ ...deployForm, maxPositions: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
               </div>
 
-              <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-2">
+              <div className="card-panel space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-300 font-bold">Dynamic Trailing Stop</span>
                   <input
                     type="checkbox"
                     checked={deployForm.trailingEnabled}
                     onChange={(e) => setDeployForm({ ...deployForm, trailingEnabled: e.target.checked })}
-                    className="rounded border-slate-800 text-cyan-500 focus:ring-0"
+                    className="rounded border-slate-800 text-indigo-500 focus:ring-0"
                   />
                 </div>
                 {deployForm.trailingEnabled && (
@@ -1507,13 +1507,13 @@ requests.post(API_URL, json={
                 <button
                   type="button"
                   onClick={() => setShowDeployModal(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold transition-colors"
+                  className="btn btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition-colors shadow-md shadow-cyan-950/60"
+                  className="btn btn-primary"
                 >
                   Deploy Bot
                 </button>

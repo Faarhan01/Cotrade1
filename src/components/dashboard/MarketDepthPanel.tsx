@@ -56,10 +56,10 @@ export const MarketDepthPanel: React.FC<MarketDepthPanelProps> = ({ symbol }) =>
   ));
 
   return (
-    <section className="bg-slate-900/90 border border-slate-800 rounded-lg p-4">
+    <section className="card-panel">
       <header className="flex items-center justify-between gap-3 border-b border-slate-800 pb-3">
         <div className="flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-cyan-400" />
+          <BookOpen className="h-4 w-4 text-indigo-400" />
           <h2 className="text-sm font-bold uppercase text-white">Market Depth</h2>
           <span className="font-mono text-xs text-slate-400">{symbol}</span>
         </div>

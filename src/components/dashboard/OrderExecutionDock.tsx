@@ -147,16 +147,16 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
   };
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
+    <div className="card-panel flex flex-col justify-between">
       <div>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Send className="h-4 w-4 text-cyan-400" />
+            <Send className="h-4 w-4 text-indigo-400" />
             <h2 className="text-sm font-bold text-white uppercase tracking-wider">
               Asynchronous Order Execution
             </h2>
           </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-cyan-400 border border-slate-700">
+          <span className="badge badge-info">
             Magic #889900
           </span>
         </div>
@@ -172,7 +172,7 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
                   value={selectedSymbol}
                   onChange={(e) => onSelectSymbol(e.target.value)}
                   placeholder="e.g. EURUSD or EURUSD.m"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white font-mono focus:border-cyan-500 focus:outline-none"
+                  className="input-control w-full"
                   list="symbol-options"
                 />
                 <datalist id="symbol-options">
@@ -191,7 +191,7 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
               <select
                 value={orderType}
                 onChange={(event) => setOrderType(event.target.value as TradeOrderType)}
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-2 font-mono text-white focus:border-cyan-500 focus:outline-none"
+                className="input-control w-full"
               >
                 <optgroup label="Market">
                   <option value="BUY" disabled={symbolSpec?.canOpenBuy === false}>Buy Market</option>
@@ -212,7 +212,7 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
           </div>
 
           {isPending && (
-            <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-800 bg-slate-950/60 p-2.5">
+            <div className="card-panel grid grid-cols-2 gap-2">
               <div>
                 <label className="mb-1 block text-[11px] text-slate-400">{isStopLimit ? 'Stop trigger price' : 'Entry price'}</label>
                 <input
@@ -221,7 +221,7 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
                   value={price}
                   onChange={(event) => setPrice(event.target.value)}
                   placeholder={activeTick ? (isBuy ? activeTick.ask : activeTick.bid).toFixed(symbolSpec?.digits ?? 5) : 'Required'}
-                  className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 font-mono text-white focus:border-cyan-500 focus:outline-none"
+                  className="input-control w-full"
                 />
               </div>
               {isStopLimit && (
@@ -232,7 +232,7 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
                     step={symbolSpec?.point || 'any'}
                     value={stopLimitPrice}
                     onChange={(event) => setStopLimitPrice(event.target.value)}
-                    className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 font-mono text-white focus:border-cyan-500 focus:outline-none"
+                    className="input-control w-full"
                   />
                 </div>
               )}
@@ -268,7 +268,7 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
             <div className="flex items-center justify-between text-[11px] text-slate-400 bg-slate-950/60 px-2 py-1.5 rounded border border-slate-800">
               <span>Lot: <strong className="text-slate-200">{symbolSpec.minLot}</strong> - <strong className="text-slate-200">{symbolSpec.maxLot}</strong></span>
               <span>Step: <strong className="text-slate-200">{symbolSpec.lotStep}</strong></span>
-              <span>Digits: <strong className="text-cyan-300">{symbolSpec.digits}</strong></span>
+              <span>Digits: <strong className="text-indigo-300">{symbolSpec.digits}</strong></span>
             </div>
           )}
           {symbolSpec && (symbolSpec.tradeModeName || symbolSpec.tickValueLoss !== undefined || symbolSpec.stopsLevel !== undefined) && (
@@ -297,7 +297,7 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
               value={volume}
               onChange={(e) => setVolume(e.target.value)}
               className={`w-full bg-slate-950 border rounded-lg px-3 py-2 text-white font-mono focus:outline-none ${
-                exceedsRisk ? 'border-rose-500 bg-rose-950/20' : 'border-slate-700 focus:border-cyan-500'
+                exceedsRisk ? 'border-rose-500 bg-rose-950/20' : 'border-slate-700 focus:border-indigo-500'
               }`}
             />
             {/* Quick lot pills */}
@@ -309,7 +309,7 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
                   onClick={() => setVolume(sz)}
                   className={`text-[10px] px-1.5 py-0.5 rounded border ${
                     volume === sz
-                      ? 'bg-cyan-950 text-cyan-300 border-cyan-700'
+                      ? 'bg-indigo-950 text-indigo-300 border-indigo-700'
                       : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
                   }`}
                 >
@@ -319,7 +319,7 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2 rounded-lg border border-slate-800 bg-slate-950/70 p-2.5">
+          <div className="card-panel grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
             <div>
               <label className="mb-1 block text-[11px] text-slate-400">Risk budget (% of equity)</label>
               <input
@@ -329,14 +329,14 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
                 step="0.1"
                 value={riskPercent}
                 onChange={(event) => setRiskPercent(event.target.value)}
-                className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 font-mono text-white focus:border-cyan-500 focus:outline-none"
+                className="input-control w-full"
               />
             </div>
             <button
               type="button"
               onClick={handleCalculateSize}
               disabled={sizing || !sl || !activeTick}
-              className="inline-flex items-center gap-1.5 rounded border border-cyan-800 bg-cyan-950/60 px-3 py-1.5 text-[11px] font-bold text-cyan-200 hover:bg-cyan-900/70 disabled:cursor-not-allowed disabled:opacity-50"
+              className="btn btn-primary btn-sm text-indigo-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {sizing ? 'Calculating' : 'Size by risk'}
             </button>
@@ -344,7 +344,7 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
               <div className={`col-span-2 text-[11px] leading-relaxed ${sizingResult.success ? 'text-slate-300' : 'text-rose-300'}`}>
                 {sizingResult.success ? (
                   <>
-                    <span className="font-semibold text-cyan-200">{sizingResult.volume} lots</span>
+                    <span className="font-semibold text-indigo-200">{sizingResult.volume} lots</span>
                     {' · '}estimated stop loss {sizingResult.estimatedLoss?.toFixed(2)} {sizingResult.riskCurrency}
                     {sizingResult.estimatedMargin != null && <> · margin {sizingResult.estimatedMargin.toFixed(2)} {sizingResult.marginCurrency}</>}
                     {!sizingResult.feasible && <span className="ml-1 text-amber-300">Review margin/risk limits before trading.</span>}
@@ -365,7 +365,7 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
                 placeholder={activeTick ? (activeTick.bid * 0.995).toFixed(4) : 'Optional'}
                 value={sl}
                 onChange={(e) => setSl(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono focus:border-cyan-500 focus:outline-none"
+                className="input-control w-full"
               />
             </div>
             <div>
@@ -376,7 +376,7 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
                 placeholder={activeTick ? (activeTick.ask * 1.008).toFixed(4) : 'Optional'}
                 value={tp}
                 onChange={(e) => setTp(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono focus:border-cyan-500 focus:outline-none"
+                className="input-control w-full"
               />
             </div>
           </div>
@@ -384,7 +384,7 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
           {!isPending && (
             <div>
               <label className="mb-1 block text-[11px] text-slate-400">Maximum deviation (points)</label>
-              <input type="number" min="0" step="1" value={deviation} onChange={(event) => setDeviation(event.target.value)} className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 font-mono text-white focus:border-cyan-500 focus:outline-none" />
+              <input type="number" min="0" step="1" value={deviation} onChange={(event) => setDeviation(event.target.value)} className="input-control w-full" />
             </div>
           )}
 
@@ -396,7 +396,7 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="e.g. AI_SCALPER_RSI_OVERSOLD"
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono focus:border-cyan-500 focus:outline-none"
+              className="input-control w-full"
             />
           </div>
 

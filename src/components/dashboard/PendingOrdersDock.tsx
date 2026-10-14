@@ -77,10 +77,10 @@ export const PendingOrdersDock: React.FC<PendingOrdersDockProps> = ({
   };
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm space-y-4">
+    <div className="card-panel space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <ListOrdered className="h-4 w-4 text-cyan-400" />
+          <ListOrdered className="h-4 w-4 text-indigo-400" />
           <h2 className="text-sm font-bold text-white uppercase tracking-wider">
             Pending Orders ({pendingOrders.length})
           </h2>
@@ -95,51 +95,51 @@ export const PendingOrdersDock: React.FC<PendingOrdersDockProps> = ({
           0 Pending Limit or Stop Orders Active in MT5
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
+        <div className="data-table-container">
+          <table className="data-table">
             <thead className="bg-slate-950/60 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
-                <th className="py-2.5 px-3">Ticket</th>
-                <th className="py-2.5 px-3">Symbol</th>
-                <th className="py-2.5 px-3">Type</th>
-                <th className="py-2.5 px-3">Lots</th>
-                <th className="py-2.5 px-3">Order Price</th>
-                <th className="py-2.5 px-3">SL</th>
-                <th className="py-2.5 px-3">TP</th>
-                <th className="py-2.5 px-3">Comment</th>
-                <th className="py-2.5 px-3 text-right">Actions</th>
+                <th className="data-table-th">Ticket</th>
+                <th className="data-table-th">Symbol</th>
+                <th className="data-table-th">Type</th>
+                <th className="data-table-th">Lots</th>
+                <th className="data-table-th">Order Price</th>
+                <th className="data-table-th">SL</th>
+                <th className="data-table-th">TP</th>
+                <th className="data-table-th">Comment</th>
+                <th className="data-table-th text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {pendingOrders.map((ord) => {
                 const isCancelling = cancellingTickets[ord.ticket];
                 return (
-                  <tr key={ord.ticket} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-2 px-3 font-semibold text-slate-300">#{ord.ticket}</td>
+                  <tr key={ord.ticket} className="btn btn-secondary">
+                    <td className="data-table-td font-semibold text-slate-300">#{ord.ticket}</td>
                     <td
-                      className="py-2 px-3 font-bold text-white cursor-pointer hover:text-cyan-400"
+                      className="data-table-td font-bold text-white cursor-pointer hover:text-indigo-400"
                       onClick={() => onSelectSymbol?.(ord.symbol)}
                     >
                       {ord.symbol}
                     </td>
-                    <td className="py-2 px-3">
+                    <td className="data-table-td">
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-950/80 text-amber-300 border border-amber-800/60">
                         {ord.type}
                       </span>
                     </td>
-                    <td className="py-2 px-3 font-semibold text-slate-200">{ord.volume.toFixed(2)}</td>
-                    <td className="py-2 px-3 text-cyan-400 font-bold">{ord.priceOpen.toFixed(5)}</td>
-                    <td className="py-2 px-3 text-slate-400">{ord.sl > 0 ? ord.sl.toFixed(5) : '—'}</td>
-                    <td className="py-2 px-3 text-slate-400">{ord.tp > 0 ? ord.tp.toFixed(5) : '—'}</td>
-                    <td className="py-2 px-3 text-slate-400 text-[11px] truncate max-w-[120px]">
+                    <td className="data-table-td font-semibold text-slate-200">{ord.volume.toFixed(2)}</td>
+                    <td className="data-table-td text-indigo-400 font-bold">{ord.priceOpen.toFixed(5)}</td>
+                    <td className="data-table-td text-slate-400">{ord.sl > 0 ? ord.sl.toFixed(5) : '—'}</td>
+                    <td className="data-table-td text-slate-400">{ord.tp > 0 ? ord.tp.toFixed(5) : '—'}</td>
+                    <td className="data-table-td text-slate-400 text-[11px] truncate max-w-[120px]">
                       {ord.comment || '—'}
                     </td>
-                    <td className="py-2 px-3 text-right">
+                    <td className="data-table-td text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => handleOpenModify(ord)}
                           title="Modify Price & SL/TP"
-                          className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                          className="btn btn-secondary p-1"
                         >
                           <SlidersHorizontal className="h-3.5 w-3.5" />
                         </button>
@@ -165,10 +165,10 @@ export const PendingOrdersDock: React.FC<PendingOrdersDockProps> = ({
       {/* Modify Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-5 shadow-2xl">
+          <div className="card-panel max-w-md w-full">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
               <div className="flex items-center gap-2">
-                <SlidersHorizontal className="h-4 w-4 text-cyan-400" />
+                <SlidersHorizontal className="h-4 w-4 text-indigo-400" />
                 <h3 className="text-base font-bold text-white font-mono">
                   Modify Pending Order #{selectedOrder.ticket}
                 </h3>
@@ -179,7 +179,7 @@ export const PendingOrdersDock: React.FC<PendingOrdersDockProps> = ({
             </div>
 
             <div className="space-y-3 font-mono text-xs">
-              <div className="p-2.5 bg-slate-950 rounded-lg text-slate-300 grid grid-cols-2 gap-2">
+              <div className="card-panel text-slate-300 grid grid-cols-2 gap-2">
                 <div>
                   <span className="text-slate-500 block text-[10px]">Symbol / Type</span>
                   <span className="font-bold">
@@ -199,7 +199,7 @@ export const PendingOrdersDock: React.FC<PendingOrdersDockProps> = ({
                   step="any"
                   value={modifyPrice}
                   onChange={(e) => setModifyPrice(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500 focus:outline-none"
+                  className="input-control w-full"
                 />
               </div>
 
@@ -211,7 +211,7 @@ export const PendingOrdersDock: React.FC<PendingOrdersDockProps> = ({
                   value={modifySL}
                   onChange={(e) => setModifySL(e.target.value)}
                   placeholder="0 (disabled)"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500 focus:outline-none"
+                  className="input-control w-full"
                 />
               </div>
 
@@ -223,7 +223,7 @@ export const PendingOrdersDock: React.FC<PendingOrdersDockProps> = ({
                   value={modifyTP}
                   onChange={(e) => setModifyTP(e.target.value)}
                   placeholder="0 (disabled)"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500 focus:outline-none"
+                  className="input-control w-full"
                 />
               </div>
 
@@ -244,7 +244,7 @@ export const PendingOrdersDock: React.FC<PendingOrdersDockProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedOrder(null)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
+                  className="btn btn-secondary"
                 >
                   Cancel
                 </button>
@@ -252,7 +252,7 @@ export const PendingOrdersDock: React.FC<PendingOrdersDockProps> = ({
                   type="button"
                   onClick={handleSaveModify}
                   disabled={isModifying}
-                  className="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition-colors"
+                  className="btn btn-primary"
                 >
                   {isModifying ? 'Updating...' : 'Save & Update in MT5'}
                 </button>

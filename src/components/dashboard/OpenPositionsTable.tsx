@@ -94,11 +94,11 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
   const totalProfit = positions.reduce((acc, p) => acc + p.profit, 0);
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+    <div className="card-panel">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
           <div className="flex items-center gap-2">
-            <Layers className="h-4 w-4 text-cyan-400" />
+            <Layers className="h-4 w-4 text-indigo-400" />
             <h2 className="text-sm font-bold text-white uppercase tracking-wider">
               Open Positions ({positions.length})
             </h2>
@@ -141,22 +141,22 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
+        <div className="data-table-container">
+          <table className="data-table">
             <thead className="bg-slate-950/60 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
-                <th className="py-2.5 px-3">Ticket</th>
-                <th className="py-2.5 px-3">Symbol</th>
-                <th className="py-2.5 px-3">Type</th>
-                <th className="py-2.5 px-3">Lots</th>
-                <th className="py-2.5 px-3">Open Price</th>
-                <th className="py-2.5 px-3">Current</th>
-                <th className="py-2.5 px-3">SL</th>
-                <th className="py-2.5 px-3">TP</th>
-                <th className="py-2.5 px-3">PnL ($)</th>
-                <th className="py-2.5 px-3">Trailing</th>
-                <th className="py-2.5 px-3">Comment / AI</th>
-                <th className="py-2.5 px-3 text-right">Actions</th>
+                <th className="data-table-th">Ticket</th>
+                <th className="data-table-th">Symbol</th>
+                <th className="data-table-th">Type</th>
+                <th className="data-table-th">Lots</th>
+                <th className="data-table-th">Open Price</th>
+                <th className="data-table-th">Current</th>
+                <th className="data-table-th">SL</th>
+                <th className="data-table-th">TP</th>
+                <th className="data-table-th">PnL ($)</th>
+                <th className="data-table-th">Trailing</th>
+                <th className="data-table-th">Comment / AI</th>
+                <th className="data-table-th text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -168,18 +168,18 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
                 return (
                   <tr
                     key={pos.ticket}
-                    className="hover:bg-slate-800/40 transition-colors group"
+                    className="btn btn-secondary group"
                   >
-                    <td className="py-2.5 px-3 font-semibold text-slate-300">
+                    <td className="data-table-td font-semibold text-slate-300">
                       #{pos.ticket}
                     </td>
                     <td
-                      className="py-2.5 px-3 font-bold text-white cursor-pointer hover:text-cyan-400"
+                      className="data-table-td font-bold text-white cursor-pointer hover:text-indigo-400"
                       onClick={() => onSelectSymbol?.(pos.symbol)}
                     >
                       {pos.symbol}
                     </td>
-                    <td className="py-2.5 px-3">
+                    <td className="data-table-td">
                       <span
                         className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                           pos.type === 'BUY'
@@ -190,44 +190,44 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
                         {pos.type}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3 font-semibold text-slate-200">
+                    <td className="data-table-td font-semibold text-slate-200">
                       {pos.volume.toFixed(2)}
                     </td>
-                    <td className="py-2.5 px-3 text-slate-300">
+                    <td className="data-table-td text-slate-300">
                       {pos.openPrice.toFixed(digits)}
                     </td>
-                    <td className="py-2.5 px-3 text-slate-200 font-bold">
+                    <td className="data-table-td text-slate-200 font-bold">
                       {pos.currentPrice.toFixed(digits)}
                     </td>
-                    <td className="py-2.5 px-3 text-slate-400">
+                    <td className="data-table-td text-slate-400">
                       {pos.sl > 0 ? pos.sl.toFixed(digits) : '—'}
                     </td>
-                    <td className="py-2.5 px-3 text-slate-400">
+                    <td className="data-table-td text-slate-400">
                       {pos.tp > 0 ? pos.tp.toFixed(digits) : '—'}
                     </td>
-                    <td className="py-2.5 px-3 font-bold">
+                    <td className="data-table-td font-bold">
                       <span className={isProfit ? 'text-emerald-400' : 'text-rose-400'}>
                         {isProfit ? '+' : ''}${pos.profit.toFixed(2)}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3">
+                    <td className="data-table-td">
                       {pos.trailingEnabled ? (
-                        <span className="flex items-center gap-1 text-[10px] text-cyan-300 bg-cyan-950/70 border border-cyan-800/50 px-1.5 py-0.5 rounded">
+                        <span className="flex items-center gap-1 text-[10px] text-indigo-300 bg-indigo-950/70 border border-indigo-800/50 px-1.5 py-0.5 rounded">
                           <Shield className="h-2.5 w-2.5" /> Active
                         </span>
                       ) : (
                         <span className="text-[10px] text-slate-500">Off</span>
                       )}
                     </td>
-                    <td className="py-2.5 px-3 text-slate-400 text-[11px] truncate max-w-[130px]">
+                    <td className="data-table-td text-slate-400 text-[11px] truncate max-w-[130px]">
                       {pos.comment || '—'}
                     </td>
-                    <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                    <td className="data-table-td text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => handleOpenModifyModal(pos)}
                           title="Modify Stop Loss & Take Profit"
-                          className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                          className="btn btn-secondary p-1"
                         >
                           <SlidersHorizontal className="h-3.5 w-3.5" />
                         </button>
@@ -253,10 +253,10 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
       {/* Modify SL/TP Modal */}
       {selectedPosition && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-5 shadow-2xl">
+          <div className="card-panel max-w-md w-full">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
               <div className="flex items-center gap-2">
-                <SlidersHorizontal className="h-4 w-4 text-cyan-400" />
+                <SlidersHorizontal className="h-4 w-4 text-indigo-400" />
                 <h3 className="text-base font-bold text-white font-mono">
                   Modify Position #{selectedPosition.ticket}
                 </h3>
@@ -270,7 +270,7 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
             </div>
 
             <div className="space-y-3 font-mono text-xs">
-              <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-950 rounded-lg text-slate-300">
+              <div className="card-panel grid grid-cols-2 gap-2 text-slate-300">
                 <div>
                   <span className="text-slate-500 block text-[10px]">Symbol</span>
                   <span className="font-bold">{selectedPosition.symbol}</span>
@@ -285,7 +285,7 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[10px]">Current Price</span>
-                  <span className="font-bold text-cyan-400">{selectedPosition.currentPrice}</span>
+                  <span className="font-bold text-indigo-400">{selectedPosition.currentPrice}</span>
                 </div>
               </div>
 
@@ -297,7 +297,7 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
                   value={modifySL}
                   onChange={(e) => setModifySL(e.target.value)}
                   placeholder="0 (disabled)"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500 focus:outline-none"
+                  className="input-control w-full"
                 />
               </div>
 
@@ -309,7 +309,7 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
                   value={modifyTP}
                   onChange={(e) => setModifyTP(e.target.value)}
                   placeholder="0 (disabled)"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:border-cyan-500 focus:outline-none"
+                  className="input-control w-full"
                 />
               </div>
 
@@ -330,7 +330,7 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedPosition(null)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
+                  className="btn btn-secondary"
                 >
                   Cancel
                 </button>
@@ -338,7 +338,7 @@ export const OpenPositionsTable: React.FC<OpenPositionsTableProps> = ({
                   type="button"
                   onClick={handleSaveModification}
                   disabled={isModifying}
-                  className="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition-colors flex items-center gap-1.5"
+                  className="btn btn-primary gap-1.5"
                 >
                   {isModifying ? 'Modifying on MT5...' : 'Save & Dispatch'}
                 </button>

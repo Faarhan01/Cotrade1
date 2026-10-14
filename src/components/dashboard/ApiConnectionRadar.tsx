@@ -76,7 +76,7 @@ export const ApiConnectionRadar: React.FC<ApiConnectionRadarProps> = ({ state, o
                 <strong className="text-white">{terminalCompany || state?.account.company || 'Live Broker'}</strong>
                 {chartSymbol && (
                   <span>
-                    {' '}• Chart: <strong className="text-cyan-400">{chartSymbol} {chartTimeframe}</strong>
+                    {' '}• Chart: <strong className="text-indigo-400">{chartSymbol} {chartTimeframe}</strong>
                   </span>
                 )}
               </p>
@@ -88,7 +88,7 @@ export const ApiConnectionRadar: React.FC<ApiConnectionRadarProps> = ({ state, o
               onClick={() => copyUrl('http://127.0.0.1:3000')}
               className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 hover:border-slate-700 transition-colors flex items-center gap-1.5 text-slate-300"
             >
-              <span>Bridge: <code className="text-cyan-300">http://127.0.0.1:3000</code></span>
+              <span>Bridge: <code className="text-indigo-300">http://127.0.0.1:3000</code></span>
               {copiedUrl ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3 text-slate-500" />}
             </button>
           </div>
@@ -122,7 +122,7 @@ export const ApiConnectionRadar: React.FC<ApiConnectionRadarProps> = ({ state, o
         <div className="flex items-center gap-2 self-start md:self-auto">
           <button
             onClick={() => copyUrl('http://127.0.0.1:3000')}
-            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors"
+            className="btn btn-secondary gap-1.5"
           >
             {copiedUrl ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
             <span>Copy Whitelist URL</span>
@@ -131,7 +131,7 @@ export const ApiConnectionRadar: React.FC<ApiConnectionRadarProps> = ({ state, o
           <button
             onClick={handleTestPing}
             disabled={isPinging}
-            className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm"
+            className="btn btn-primary gap-1.5"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isPinging ? 'animate-spin' : ''}`} />
             <span>Check Bridge Ping</span>
@@ -141,24 +141,24 @@ export const ApiConnectionRadar: React.FC<ApiConnectionRadarProps> = ({ state, o
 
       {/* 3-Step Quick Setup Guide Checklist */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-2 border-t border-slate-800/60 font-mono text-xs">
-        <div className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-2.5 flex items-start gap-2">
-          <span className="h-5 w-5 rounded bg-cyan-950 text-cyan-400 font-bold flex items-center justify-center shrink-0 text-[10px]">1</span>
+        <div className="card-panel flex items-start gap-2">
+          <span className="h-5 w-5 rounded bg-indigo-950 text-indigo-400 font-bold flex items-center justify-center shrink-0 text-[10px]">1</span>
           <div>
             <div className="font-bold text-slate-200 text-[11px]">Launch MT5 Terminal</div>
             <p className="text-slate-500 text-[10px] mt-0.5">Start your MetaTrader 5 desktop terminal and verify account login and Algo Trading enabled.</p>
           </div>
         </div>
 
-        <div className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-2.5 flex items-start gap-2">
-          <span className="h-5 w-5 rounded bg-cyan-950 text-cyan-400 font-bold flex items-center justify-center shrink-0 text-[10px]">2</span>
+        <div className="card-panel flex items-start gap-2">
+          <span className="h-5 w-5 rounded bg-indigo-950 text-indigo-400 font-bold flex items-center justify-center shrink-0 text-[10px]">2</span>
           <div>
             <div className="font-bold text-slate-200 text-[11px]">MetaTrader 5 Python IPC</div>
-            <p className="text-slate-500 text-[10px] mt-0.5">Native <code className="text-cyan-400">MetaTrader5</code> package connects over IPC with zero MQL5 EA requirements.</p>
+            <p className="text-slate-500 text-[10px] mt-0.5">Native <code className="text-indigo-400">MetaTrader5</code> package connects over IPC with zero MQL5 EA requirements.</p>
           </div>
         </div>
 
-        <div className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-2.5 flex items-start gap-2">
-          <span className="h-5 w-5 rounded bg-cyan-950 text-cyan-400 font-bold flex items-center justify-center shrink-0 text-[10px]">3</span>
+        <div className="card-panel flex items-start gap-2">
+          <span className="h-5 w-5 rounded bg-indigo-950 text-indigo-400 font-bold flex items-center justify-center shrink-0 text-[10px]">3</span>
           <div>
             <div className="font-bold text-slate-200 text-[11px]">Live WebSocket & Daemon</div>
             <p className="text-slate-500 text-[10px] mt-0.5">Real-time market depth, tick feed, positions, and AI daemon commands stream instantly.</p>

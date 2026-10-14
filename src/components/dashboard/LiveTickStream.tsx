@@ -39,10 +39,10 @@ export const LiveTickStream: React.FC<LiveTickStreamProps> = ({
   }, [ticks]);
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+    <div className="card-panel">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Zap className="h-4 w-4 text-cyan-400" />
+          <Zap className="h-4 w-4 text-indigo-400" />
           <h2 className="text-sm font-bold text-white uppercase tracking-wider">Live Tick Stream</h2>
         </div>
         <span className="text-[11px] font-mono text-slate-400">
@@ -85,7 +85,7 @@ export const LiveTickStream: React.FC<LiveTickStreamProps> = ({
                 onClick={() => onSelectSymbol(tick.symbol)}
                 className={`cursor-pointer rounded-lg p-2.5 border transition-all ${
                   isSelected
-                    ? 'bg-slate-800/90 border-cyan-500 shadow-md shadow-cyan-950/40 ring-1 ring-cyan-500/50'
+                    ? 'bg-slate-800/90 border-indigo-500 shadow-md shadow-indigo-950/40 ring-1 ring-indigo-500/50'
                     : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40'
                 }`}
               >

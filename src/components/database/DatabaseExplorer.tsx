@@ -86,30 +86,31 @@ export const DatabaseExplorer: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950/30 to-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="card-panel flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-indigo-950/80 border border-indigo-700/60 flex items-center justify-center text-indigo-400 shadow-md shrink-0">
+            <Database className="h-6 w-6" />
+          </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="p-2 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                <Database className="h-5 w-5" />
-              </span>
-              <h1 className="text-xl font-extrabold text-white tracking-tight">
+              <h1 className="text-xl font-bold text-white tracking-tight">
                 Persistent SQLite Database & Order Archive
               </h1>
             </div>
-            <p className="text-sm text-slate-300 mt-2 max-w-3xl leading-relaxed">
+            <p className="text-xs text-slate-400 mt-1 max-w-3xl leading-relaxed font-mono">
               Every market trade dispatched by the external AI (via MCP) or direct manual order, along with
               deal tickets, broker execution prices, slippage latencies, and risk events, is recorded to an
               embedded SQLite database.
             </p>
           </div>
+        </div>
 
           <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
             <button
               onClick={handlePrune}
               disabled={pruning}
               title="Purge unexecuted orders older than 24h & trim old data"
-              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-800/60 text-xs font-mono flex items-center gap-1.5 transition-colors"
+              className="btn btn-secondary gap-1.5"
             >
               <Trash2 className={`h-3.5 w-3.5 ${pruning ? 'animate-spin' : ''}`} />
               <span>{pruning ? 'Pruning...' : 'Prune Stale (24h+)'}</span>
@@ -118,7 +119,7 @@ export const DatabaseExplorer: React.FC = () => {
             <button
               onClick={() => loadData()}
               disabled={loading}
-              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono flex items-center gap-1.5 transition-colors"
+              className="btn btn-secondary gap-1.5"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
@@ -127,13 +128,12 @@ export const DatabaseExplorer: React.FC = () => {
             <a
               href="/api/database/download"
               download="mt5_bridge.sqlite"
-              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all shadow-md shadow-indigo-950/50"
+              className="btn btn-primary"
             >
               <Download className="h-4 w-4" />
               Download .sqlite DB
             </a>
           </div>
-        </div>
 
         {pruneFeedback && (
           <div className="mt-4 p-2.5 rounded-lg bg-indigo-950/80 border border-indigo-800 text-xs font-mono text-indigo-300 flex items-center gap-2">
@@ -144,7 +144,7 @@ export const DatabaseExplorer: React.FC = () => {
       </div>
 
       {/* Retention Policy Banner */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-lg p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono text-slate-400">
+      <div className="card-panel flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono text-slate-400">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
           <span>
@@ -158,7 +158,7 @@ export const DatabaseExplorer: React.FC = () => {
 
       {/* Analytics Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-mono">
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 shadow-sm">
+        <div className="card-panel">
           <span className="text-[10px] text-slate-500 uppercase block">Database Storage</span>
           <div className="text-base font-bold text-white mt-1 flex items-center gap-1.5">
             <HardDrive className="h-4 w-4 text-indigo-400" />
@@ -171,9 +171,9 @@ export const DatabaseExplorer: React.FC = () => {
           </span>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 shadow-sm">
+        <div className="card-panel">
           <span className="text-[10px] text-slate-500 uppercase block">Archived Orders</span>
-          <div className="text-base font-bold text-cyan-300 mt-1">
+          <div className="text-base font-bold text-indigo-300 mt-1">
             {analytics?.totalOrders ?? orders.length}
           </div>
           <span className="text-[10px] text-slate-500 mt-0.5 block">
@@ -181,7 +181,7 @@ export const DatabaseExplorer: React.FC = () => {
           </span>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 shadow-sm">
+        <div className="card-panel">
           <span className="text-[10px] text-slate-500 uppercase block">Strategies Stored</span>
           <div className="text-base font-bold text-emerald-400 mt-1">
             {analytics?.totalStrategies ?? 0}
@@ -191,7 +191,7 @@ export const DatabaseExplorer: React.FC = () => {
           </span>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 shadow-sm">
+        <div className="card-panel">
           <span className="text-[10px] text-slate-500 uppercase block">Observations Logged</span>
           <div className="text-base font-bold text-amber-300 mt-1">
             {analytics?.totalObservations ?? 0}
@@ -201,7 +201,7 @@ export const DatabaseExplorer: React.FC = () => {
           </span>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 shadow-sm">
+        <div className="card-panel">
           <span className="text-[10px] text-slate-500 uppercase block">Backtest Runs</span>
           <div className="text-base font-bold text-purple-400 mt-1">
             {analytics?.totalBacktests ?? 0}
@@ -211,7 +211,7 @@ export const DatabaseExplorer: React.FC = () => {
           </span>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 shadow-sm">
+        <div className="card-panel">
           <span className="text-[10px] text-slate-500 uppercase block">Candles in Cache</span>
           <div className="text-base font-bold text-white mt-1">
             {analytics?.totalCandles ?? 0}
@@ -223,7 +223,7 @@ export const DatabaseExplorer: React.FC = () => {
       </div>
 
       {/* Table Panel */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+      <div className="card-panel space-y-4">
         {/* Table Selector Tabs */}
         <div className="flex border-b border-slate-800 space-x-4 text-xs font-mono overflow-x-auto pb-1">
           <button
@@ -327,7 +327,7 @@ export const DatabaseExplorer: React.FC = () => {
                 placeholder={`Search ${activeTable}...`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs font-mono text-white focus:border-indigo-500 focus:outline-none w-48"
+                className="input-control w-48"
               />
             </div>
 
@@ -335,7 +335,7 @@ export const DatabaseExplorer: React.FC = () => {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-300 focus:border-indigo-500 focus:outline-none"
+                className="input-control"
               >
                 <option value="all">All Statuses</option>
                 <option value="executed">Executed</option>
@@ -356,19 +356,19 @@ export const DatabaseExplorer: React.FC = () => {
             </p>
           </div>
         ) : activeTable === 'orders' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-mono">
+          <div className="data-table-container">
+            <table className="data-table">
               <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                 <tr>
-                  <th className="py-2.5 px-3">Order ID</th>
-                  <th className="py-2.5 px-3">Action</th>
-                  <th className="py-2.5 px-3">Symbol / Lots</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3">Deal Ticket</th>
-                  <th className="py-2.5 px-3">Exec Price</th>
-                  <th className="py-2.5 px-3">Latency</th>
-                  <th className="py-2.5 px-3">Origin</th>
-                  <th className="py-2.5 px-3 text-right">Timestamp</th>
+                  <th className="data-table-th">Order ID</th>
+                  <th className="data-table-th">Action</th>
+                  <th className="data-table-th">Symbol / Lots</th>
+                  <th className="data-table-th">Status</th>
+                  <th className="data-table-th">Deal Ticket</th>
+                  <th className="data-table-th">Exec Price</th>
+                  <th className="data-table-th">Latency</th>
+                  <th className="data-table-th">Origin</th>
+                  <th className="data-table-th text-right">Timestamp</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
@@ -377,16 +377,16 @@ export const DatabaseExplorer: React.FC = () => {
                   const isFailed = ord.status === 'failed';
 
                   return (
-                    <tr key={ord.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-2.5 px-3 font-semibold text-slate-300">
+                    <tr key={ord.id} className="btn btn-secondary">
+                      <td className="data-table-td font-semibold text-slate-300">
                         {ord.id}
                       </td>
-                      <td className="py-2.5 px-3">
+                      <td className="data-table-td">
                         <span className="px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 font-bold text-[10px]">
                           {ord.action}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3">
+                      <td className="data-table-td">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {ord.symbol && (
                             <span className="font-extrabold text-white text-xs bg-slate-950 px-1.5 py-0.5 rounded border border-slate-700">
@@ -411,7 +411,7 @@ export const DatabaseExplorer: React.FC = () => {
                           )}
                         </div>
                       </td>
-                      <td className="py-2.5 px-3">
+                      <td className="data-table-td">
                         {isExecuted ? (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/70 border border-emerald-800 px-1.5 py-0.2 rounded">
                             <CheckCircle2 className="h-3 w-3" /> Executed
@@ -426,21 +426,21 @@ export const DatabaseExplorer: React.FC = () => {
                           </span>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-slate-300 font-bold">
+                      <td className="data-table-td text-slate-300 font-bold">
                         {ord.deal_ticket ? `#${ord.deal_ticket}` : '—'}
                       </td>
-                      <td className="py-2.5 px-3 text-cyan-300 font-bold">
+                      <td className="data-table-td text-indigo-300 font-bold">
                         {ord.execution_price ? ord.execution_price : '—'}
                       </td>
-                      <td className="py-2.5 px-3 text-slate-400">
+                      <td className="data-table-td text-slate-400">
                         {ord.execution_time_ms ? `${ord.execution_time_ms}ms` : '—'}
                       </td>
-                      <td className="py-2.5 px-3">
+                      <td className="data-table-td">
                         <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-950 border border-slate-800 text-slate-400">
                           {ord.source}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-slate-500 text-right">
+                      <td className="data-table-td text-slate-500 text-right">
                         {ord.created_at ? new Date(ord.created_at).toLocaleTimeString() : '—'}
                       </td>
                     </tr>
@@ -450,23 +450,23 @@ export const DatabaseExplorer: React.FC = () => {
             </table>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-mono">
+          <div className="data-table-container">
+            <table className="data-table">
               <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                 <tr>
                   {(tableData?.columns || []).slice(0, 8).map((col) => (
-                    <th key={col} className="py-2.5 px-3">{col}</th>
+                    <th key={col} className="data-table-th">{col}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
                 {filteredRows.map((row: any, rIdx: number) => (
-                  <tr key={rIdx} className="hover:bg-slate-800/40 transition-colors">
+                  <tr key={rIdx} className="btn btn-secondary">
                     {(tableData?.columns || []).slice(0, 8).map((col) => {
                       const val = row[col];
                       const valStr = val !== null && val !== undefined ? String(val) : '—';
                       return (
-                        <td key={col} className="py-2 px-3 text-slate-300 max-w-xs truncate">
+                        <td key={col} className="data-table-td text-slate-300 max-w-xs truncate">
                           {col.includes('time') && typeof val === 'number' && val > 1000000
                             ? new Date(val > 10000000000 ? val : val * 1000).toLocaleString()
                             : valStr}

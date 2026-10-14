@@ -53,7 +53,7 @@ export const MT5ConnectionRadar: React.FC<MT5ConnectionRadarProps> = ({ state, o
     const elapsedSeconds = lastSync > 0 ? Math.max(0, Math.round((Date.now() - lastSync) / 1000)) : 0;
 
     return (
-      <div className="bg-slate-900/60 border border-emerald-900/40 rounded-xl p-4 shadow-sm">
+      <div className="card-panel">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="relative flex items-center justify-center">
@@ -70,7 +70,7 @@ export const MT5ConnectionRadar: React.FC<MT5ConnectionRadarProps> = ({ state, o
                   {elapsedSeconds === 0 ? 'Sync < 1s' : `${elapsedSeconds}s ago`}
                 </span>
                 <span aria-hidden="true" className="text-slate-600">·</span>
-                <span className="text-cyan-400">
+                <span className="text-indigo-400">
                   Python Package v5.0.6231
                 </span>
               </div>
@@ -81,7 +81,7 @@ export const MT5ConnectionRadar: React.FC<MT5ConnectionRadarProps> = ({ state, o
                 {chartSymbol && (
                   <>
                     <span aria-hidden="true" className="text-slate-600 mx-1.5">·</span>
-                    Symbol: <span className="text-cyan-300 font-medium">{chartSymbol} [{chartTimeframe || 'M1'}]</span>
+                    Symbol: <span className="text-indigo-300 font-medium">{chartSymbol} [{chartTimeframe || 'M1'}]</span>
                   </>
                 )}
               </p>
@@ -90,7 +90,7 @@ export const MT5ConnectionRadar: React.FC<MT5ConnectionRadarProps> = ({ state, o
 
           <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
             <span className="text-slate-500">Bridge Port</span>
-            <span className="text-cyan-300 tabular-nums font-semibold">127.0.0.1:8888</span>
+            <span className="text-indigo-300 tabular-nums font-semibold">127.0.0.1:8888</span>
           </div>
         </div>
       </div>
@@ -98,24 +98,22 @@ export const MT5ConnectionRadar: React.FC<MT5ConnectionRadarProps> = ({ state, o
   }
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+    <div className="card-panel space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start sm:items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-cyan-950/60 text-cyan-400 border border-cyan-800/60 flex items-center justify-center shrink-0">
-            <Laptop className="h-5 w-5" />
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-indigo-950/80 border border-indigo-700/60 flex items-center justify-center text-indigo-400 shadow-md shrink-0">
+            <Laptop className="h-6 w-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-slate-200 font-mono">
-                Awaiting MetaTrader 5 Terminal Process
-              </h2>
+              <h1 className="text-xl font-bold text-white tracking-tight">Awaiting MetaTrader 5 Terminal Process</h1>
               <span aria-hidden="true" className="text-slate-600">·</span>
-              <span className="text-xs text-amber-400 font-mono">
+              <span className="text-xs font-mono font-semibold text-amber-400">
                 Direct Python Engine Standby
               </span>
             </div>
-            <p className="text-xs text-slate-400 font-mono mt-1 max-w-2xl leading-relaxed">
-              Zero manual setup required. Our bridge interacts directly with MetaTrader 5 using the official Python <code className="text-cyan-400">MetaTrader5</code> package via inter-process memory.
+            <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed font-mono">
+              Zero manual setup required. Our bridge interacts directly with MetaTrader 5 using the official Python <code className="text-indigo-400">MetaTrader5</code> package via inter-process memory.
             </p>
           </div>
         </div>
@@ -123,7 +121,7 @@ export const MT5ConnectionRadar: React.FC<MT5ConnectionRadarProps> = ({ state, o
         <div className="flex items-center gap-2 self-start md:self-auto">
           <button
             onClick={copyCommand}
-            className="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-xs font-mono text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors"
+            className="btn btn-secondary gap-1.5"
           >
             {copiedCmd ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
             <span>Copy Run Command</span>
@@ -132,7 +130,7 @@ export const MT5ConnectionRadar: React.FC<MT5ConnectionRadarProps> = ({ state, o
           <button
             onClick={handleTestPing}
             disabled={isPinging}
-            className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-mono font-medium flex items-center gap-1.5 transition-all shadow-sm"
+            className="btn btn-primary gap-1.5"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isPinging ? 'animate-spin' : ''}`} />
             <span>Check Engine Health</span>
@@ -142,16 +140,16 @@ export const MT5ConnectionRadar: React.FC<MT5ConnectionRadarProps> = ({ state, o
 
       {/* 3-Step Setup Guide Checklist */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-slate-800/60 font-mono text-xs">
-        <div className="bg-slate-950/40 border border-slate-800/60 rounded-lg p-3">
+        <div className="card-panel">
           <div className="text-xs font-semibold text-slate-300 mb-1">
             01. Python MetaTrader5 Package
           </div>
           <p className="text-slate-500 text-[11px] leading-relaxed">
-            Run <code className="text-cyan-400">pip install MetaTrader5 requests</code> on your workstation.
+            Run <code className="text-indigo-400">pip install MetaTrader5 requests</code> on your workstation.
           </p>
         </div>
 
-        <div className="bg-slate-950/40 border border-slate-800/60 rounded-lg p-3">
+        <div className="card-panel">
           <div className="text-xs font-semibold text-slate-300 mb-1">
             02. Launch MetaTrader 5
           </div>
@@ -160,7 +158,7 @@ export const MT5ConnectionRadar: React.FC<MT5ConnectionRadarProps> = ({ state, o
           </p>
         </div>
 
-        <div className="bg-slate-950/40 border border-slate-800/60 rounded-lg p-3">
+        <div className="card-panel">
           <div className="text-xs font-semibold text-slate-300 mb-1">
             03. Native Auto-Attach
           </div>

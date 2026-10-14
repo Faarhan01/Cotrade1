@@ -492,22 +492,23 @@ export const KnowledgeBasePage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-cyan-950/30 to-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="card-panel flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-indigo-950/80 border border-indigo-700/60 flex items-center justify-center text-indigo-400 shadow-md shrink-0">
+            <Compass className="h-6 w-6" />
+          </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="p-2 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                <Compass className="h-5 w-5" />
-              </span>
-              <h1 className="text-xl font-extrabold text-white tracking-tight">
+              <h1 className="text-xl font-bold text-white tracking-tight">
                 Knowledge Base, Strategy Lab & MetaTrader 5 Data Hub
               </h1>
             </div>
-            <p className="text-sm text-slate-300 mt-2 max-w-3xl leading-relaxed">
+            <p className="text-xs text-slate-400 mt-1 max-w-3xl leading-relaxed font-mono">
               Design algorithmic strategies, pull high-density chart history from MetaTrader 5, inspect market depth,
               and execute verified backtest simulations against real market data without hardcoded symbol assumptions.
             </p>
           </div>
+        </div>
 
           <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
             <button
@@ -532,7 +533,7 @@ export const KnowledgeBasePage: React.FC = () => {
                 });
                 setShowStrategyModal(true);
               }}
-              className="px-3.5 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-mono font-bold flex items-center gap-1.5 transition-colors shadow-md shadow-cyan-950/50"
+              className="btn btn-primary gap-1.5"
             >
               <Plus className="h-4 w-4" />
               <span>Create Strategy</span>
@@ -540,7 +541,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
             <button
               onClick={() => setActiveSubTab('chart_history')}
-              className="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-800/60 text-xs font-mono flex items-center gap-1.5 transition-colors"
+              className="btn btn-secondary gap-1.5"
             >
               <BarChart2 className="h-4 w-4" />
               <span>Pull Chart History</span>
@@ -548,7 +549,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
             <button
               onClick={() => setShowObsModal(true)}
-              className="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-mono flex items-center gap-1.5 transition-colors"
+              className="btn btn-secondary gap-1.5"
             >
               <BookOpen className="h-4 w-4" />
               <span>Record Observation</span>
@@ -557,13 +558,12 @@ export const KnowledgeBasePage: React.FC = () => {
             <button
               onClick={loadAllData}
               disabled={loading}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+              className="btn btn-secondary p-2"
               title="Refresh Knowledge Base"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
-        </div>
 
         {statusMessage && (
           <div
@@ -571,14 +571,14 @@ export const KnowledgeBasePage: React.FC = () => {
               statusMessage.type === 'success'
                 ? 'bg-emerald-950/80 border border-emerald-800 text-emerald-300'
                 : statusMessage.type === 'info'
-                ? 'bg-cyan-950/80 border border-cyan-800 text-cyan-300'
+                ? 'bg-indigo-950/80 border border-indigo-800 text-indigo-300'
                 : 'bg-rose-950/80 border border-rose-800 text-rose-300'
             }`}
           >
             {statusMessage.type === 'success' ? (
               <CheckCircle2 className="h-4 w-4 text-emerald-400" />
             ) : statusMessage.type === 'info' ? (
-              <Activity className="h-4 w-4 text-cyan-400" />
+              <Activity className="h-4 w-4 text-indigo-400" />
             ) : (
               <AlertTriangle className="h-4 w-4 text-rose-400" />
             )}
@@ -593,7 +593,7 @@ export const KnowledgeBasePage: React.FC = () => {
           onClick={() => setActiveSubTab('strategies')}
           className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition-colors ${
             activeSubTab === 'strategies'
-              ? 'border-cyan-400 text-cyan-300'
+              ? 'border-indigo-400 text-indigo-300'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -605,7 +605,7 @@ export const KnowledgeBasePage: React.FC = () => {
           onClick={() => setActiveSubTab('backtests')}
           className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition-colors ${
             activeSubTab === 'backtests'
-              ? 'border-cyan-400 text-cyan-300'
+              ? 'border-indigo-400 text-indigo-300'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -617,7 +617,7 @@ export const KnowledgeBasePage: React.FC = () => {
           onClick={() => setActiveSubTab('chart_history')}
           className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition-colors ${
             activeSubTab === 'chart_history'
-              ? 'border-cyan-400 text-cyan-300'
+              ? 'border-indigo-400 text-indigo-300'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -629,7 +629,7 @@ export const KnowledgeBasePage: React.FC = () => {
           onClick={() => setActiveSubTab('observations')}
           className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition-colors ${
             activeSubTab === 'observations'
-              ? 'border-cyan-400 text-cyan-300'
+              ? 'border-indigo-400 text-indigo-300'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -641,7 +641,7 @@ export const KnowledgeBasePage: React.FC = () => {
           onClick={() => setActiveSubTab('api_reference')}
           className={`pb-3 font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition-colors ${
             activeSubTab === 'api_reference'
-              ? 'border-cyan-400 text-cyan-300'
+              ? 'border-indigo-400 text-indigo-300'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -662,13 +662,13 @@ export const KnowledgeBasePage: React.FC = () => {
                 value={strategySearch}
                 onChange={(e) => setStrategySearch(e.target.value)}
                 placeholder="Search strategies by name, symbol, or tag..."
-                className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                className="input-control w-full"
               />
             </div>
 
             <div className="space-y-2.5 max-h-[650px] overflow-y-auto pr-1">
               {filteredStrategies.length === 0 ? (
-                <div className="p-6 text-center text-xs font-mono text-slate-500 bg-slate-900/50 border border-slate-800 rounded-xl">
+                <div className="card-panel text-center text-xs font-mono text-slate-500">
                   No strategies found. Click "Create Strategy" above to add your first algorithmic model.
                 </div>
               ) : (
@@ -680,7 +680,7 @@ export const KnowledgeBasePage: React.FC = () => {
                       onClick={() => setSelectedStrategy(strat)}
                       className={`p-4 rounded-xl border transition-all cursor-pointer ${
                         isSelected
-                          ? 'bg-slate-800/90 border-cyan-500 shadow-md shadow-cyan-950/30'
+                          ? 'bg-slate-800/90 border-indigo-500 shadow-md shadow-indigo-950/30'
                           : 'bg-slate-900/70 border-slate-800 hover:border-slate-700'
                       }`}
                     >
@@ -688,7 +688,7 @@ export const KnowledgeBasePage: React.FC = () => {
                         <div>
                           <h3 className="text-sm font-bold text-white tracking-wide">{strat.name}</h3>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-950 text-cyan-300 border border-cyan-800/60 font-semibold">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-indigo-950 text-indigo-300 border border-indigo-800/60 font-semibold">
                               {strat.symbol}
                             </span>
                             <span className="text-[10px] font-mono text-slate-400">{strat.timeframe}</span>
@@ -730,7 +730,7 @@ export const KnowledgeBasePage: React.FC = () => {
                               handleDeployAsBot(strat);
                             }}
                             disabled={deployingBotId === strat.id}
-                            className="px-2 py-1 rounded bg-slate-800 hover:bg-cyan-950 text-cyan-300 border border-slate-700 hover:border-cyan-700 text-[11px] font-mono flex items-center gap-1 transition-colors"
+                            className="btn btn-secondary gap-1"
                             title="Deploy as automated Bot"
                           >
                             <Bot className={`h-3 w-3 ${deployingBotId === strat.id ? 'animate-spin' : ''}`} />
@@ -743,7 +743,7 @@ export const KnowledgeBasePage: React.FC = () => {
                               handleRunBacktest(strat);
                             }}
                             disabled={backtestingStrategyId === strat.id}
-                            className="px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-mono flex items-center gap-1 transition-colors"
+                            className="btn btn-primary gap-1"
                             title="Run backtest against historical candles"
                           >
                             <Play className={`h-3 w-3 ${backtestingStrategyId === strat.id ? 'animate-spin' : ''}`} />
@@ -761,12 +761,12 @@ export const KnowledgeBasePage: React.FC = () => {
           {/* Right Column: Selected Strategy Details & Config */}
           <div className="lg:col-span-2 space-y-6">
             {selectedStrategy ? (
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6 shadow-sm">
+              <div className="card-panel space-y-6">
                 <div className="flex items-start justify-between flex-wrap gap-3">
                   <div>
                     <div className="flex items-center gap-2">
                       <h2 className="text-lg font-bold text-white tracking-wide">{selectedStrategy.name}</h2>
-                      <span className="px-2 py-0.5 rounded text-xs font-mono bg-cyan-950 text-cyan-300 border border-cyan-800/60 font-semibold">
+                      <span className="px-2 py-0.5 rounded text-xs font-mono bg-indigo-950 text-indigo-300 border border-indigo-800/60 font-semibold">
                         {selectedStrategy.symbol}
                       </span>
                       <span className="px-2 py-0.5 rounded text-xs font-mono bg-slate-800 text-slate-300">
@@ -782,7 +782,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     <button
                       onClick={() => handleDeployAsBot(selectedStrategy)}
                       disabled={deployingBotId === selectedStrategy.id}
-                      className="px-3 py-1.5 rounded-lg bg-cyan-950 text-cyan-300 border border-cyan-800/80 hover:bg-cyan-900/60 text-xs font-mono font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                      className="px-3 py-1.5 rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-800/80 hover:bg-indigo-900/60 text-xs font-mono font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
                       title="Deploy this strategy to Bot Studio for autonomous trading"
                     >
                       <Bot className={`h-3.5 w-3.5 ${deployingBotId === selectedStrategy.id ? 'animate-spin' : ''}`} />
@@ -812,7 +812,7 @@ export const KnowledgeBasePage: React.FC = () => {
                         });
                         setShowStrategyModal(true);
                       }}
-                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                      className="btn btn-secondary p-2"
                       title="Edit Strategy Parameters"
                     >
                       <Edit className="h-4 w-4" />
@@ -820,7 +820,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
                     <button
                       onClick={() => handleDeleteStrategy(selectedStrategy.id, selectedStrategy.name)}
-                      className="p-2 rounded-lg bg-slate-800 hover:bg-rose-950/80 text-rose-400 border border-rose-900/40 transition-colors"
+                      className="btn btn-secondary p-2"
                       title="Delete Strategy"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -829,10 +829,10 @@ export const KnowledgeBasePage: React.FC = () => {
                 </div>
 
                 {/* Backtest Test Configuration Panel */}
-                <div className="bg-slate-950 border border-cyan-900/50 rounded-xl p-4 space-y-3">
+                <div className="card-panel space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs font-bold text-cyan-300 uppercase font-mono">
-                      <Sliders className="h-4 w-4 text-cyan-400" />
+                    <div className="flex items-center gap-2 text-xs font-bold text-indigo-300 uppercase font-mono">
+                      <Sliders className="h-4 w-4 text-indigo-400" />
                       <span>Backtest Parameters & Execution</span>
                     </div>
                     <span className="text-[10px] text-slate-400 font-mono">
@@ -846,7 +846,7 @@ export const KnowledgeBasePage: React.FC = () => {
                       <select
                         value={backtestCandleLimit}
                         onChange={(e) => setBacktestCandleLimit(Number(e.target.value))}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
+                        className="input-control w-full"
                       >
                         <option value={100}>100 Candles (Fast Check)</option>
                         <option value={300}>300 Candles (Standard)</option>
@@ -864,7 +864,7 @@ export const KnowledgeBasePage: React.FC = () => {
                         step="1000"
                         value={backtestDeposit}
                         onChange={(e) => setBacktestDeposit(Number(e.target.value))}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
+                        className="input-control w-full"
                       />
                     </div>
 
@@ -875,7 +875,7 @@ export const KnowledgeBasePage: React.FC = () => {
                         step="0.01"
                         value={backtestLot}
                         onChange={(e) => setBacktestLot(Number(e.target.value))}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
+                        className="input-control w-full"
                       />
                     </div>
                   </div>
@@ -885,7 +885,7 @@ export const KnowledgeBasePage: React.FC = () => {
                       type="checkbox"
                       checked={useSyntheticBacktestData}
                       onChange={(event) => setUseSyntheticBacktestData(event.target.checked)}
-                      className="accent-cyan-500"
+                      className="accent-indigo-500"
                     />
                     Use seeded synthetic candles for this backtest
                   </label>
@@ -894,7 +894,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     <button
                       onClick={() => handleRunBacktest(selectedStrategy)}
                       disabled={backtestingStrategyId === selectedStrategy.id}
-                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-mono font-bold flex items-center gap-2 shadow-lg shadow-cyan-950/60 transition-all"
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white text-xs font-mono font-bold flex items-center gap-2 shadow-lg shadow-indigo-950/60 transition-all"
                     >
                       <Play className={`h-4 w-4 ${backtestingStrategyId === selectedStrategy.id ? 'animate-spin' : ''}`} />
                       <span>Execute Backtest on Real Candles</span>
@@ -908,28 +908,28 @@ export const KnowledgeBasePage: React.FC = () => {
                     Parameter Settings & Risk Boundaries
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
-                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                    <div className="card-panel">
                       <span className="text-[10px] text-slate-500 uppercase block">RSI Oversold/Overbought</span>
                       <span className="text-white font-bold mt-1 block">
                         {selectedStrategy.parameters?.rsiOversold ?? 30} / {selectedStrategy.parameters?.rsiOverbought ?? 70}
                       </span>
                     </div>
 
-                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                    <div className="card-panel">
                       <span className="text-[10px] text-slate-500 uppercase block">Fast / Slow EMA</span>
                       <span className="text-white font-bold mt-1 block">
                         {selectedStrategy.parameters?.fastEmaPeriod ?? 9} / {selectedStrategy.parameters?.slowEmaPeriod ?? 21}
                       </span>
                     </div>
 
-                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                    <div className="card-panel">
                       <span className="text-[10px] text-slate-500 uppercase block">Stop Loss / Take Profit</span>
                       <span className="text-white font-bold mt-1 block">
                         {selectedStrategy.parameters?.stopLossPoints ?? 300} pts / {selectedStrategy.parameters?.takeProfitPoints ?? 600} pts
                       </span>
                     </div>
 
-                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                    <div className="card-panel">
                       <span className="text-[10px] text-slate-500 uppercase block">Max Bar Hold</span>
                       <span className="text-white font-bold mt-1 block">
                         {selectedStrategy.parameters?.maxHoldBars ?? 50} Bars
@@ -940,8 +940,8 @@ export const KnowledgeBasePage: React.FC = () => {
 
                 {/* Strategy Notes & Architecture */}
                 {selectedStrategy.notes && (
-                  <div className="p-4 bg-slate-950 border border-slate-800 rounded-lg">
-                    <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider block mb-1">
+                  <div className="card-panel">
+                    <span className="text-[10px] font-mono text-indigo-400 uppercase tracking-wider block mb-1">
                       Trading Strategy Thesis & Notes
                     </span>
                     <p className="text-xs text-slate-300 leading-relaxed font-sans">{selectedStrategy.notes}</p>
@@ -949,7 +949,7 @@ export const KnowledgeBasePage: React.FC = () => {
                 )}
               </div>
             ) : (
-              <div className="p-12 text-center text-xs font-mono text-slate-500 bg-slate-900 border border-slate-800 rounded-xl">
+              <div className="card-panel text-center text-xs font-mono text-slate-500">
                 Select a strategy from the left panel to inspect parameters and run backtests.
               </div>
             )}
@@ -961,14 +961,14 @@ export const KnowledgeBasePage: React.FC = () => {
       {activeSubTab === 'backtests' && (
         <div className="space-y-6">
           {activeBacktestResult ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6 shadow-sm">
+            <div className="card-panel space-y-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-base font-bold text-white tracking-wide">
                       {activeBacktestResult.strategyName}
                     </h2>
-                    <span className="px-2 py-0.5 rounded text-xs font-mono bg-cyan-950 text-cyan-300 border border-cyan-800/60 font-semibold">
+                    <span className="px-2 py-0.5 rounded text-xs font-mono bg-indigo-950 text-indigo-300 border border-indigo-800/60 font-semibold">
                       {activeBacktestResult.symbol}
                     </span>
                     <span className="px-2 py-0.5 rounded text-xs font-mono bg-slate-800 text-slate-300">
@@ -1005,7 +1005,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
               {/* KPI Cards */}
               <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                <div className="card-panel">
                   <span className="text-[10px] text-slate-500 uppercase block font-mono">Win Rate</span>
                   <span
                     className={`text-base font-bold mt-1 block ${
@@ -1019,7 +1019,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                <div className="card-panel">
                   <span className="text-[10px] text-slate-500 uppercase block font-mono">Profit Factor</span>
                   <span className="text-base font-bold text-white mt-1 block">
                     {activeBacktestResult.profitFactor}
@@ -1027,15 +1027,15 @@ export const KnowledgeBasePage: React.FC = () => {
                   <span className="text-[10px] text-slate-500 font-mono">Gross Gain / Loss</span>
                 </div>
 
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                <div className="card-panel">
                   <span className="text-[10px] text-slate-500 uppercase block font-mono">Total Trades</span>
-                  <span className="text-base font-bold text-cyan-300 mt-1 block">
+                  <span className="text-base font-bold text-indigo-300 mt-1 block">
                     {activeBacktestResult.totalTrades}
                   </span>
                   <span className="text-[10px] text-slate-500 font-mono">Completed Trades</span>
                 </div>
 
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                <div className="card-panel">
                   <span className="text-[10px] text-slate-500 uppercase block font-mono">Max Drawdown</span>
                   <span className="text-base font-bold text-rose-400 mt-1 block">
                     {activeBacktestResult.maxDrawdownPct}%
@@ -1045,7 +1045,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                <div className="card-panel">
                   <span className="text-[10px] text-slate-500 uppercase block font-mono">Sharpe Ratio</span>
                   <span className="text-base font-bold text-white mt-1 block">
                     {activeBacktestResult.sharpeRatio ?? '1.45'}
@@ -1053,7 +1053,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   <span className="text-[10px] text-slate-500 font-mono">Risk-Adjusted</span>
                 </div>
 
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                <div className="card-panel">
                   <span className="text-[10px] text-slate-500 uppercase block font-mono">Final Equity</span>
                   <span className="text-base font-bold text-emerald-400 mt-1 block">
                     ${activeBacktestResult.finalEquity.toFixed(2)}
@@ -1066,9 +1066,9 @@ export const KnowledgeBasePage: React.FC = () => {
 
               {/* Equity Curve Visualizer */}
               {activeBacktestResult.equityCurve && activeBacktestResult.equityCurve.length > 1 && (
-                <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                <div className="card-panel space-y-2">
                   <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-                    <span className="flex items-center gap-1.5 font-bold text-cyan-400 uppercase">
+                    <span className="flex items-center gap-1.5 font-bold text-indigo-400 uppercase">
                       <TrendingUp className="h-3.5 w-3.5" />
                       <span>Simulated Equity Curve</span>
                     </span>
@@ -1087,7 +1087,7 @@ export const KnowledgeBasePage: React.FC = () => {
                           key={i}
                           title={`${pt.timeIso}: $${pt.equity}`}
                           className={`flex-1 rounded-t transition-all ${
-                            isUp ? 'bg-cyan-500/70 hover:bg-cyan-400' : 'bg-rose-500/70 hover:bg-rose-400'
+                            isUp ? 'bg-indigo-500/70 hover:bg-indigo-400' : 'bg-rose-500/70 hover:bg-rose-400'
                           }`}
                           style={{ height: `${heightPct}%` }}
                         />
@@ -1103,17 +1103,17 @@ export const KnowledgeBasePage: React.FC = () => {
                   Simulated Trade Execution Ledger ({activeBacktestResult.trades?.length || 0})
                 </h3>
                 <div className="overflow-x-auto border border-slate-800 rounded-lg">
-                  <table className="w-full text-left text-xs font-mono">
+                  <table className="data-table">
                     <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
                       <tr>
-                        <th className="py-2.5 px-3">Trade ID</th>
-                        <th className="py-2.5 px-3">Type</th>
-                        <th className="py-2.5 px-3">Entry Price</th>
-                        <th className="py-2.5 px-3">Exit Price</th>
-                        <th className="py-2.5 px-3">Profit (USD)</th>
-                        <th className="py-2.5 px-3">Points</th>
-                        <th className="py-2.5 px-3">Exit Reason</th>
-                        <th className="py-2.5 px-3 text-right">Exit Time</th>
+                        <th className="data-table-th">Trade ID</th>
+                        <th className="data-table-th">Type</th>
+                        <th className="data-table-th">Entry Price</th>
+                        <th className="data-table-th">Exit Price</th>
+                        <th className="data-table-th">Profit (USD)</th>
+                        <th className="data-table-th">Points</th>
+                        <th className="data-table-th">Exit Reason</th>
+                        <th className="data-table-th text-right">Exit Time</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 bg-slate-900/40">
@@ -1128,9 +1128,9 @@ export const KnowledgeBasePage: React.FC = () => {
                           const profitAmount = trd.profitAmount ?? trd.profitUsd ?? 0;
                           const isWin = profitAmount >= 0;
                           return (
-                            <tr key={trd.id} className="hover:bg-slate-800/40">
-                              <td className="py-2 px-3 text-slate-400">{trd.id}</td>
-                              <td className="py-2 px-3">
+                            <tr key={trd.id} className="btn btn-secondary">
+                              <td className="data-table-td text-slate-400">{trd.id}</td>
+                              <td className="data-table-td">
                                 <span
                                   className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                     trd.type === 'BUY'
@@ -1141,14 +1141,14 @@ export const KnowledgeBasePage: React.FC = () => {
                                   {trd.type}
                                 </span>
                               </td>
-                              <td className="py-2 px-3 text-white">{trd.entryPrice}</td>
-                              <td className="py-2 px-3 text-white">{trd.exitPrice}</td>
+                              <td className="data-table-td text-white">{trd.entryPrice}</td>
+                              <td className="data-table-td text-white">{trd.exitPrice}</td>
                               <td className={`py-2 px-3 font-bold ${isWin ? 'text-emerald-400' : 'text-rose-400'}`}>
                                 {isWin ? '+' : ''}{trd.profitCurrency || activeBacktestResult.profitCurrency || (trd.profitUsd !== undefined ? 'USD' : 'EST')} {profitAmount.toFixed(2)}
                               </td>
-                              <td className="py-2 px-3 text-slate-300">{trd.profitPoints} pts</td>
-                              <td className="py-2 px-3 text-slate-400 text-[11px]">{trd.exitReason}</td>
-                              <td className="py-2 px-3 text-right text-slate-400 text-[11px]">
+                              <td className="data-table-td text-slate-300">{trd.profitPoints} pts</td>
+                              <td className="data-table-td text-slate-400 text-[11px]">{trd.exitReason}</td>
+                              <td className="data-table-td text-right text-slate-400 text-[11px]">
                                 {new Date(trd.exitTime * 1000).toLocaleTimeString()}
                               </td>
                             </tr>
@@ -1161,7 +1161,7 @@ export const KnowledgeBasePage: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="p-12 text-center text-xs font-mono text-slate-500 bg-slate-900 border border-slate-800 rounded-xl">
+            <div className="card-panel text-center text-xs font-mono text-slate-500">
               No backtests run yet. Go to the Strategies tab and click "Test" on any strategy.
             </div>
           )}
@@ -1171,11 +1171,11 @@ export const KnowledgeBasePage: React.FC = () => {
       {/* SUBTAB 3: CHART DATA & HISTORY INSPECTOR */}
       {activeSubTab === 'chart_history' && (
         <div className="space-y-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+          <div className="card-panel space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h2 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
-                  <Database className="h-4 w-4 text-cyan-400" />
+                  <Database className="h-4 w-4 text-indigo-400" />
                   <span>MetaTrader 5 Historical Chart Data Inspector</span>
                 </h2>
                 <p className="text-xs text-slate-300 mt-1 leading-relaxed">
@@ -1188,7 +1188,7 @@ export const KnowledgeBasePage: React.FC = () => {
                 <button
                   onClick={() => handleExportData('csv')}
                   disabled={fetchedCandles.length === 0 && fetchedTicks.length === 0}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  className="btn btn-secondary gap-1.5 disabled:opacity-50"
                 >
                   <Download className="h-3.5 w-3.5" />
                   <span>Export CSV</span>
@@ -1197,7 +1197,7 @@ export const KnowledgeBasePage: React.FC = () => {
                 <button
                   onClick={() => handleExportData('json')}
                   disabled={fetchedCandles.length === 0 && fetchedTicks.length === 0}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  className="btn btn-secondary gap-1.5 disabled:opacity-50"
                 >
                   <FileText className="h-3.5 w-3.5" />
                   <span>Export JSON</span>
@@ -1215,7 +1215,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     value={chartSymbol}
                     onChange={(e) => setChartSymbol(e.target.value)}
                     placeholder="e.g. EURUSD, Boom 1000..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                   <select
                     onChange={(e) => {
@@ -1239,7 +1239,7 @@ export const KnowledgeBasePage: React.FC = () => {
                 <select
                   value={chartTimeframe}
                   onChange={(e) => setChartTimeframe(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
+                  className="input-control w-full"
                 >
                   <option value="M1">M1 (1 Minute)</option>
                   <option value="M5">M5 (5 Minutes)</option>
@@ -1256,7 +1256,7 @@ export const KnowledgeBasePage: React.FC = () => {
                 <select
                   value={chartCandleCount}
                   onChange={(e) => setChartCandleCount(Number(e.target.value))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
+                  className="input-control w-full"
                 >
                   <option value={50}>50 Bars</option>
                   <option value={100}>100 Bars</option>
@@ -1270,11 +1270,11 @@ export const KnowledgeBasePage: React.FC = () => {
 
               <div>
                 <label className="text-[11px] font-mono text-slate-400 block mb-1">Data Mode</label>
-                <div className="flex bg-slate-950 border border-slate-800 rounded-lg p-0.5">
+                <div className="card-panel flex">
                   <button
                     onClick={() => setChartDataMode('candles')}
                     className={`flex-1 py-1 rounded text-xs font-mono font-bold transition-colors ${
-                      chartDataMode === 'candles' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-white'
+                      chartDataMode === 'candles' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     Candles
@@ -1282,7 +1282,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   <button
                     onClick={() => setChartDataMode('ticks')}
                     className={`flex-1 py-1 rounded text-xs font-mono font-bold transition-colors ${
-                      chartDataMode === 'ticks' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-white'
+                      chartDataMode === 'ticks' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     Ticks
@@ -1294,7 +1294,7 @@ export const KnowledgeBasePage: React.FC = () => {
                 <button
                   onClick={handleFetchChartHistory}
                   disabled={chartLoading}
-                  className="w-full py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-cyan-950/60"
+                  className="btn btn-primary w-full gap-1.5"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${chartLoading ? 'animate-spin' : ''}`} />
                   <span>{chartLoading ? 'Pulling...' : 'Pull History'}</span>
@@ -1303,8 +1303,8 @@ export const KnowledgeBasePage: React.FC = () => {
             </div>
 
             {chartDataSource && (
-              <div className="text-[11px] font-mono text-cyan-300 flex items-center gap-2 pt-1">
-                <CheckCircle2 className="h-3.5 w-3.5 text-cyan-400" />
+              <div className="text-[11px] font-mono text-indigo-300 flex items-center gap-2 pt-1">
+                <CheckCircle2 className="h-3.5 w-3.5 text-indigo-400" />
                 <span>{chartDataSource}</span>
               </div>
             )}
@@ -1312,11 +1312,11 @@ export const KnowledgeBasePage: React.FC = () => {
 
           {/* Interactive Chart Testing & Simulation Workbench */}
           {chartDataMode === 'candles' && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+            <div className="card-panel space-y-4">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-3 border-b border-slate-800/80">
                 <div>
                   <div className="flex items-center gap-2">
-                    <Activity className="h-4 w-4 text-cyan-400" />
+                    <Activity className="h-4 w-4 text-indigo-400" />
                     <h3 className="text-sm font-bold text-white font-mono tracking-tight">
                       Visual Chart & Pattern Testing Workbench ({chartSymbol} {chartTimeframe})
                     </h3>
@@ -1331,7 +1331,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   <button
                     onClick={() => handleSimulateBatch('uptrend')}
                     disabled={simulatingBatch}
-                    className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-900/50 flex items-center gap-1 transition-colors"
+                    className="btn btn-secondary gap-1"
                   >
                     <ArrowUpRight className="h-3 w-3" />
                     <span>Uptrend Surge</span>
@@ -1340,7 +1340,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   <button
                     onClick={() => handleSimulateBatch('wave')}
                     disabled={simulatingBatch}
-                    className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-900/50 flex items-center gap-1 transition-colors"
+                    className="btn btn-secondary gap-1"
                   >
                     <Activity className="h-3 w-3" />
                     <span>Oscillator Wave</span>
@@ -1349,7 +1349,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   <button
                     onClick={handleSeedChartCandles}
                     disabled={simulatingBatch}
-                    className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 transition-colors"
+                    className="btn btn-secondary gap-1"
                   >
                     <Database className="h-3 w-3" />
                     <span>Seed 60 Bars</span>
@@ -1359,14 +1359,14 @@ export const KnowledgeBasePage: React.FC = () => {
 
                   <button
                     onClick={() => handleRunTestTrade('BUY')}
-                    className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-colors"
+                    className="btn btn-success"
                   >
                     Test Buy
                   </button>
 
                   <button
                     onClick={() => handleRunTestTrade('SELL')}
-                    className="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white font-bold transition-colors"
+                    className="btn btn-danger"
                   >
                     Test Sell
                   </button>
@@ -1416,7 +1416,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   return (
                     <div className="space-y-3">
                       {/* Candlestick & Volume SVG */}
-                      <div className="bg-slate-950 border border-slate-800 rounded-lg p-2 overflow-x-auto relative">
+                      <div className="card-panel overflow-x-auto relative">
                         <svg
                           viewBox={`0 0 ${width} ${height}`}
                           className="w-full h-56 font-mono text-[9px] select-none"
@@ -1501,12 +1501,12 @@ export const KnowledgeBasePage: React.FC = () => {
 
                         {/* Hover Tooltip Overlay */}
                         {hoveredCandle && (
-                          <div className="absolute top-3 left-4 bg-slate-900/95 border border-cyan-500/50 rounded-lg p-2 font-mono text-[11px] text-white shadow-xl flex items-center gap-3 backdrop-blur-sm">
-                            <span className="text-cyan-400">{hoveredCandle.timeIso || new Date(hoveredCandle.time * 1000).toLocaleTimeString()}</span>
+                          <div className="absolute top-3 left-4 bg-slate-900/95 border border-indigo-500/50 rounded-lg p-2 font-mono text-[11px] text-white shadow-xl flex items-center gap-3 backdrop-blur-sm">
+                            <span className="text-indigo-400">{hoveredCandle.timeIso || new Date(hoveredCandle.time * 1000).toLocaleTimeString()}</span>
                             <span>O: <span className="text-slate-300">{hoveredCandle.open}</span></span>
                             <span>H: <span className="text-emerald-400">{hoveredCandle.high}</span></span>
                             <span>L: <span className="text-rose-400">{hoveredCandle.low}</span></span>
-                            <span>C: <span className="text-cyan-300 font-bold">{hoveredCandle.close}</span></span>
+                            <span>C: <span className="text-indigo-300 font-bold">{hoveredCandle.close}</span></span>
                             <span>Vol: <span className="text-slate-400">{hoveredCandle.volume}</span></span>
                           </div>
                         )}
@@ -1514,26 +1514,26 @@ export const KnowledgeBasePage: React.FC = () => {
 
                       {/* Technical Indicators HUD & Signal Banner */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
-                        <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                        <div className="card-panel">
                           <span className="text-[10px] text-slate-500 block">LATEST PRICE</span>
                           <span className="text-sm font-bold text-white">{lastCandle?.close.toFixed(4)}</span>
                         </div>
 
-                        <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                        <div className="card-panel">
                           <span className="text-[10px] text-slate-500 block">RSI (14 BARS)</span>
-                          <span className={`text-sm font-bold ${rsi > 70 ? 'text-rose-400' : rsi < 30 ? 'text-emerald-400' : 'text-cyan-300'}`}>
+                          <span className={`text-sm font-bold ${rsi > 70 ? 'text-rose-400' : rsi < 30 ? 'text-emerald-400' : 'text-indigo-300'}`}>
                             {rsi} {rsi > 70 ? '(Overbought)' : rsi < 30 ? '(Oversold)' : '(Neutral)'}
                           </span>
                         </div>
 
-                        <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                        <div className="card-panel">
                           <span className="text-[10px] text-slate-500 block">20-SMA TREND</span>
-                          <span className="text-sm font-bold text-cyan-400">
+                          <span className="text-sm font-bold text-indigo-400">
                             {smaPoints.length > 0 ? ((minPrice + (priceHeight - smaPoints[smaPoints.length - 1].y) * (priceRange / (priceHeight - 30)))).toFixed(4) : 'Calculating...'}
                           </span>
                         </div>
 
-                        <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                        <div className="card-panel">
                           <span className="text-[10px] text-slate-500 block">CHART VOLATILITY</span>
                           <span className="text-sm font-bold text-amber-400">
                             {((priceRange / minPrice) * 100).toFixed(2)}% Range
@@ -1543,7 +1543,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
                       {/* Simulated Trade Execution Outcome */}
                       {chartSimOrder && (
-                        <div className="p-3 rounded-lg bg-slate-950 border border-cyan-800/60 font-mono text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="card-panel font-mono text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div className="flex items-center gap-2">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${chartSimOrder.type === 'BUY' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}`}>
                               {chartSimOrder.type} 0.1 LOT
@@ -1575,23 +1575,23 @@ export const KnowledgeBasePage: React.FC = () => {
 
           {/* Results Table */}
           {chartDataMode === 'candles' ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div className="card-panel space-y-3">
               <div className="flex items-center justify-between text-xs font-mono text-slate-400">
                 <span className="font-bold text-white">OHLCV Candle History Grid ({fetchedCandles.length} Records)</span>
                 <span>Sorted by Timestamp Ascending</span>
               </div>
 
               <div className="overflow-x-auto border border-slate-800 rounded-lg max-h-[500px]">
-                <table className="w-full text-left text-xs font-mono">
+                <table className="data-table">
                   <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] sticky top-0 border-b border-slate-800">
                     <tr>
-                      <th className="py-2.5 px-3">Date / Time (UTC)</th>
-                      <th className="py-2.5 px-3">Open</th>
-                      <th className="py-2.5 px-3">High</th>
-                      <th className="py-2.5 px-3">Low</th>
-                      <th className="py-2.5 px-3">Close</th>
-                      <th className="py-2.5 px-3">Volume</th>
-                      <th className="py-2.5 px-3">Spread</th>
+                      <th className="data-table-th">Date / Time (UTC)</th>
+                      <th className="data-table-th">Open</th>
+                      <th className="data-table-th">High</th>
+                      <th className="data-table-th">Low</th>
+                      <th className="data-table-th">Close</th>
+                      <th className="data-table-th">Volume</th>
+                      <th className="data-table-th">Spread</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 bg-slate-900/40">
@@ -1603,14 +1603,14 @@ export const KnowledgeBasePage: React.FC = () => {
                       </tr>
                     ) : (
                       fetchedCandles.slice(-200).map((c, idx) => (
-                        <tr key={idx} className="hover:bg-slate-800/40">
+                        <tr key={idx} className="btn btn-secondary">
                           <td className="py-1.5 px-3 text-slate-400 text-[11px]">
                             {c.timeIso || new Date(c.time * 1000).toISOString()}
                           </td>
                           <td className="py-1.5 px-3 text-white">{c.open}</td>
                           <td className="py-1.5 px-3 text-emerald-400">{c.high}</td>
                           <td className="py-1.5 px-3 text-rose-400">{c.low}</td>
-                          <td className="py-1.5 px-3 text-cyan-300 font-bold">{c.close}</td>
+                          <td className="py-1.5 px-3 text-indigo-300 font-bold">{c.close}</td>
                           <td className="py-1.5 px-3 text-slate-300">{c.volume}</td>
                           <td className="py-1.5 px-3 text-slate-400">{c.spread || 0}</td>
                         </tr>
@@ -1621,21 +1621,21 @@ export const KnowledgeBasePage: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div className="card-panel space-y-3">
               <div className="flex items-center justify-between text-xs font-mono text-slate-400">
                 <span className="font-bold text-white">Tick Execution Records ({fetchedTicks.length} Records)</span>
               </div>
 
               <div className="overflow-x-auto border border-slate-800 rounded-lg max-h-[500px]">
-                <table className="w-full text-left text-xs font-mono">
+                <table className="data-table">
                   <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] sticky top-0 border-b border-slate-800">
                     <tr>
-                      <th className="py-2.5 px-3">Timestamp</th>
-                      <th className="py-2.5 px-3">Bid</th>
-                      <th className="py-2.5 px-3">Ask</th>
-                      <th className="py-2.5 px-3">Spread</th>
-                      <th className="py-2.5 px-3">Last</th>
-                      <th className="py-2.5 px-3">Volume</th>
+                      <th className="data-table-th">Timestamp</th>
+                      <th className="data-table-th">Bid</th>
+                      <th className="data-table-th">Ask</th>
+                      <th className="data-table-th">Spread</th>
+                      <th className="data-table-th">Last</th>
+                      <th className="data-table-th">Volume</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 bg-slate-900/40">
@@ -1647,12 +1647,12 @@ export const KnowledgeBasePage: React.FC = () => {
                       </tr>
                     ) : (
                       fetchedTicks.slice(-200).map((t, idx) => (
-                        <tr key={idx} className="hover:bg-slate-800/40">
+                        <tr key={idx} className="btn btn-secondary">
                           <td className="py-1.5 px-3 text-slate-400 text-[11px]">
                             {t.time ? new Date(t.time * 1000).toLocaleTimeString() : 'N/A'}
                           </td>
                           <td className="py-1.5 px-3 text-white">{t.bid}</td>
-                          <td className="py-1.5 px-3 text-cyan-300 font-bold">{t.ask}</td>
+                          <td className="py-1.5 px-3 text-indigo-300 font-bold">{t.ask}</td>
                           <td className="py-1.5 px-3 text-amber-400">{t.spread || 0}</td>
                           <td className="py-1.5 px-3 text-slate-300">{t.last || t.bid}</td>
                           <td className="py-1.5 px-3 text-slate-400">{t.volume}</td>
@@ -1689,7 +1689,7 @@ export const KnowledgeBasePage: React.FC = () => {
 
             <button
               onClick={() => setShowObsModal(true)}
-              className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-mono font-bold flex items-center gap-1.5 transition-colors"
+              className="btn btn-primary gap-1.5"
             >
               <Plus className="h-4 w-4" />
               <span>Record Observation</span>
@@ -1698,18 +1698,18 @@ export const KnowledgeBasePage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredObservations.length === 0 ? (
-              <div className="col-span-full p-12 text-center text-xs font-mono text-slate-500 bg-slate-900 border border-slate-800 rounded-xl">
+              <div className="card-panel col-span-full text-center text-xs font-mono text-slate-500">
                 No observations found. Click "Record Observation" to log market patterns or spread widening notes.
               </div>
             ) : (
               filteredObservations.map((obs) => (
                 <div
                   key={obs.id}
-                  className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition-colors"
+                  className="card-panel flex flex-col justify-between hover:border-slate-700 transition-colors"
                 >
                   <div>
                     <div className="flex items-start justify-between">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-slate-800 text-cyan-300 font-bold">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-slate-800 text-indigo-300 font-bold">
                         {obs.category.replace('_', ' ')}
                       </span>
                       <button
@@ -1727,7 +1727,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     {(obs.symbol || obs.timeframe) && (
                       <div className="flex items-center gap-2 mt-3">
                         {obs.symbol && (
-                          <span className="text-[10px] font-mono bg-cyan-950 text-cyan-300 px-1.5 py-0.5 rounded border border-cyan-800/60 font-semibold">
+                          <span className="text-[10px] font-mono bg-indigo-950 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-800/60 font-semibold">
                             {obs.symbol}
                           </span>
                         )}
@@ -1758,20 +1758,20 @@ export const KnowledgeBasePage: React.FC = () => {
       {/* SUBTAB 5: METATRADER 5 PACKAGE API REFERENCE */}
       {activeSubTab === 'api_reference' && (
         <div className="space-y-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+          <div className="card-panel space-y-4">
             <h2 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
-              <Code className="h-4 w-4 text-cyan-400" />
+              <Code className="h-4 w-4 text-indigo-400" />
               <span>MetaTrader 5 Python Package Knowledge Matrix</span>
             </h2>
             <p className="text-xs text-slate-300 leading-relaxed max-w-3xl">
-              Complete architectural documentation for the MetaTrader 5 Python package (<code className="text-cyan-300">MetaTrader5</code>).
+              Complete architectural documentation for the MetaTrader 5 Python package (<code className="text-indigo-300">MetaTrader5</code>).
               The site communicates directly with the local MT5 application through our lightweight Python daemon bridge, ensuring real ticks,
               deep history candles, pre-trade margin calculations, and real market order execution without hardcoded symbols.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                <span className="text-xs font-bold text-cyan-300 font-mono block">1. Connection & Account</span>
+              <div className="card-panel space-y-2">
+                <span className="text-xs font-bold text-indigo-300 font-mono block">1. Connection & Account</span>
                 <p className="text-xs text-slate-400 leading-relaxed">
                   <code className="text-white bg-slate-900 px-1 rounded">mt5.initialize(path, login, password, server)</code> connects to the desktop terminal.
                   <code className="text-white bg-slate-900 px-1 rounded ml-1">mt5.terminal_info()</code> provides trade permission flags, ping, and build numbers.
@@ -1779,8 +1779,8 @@ export const KnowledgeBasePage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                <span className="text-xs font-bold text-cyan-300 font-mono block">2. Historical Rates & Deep Candles</span>
+              <div className="card-panel space-y-2">
+                <span className="text-xs font-bold text-indigo-300 font-mono block">2. Historical Rates & Deep Candles</span>
                 <p className="text-xs text-slate-400 leading-relaxed">
                   <code className="text-white bg-slate-900 px-1 rounded">mt5.copy_rates_from_pos(sym, tf, 0, count)</code> pulls up to 50,000 bars.
                   <code className="text-white bg-slate-900 px-1 rounded ml-1">mt5.copy_rates_range(sym, tf, date_from, date_to)</code> retrieves date ranges.
@@ -1788,8 +1788,8 @@ export const KnowledgeBasePage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                <span className="text-xs font-bold text-cyan-300 font-mono block">3. Pre-Trade Risk Verification</span>
+              <div className="card-panel space-y-2">
+                <span className="text-xs font-bold text-indigo-300 font-mono block">3. Pre-Trade Risk Verification</span>
                 <p className="text-xs text-slate-400 leading-relaxed">
                   <code className="text-white bg-slate-900 px-1 rounded">mt5.order_check(request)</code> validates margin feasibility before sending.
                   <code className="text-white bg-slate-900 px-1 rounded ml-1">mt5.order_calc_margin(action, sym, vol, price)</code> returns exact margin in deposit currency.
@@ -1797,8 +1797,8 @@ export const KnowledgeBasePage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                <span className="text-xs font-bold text-cyan-300 font-mono block">4. Direct Order Execution</span>
+              <div className="card-panel space-y-2">
+                <span className="text-xs font-bold text-indigo-300 font-mono block">4. Direct Order Execution</span>
                 <p className="text-xs text-slate-400 leading-relaxed">
                   <code className="text-white bg-slate-900 px-1 rounded">mt5.order_send(request)</code> dispatches market (TRADE_ACTION_DEAL), pending orders
                   (TRADE_ACTION_PENDING), position stop loss/take profit modifications (TRADE_ACTION_SLTP), and position closures with dynamic broker filling modes (IOC, FOK, RETURN).
@@ -1808,50 +1808,50 @@ export const KnowledgeBasePage: React.FC = () => {
           </div>
 
           {/* MT5 Return Codes Table */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-3">
+          <div className="card-panel space-y-3">
             <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">
               MetaTrader 5 Trade Return Codes Matrix
             </h3>
             <div className="overflow-x-auto border border-slate-800 rounded-lg">
-              <table className="w-full text-left text-xs font-mono">
+              <table className="data-table">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
                   <tr>
-                    <th className="py-2.5 px-3">RetCode</th>
-                    <th className="py-2.5 px-3">Constant Name</th>
-                    <th className="py-2.5 px-3">Broker Meaning</th>
-                    <th className="py-2.5 px-3">System Handling</th>
+                    <th className="data-table-th">RetCode</th>
+                    <th className="data-table-th">Constant Name</th>
+                    <th className="data-table-th">Broker Meaning</th>
+                    <th className="data-table-th">System Handling</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 bg-slate-900/40">
                   <tr>
-                    <td className="py-2 px-3 text-emerald-400 font-bold">10009</td>
-                    <td className="py-2 px-3 text-white">TRADE_RETCODE_DONE</td>
-                    <td className="py-2 px-3 text-slate-300">Request executed successfully</td>
-                    <td className="py-2 px-3 text-emerald-300">Ticket assigned & positions updated</td>
+                    <td className="data-table-td text-emerald-400 font-bold">10009</td>
+                    <td className="data-table-td text-white">TRADE_RETCODE_DONE</td>
+                    <td className="data-table-td text-slate-300">Request executed successfully</td>
+                    <td className="data-table-td text-emerald-300">Ticket assigned & positions updated</td>
                   </tr>
                   <tr>
-                    <td className="py-2 px-3 text-amber-400 font-bold">10004</td>
-                    <td className="py-2 px-3 text-white">TRADE_RETCODE_REQUOTE</td>
-                    <td className="py-2 px-3 text-slate-300">Price changed during execution</td>
-                    <td className="py-2 px-3 text-slate-400">Increase deviation parameter in order</td>
+                    <td className="data-table-td text-amber-400 font-bold">10004</td>
+                    <td className="data-table-td text-white">TRADE_RETCODE_REQUOTE</td>
+                    <td className="data-table-td text-slate-300">Price changed during execution</td>
+                    <td className="data-table-td text-slate-400">Increase deviation parameter in order</td>
                   </tr>
                   <tr>
-                    <td className="py-2 px-3 text-rose-400 font-bold">10014</td>
-                    <td className="py-2 px-3 text-white">TRADE_RETCODE_INVALID_VOLUME</td>
-                    <td className="py-2 px-3 text-slate-300">Invalid order volume for symbol</td>
-                    <td className="py-2 px-3 text-slate-400">Align volume with broker minLot / lotStep</td>
+                    <td className="data-table-td text-rose-400 font-bold">10014</td>
+                    <td className="data-table-td text-white">TRADE_RETCODE_INVALID_VOLUME</td>
+                    <td className="data-table-td text-slate-300">Invalid order volume for symbol</td>
+                    <td className="data-table-td text-slate-400">Align volume with broker minLot / lotStep</td>
                   </tr>
                   <tr>
-                    <td className="py-2 px-3 text-rose-400 font-bold">10016</td>
-                    <td className="py-2 px-3 text-white">TRADE_RETCODE_INVALID_STOPS</td>
-                    <td className="py-2 px-3 text-slate-300">Stop Loss or Take Profit inside freeze level</td>
-                    <td className="py-2 px-3 text-slate-400">Respect symbol stopsLevel distance</td>
+                    <td className="data-table-td text-rose-400 font-bold">10016</td>
+                    <td className="data-table-td text-white">TRADE_RETCODE_INVALID_STOPS</td>
+                    <td className="data-table-td text-slate-300">Stop Loss or Take Profit inside freeze level</td>
+                    <td className="data-table-td text-slate-400">Respect symbol stopsLevel distance</td>
                   </tr>
                   <tr>
-                    <td className="py-2 px-3 text-amber-400 font-bold">10018</td>
-                    <td className="py-2 px-3 text-white">TRADE_RETCODE_MARKET_CLOSED</td>
-                    <td className="py-2 px-3 text-slate-300">Market is currently closed</td>
-                    <td className="py-2 px-3 text-slate-400">Queued in daemon pending execution</td>
+                    <td className="data-table-td text-amber-400 font-bold">10018</td>
+                    <td className="data-table-td text-white">TRADE_RETCODE_MARKET_CLOSED</td>
+                    <td className="data-table-td text-slate-300">Market is currently closed</td>
+                    <td className="data-table-td text-slate-400">Queued in daemon pending execution</td>
                   </tr>
                 </tbody>
               </table>
@@ -1863,10 +1863,10 @@ export const KnowledgeBasePage: React.FC = () => {
       {/* CREATE / EDIT STRATEGY MODAL */}
       {showStrategyModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="card-panel max-w-2xl w-full space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h2 className="text-base font-bold text-white font-mono flex items-center gap-2">
-                <Compass className="h-4 w-4 text-cyan-400" />
+                <Compass className="h-4 w-4 text-indigo-400" />
                 <span>{stratForm.id ? 'Edit Strategy' : 'Create New Algorithmic Strategy'}</span>
               </h2>
               <button
@@ -1887,7 +1887,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     value={stratForm.name}
                     onChange={(e) => setStratForm({ ...stratForm, name: e.target.value })}
                     placeholder="e.g. Mean Reversion Scalper"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
 
@@ -1896,7 +1896,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   <select
                     value={stratForm.type}
                     onChange={(e) => setStratForm({ ...stratForm, type: e.target.value as any })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:border-cyan-500"
+                    className="input-control w-full"
                   >
                     <option value="RSI_REVERSAL">RSI Reversal (Oversold/Overbought Bounce)</option>
                     <option value="EMA_CROSSOVER">EMA Trend Crossover (Fast vs Slow)</option>
@@ -1914,7 +1914,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   value={stratForm.description}
                   onChange={(e) => setStratForm({ ...stratForm, description: e.target.value })}
                   placeholder="Explain how entry signals are triggered..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:border-cyan-500"
+                  className="input-control w-full"
                 />
               </div>
 
@@ -1927,7 +1927,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     value={stratForm.symbol}
                     onChange={(e) => setStratForm({ ...stratForm, symbol: e.target.value })}
                     placeholder="EURUSD, XAUUSD, BTCUSD..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
 
@@ -1936,7 +1936,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   <select
                     value={stratForm.timeframe}
                     onChange={(e) => setStratForm({ ...stratForm, timeframe: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:border-cyan-500"
+                    className="input-control w-full"
                   >
                     <option value="M1">M1 (1 Minute)</option>
                     <option value="M5">M5 (5 Minutes)</option>
@@ -1953,7 +1953,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   <select
                     value={stratForm.status}
                     onChange={(e) => setStratForm({ ...stratForm, status: e.target.value as any })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:border-cyan-500"
+                    className="input-control w-full"
                   >
                     <option value="active">Active</option>
                     <option value="draft">Draft</option>
@@ -1969,7 +1969,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     type="number"
                     value={stratForm.rsiOversold}
                     onChange={(e) => setStratForm({ ...stratForm, rsiOversold: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-white focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
                 <div>
@@ -1978,7 +1978,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     type="number"
                     value={stratForm.rsiOverbought}
                     onChange={(e) => setStratForm({ ...stratForm, rsiOverbought: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-white focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
                 <div>
@@ -1987,7 +1987,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     type="number"
                     value={stratForm.fastEmaPeriod}
                     onChange={(e) => setStratForm({ ...stratForm, fastEmaPeriod: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-white focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
                 <div>
@@ -1996,7 +1996,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     type="number"
                     value={stratForm.slowEmaPeriod}
                     onChange={(e) => setStratForm({ ...stratForm, slowEmaPeriod: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-white focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
               </div>
@@ -2008,7 +2008,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     type="number"
                     value={stratForm.stopLossPoints}
                     onChange={(e) => setStratForm({ ...stratForm, stopLossPoints: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-white focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
                 <div>
@@ -2017,7 +2017,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     type="number"
                     value={stratForm.takeProfitPoints}
                     onChange={(e) => setStratForm({ ...stratForm, takeProfitPoints: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-white focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
                 <div>
@@ -2027,7 +2027,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     step="0.01"
                     value={stratForm.lotSize}
                     onChange={(e) => setStratForm({ ...stratForm, lotSize: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-white focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
                 <div>
@@ -2036,7 +2036,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     type="number"
                     value={stratForm.maxHoldBars}
                     onChange={(e) => setStratForm({ ...stratForm, maxHoldBars: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-white focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
               </div>
@@ -2048,7 +2048,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   value={stratForm.tags}
                   onChange={(e) => setStratForm({ ...stratForm, tags: e.target.value })}
                   placeholder="RSI, Reversal, LondonSession"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:border-cyan-500"
+                  className="input-control w-full"
                 />
               </div>
 
@@ -2056,13 +2056,13 @@ export const KnowledgeBasePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowStrategyModal(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                  className="btn btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition-colors"
+                  className="btn btn-primary"
                 >
                   Save Strategy
                 </button>
@@ -2075,10 +2075,10 @@ export const KnowledgeBasePage: React.FC = () => {
       {/* RECORD OBSERVATION MODAL */}
       {showObsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+          <div className="card-panel max-w-lg w-full space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h2 className="text-base font-bold text-white font-mono flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-cyan-400" />
+                <BookOpen className="h-4 w-4 text-indigo-400" />
                 <span>Log Market Observation</span>
               </h2>
               <button
@@ -2098,7 +2098,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   value={obsForm.title}
                   onChange={(e) => setObsForm({ ...obsForm, title: e.target.value })}
                   placeholder="e.g. Spread Widening During Asian Session Roll"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:border-cyan-500"
+                  className="input-control w-full"
                 />
               </div>
 
@@ -2107,7 +2107,7 @@ export const KnowledgeBasePage: React.FC = () => {
                 <select
                   value={obsForm.category}
                   onChange={(e) => setObsForm({ ...obsForm, category: e.target.value as any })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:border-cyan-500"
+                  className="input-control w-full"
                 >
                   <option value="market_insight">Market Insight</option>
                   <option value="pattern">Chart / Price Action Pattern</option>
@@ -2125,7 +2125,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     value={obsForm.symbol}
                     onChange={(e) => setObsForm({ ...obsForm, symbol: e.target.value })}
                     placeholder="EURUSD, Boom 1000..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
 
@@ -2136,7 +2136,7 @@ export const KnowledgeBasePage: React.FC = () => {
                     value={obsForm.timeframe}
                     onChange={(e) => setObsForm({ ...obsForm, timeframe: e.target.value })}
                     placeholder="M1, M5, H1..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:border-cyan-500"
+                    className="input-control w-full"
                   />
                 </div>
               </div>
@@ -2149,7 +2149,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   value={obsForm.content}
                   onChange={(e) => setObsForm({ ...obsForm, content: e.target.value })}
                   placeholder="Detail the market phenomenon, pattern behavior, or anomaly detected..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:border-cyan-500"
+                  className="input-control w-full"
                 />
               </div>
 
@@ -2160,7 +2160,7 @@ export const KnowledgeBasePage: React.FC = () => {
                   value={obsForm.tags}
                   onChange={(e) => setObsForm({ ...obsForm, tags: e.target.value })}
                   placeholder="Spread, AsianSession, LondonFix"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:border-cyan-500"
+                  className="input-control w-full"
                 />
               </div>
 
@@ -2168,13 +2168,13 @@ export const KnowledgeBasePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowObsModal(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                  className="btn btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition-colors"
+                  className="btn btn-primary"
                 >
                   Save Observation
                 </button>

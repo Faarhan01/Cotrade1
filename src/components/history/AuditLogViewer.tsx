@@ -25,10 +25,10 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ logs }) => {
   });
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+    <div className="card-panel space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
         <div className="flex items-center gap-2">
-          <Clock className="h-5 w-5 text-cyan-400" />
+          <Clock className="h-5 w-5 text-indigo-400" />
           <div>
             <h2 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
               Trade Execution & AI Audit Trail
@@ -48,14 +48,14 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ logs }) => {
               placeholder="Search ticket / symbol..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs font-mono text-white focus:border-cyan-500 focus:outline-none w-44"
+              className="input-control"
             />
           </div>
 
           <select
             value={filterLevel}
             onChange={(e) => setFilterLevel(e.target.value)}
-            className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-300 focus:border-cyan-500 focus:outline-none"
+            className="input-control"
           >
             <option value="all">All Levels</option>
             <option value="trade">Trades Only</option>
@@ -80,7 +80,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ logs }) => {
             return (
               <div
                 key={log.id}
-                className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 transition-colors flex items-start gap-3 text-xs font-mono"
+                className="card-panel hover:border-slate-700 transition-colors flex items-start gap-3 text-xs font-mono"
               >
                 <div className="mt-0.5">
                   {isTrade ? (
@@ -90,7 +90,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ logs }) => {
                   ) : isWarn ? (
                     <AlertTriangle className="h-4 w-4 text-amber-400" />
                   ) : (
-                    <Info className="h-4 w-4 text-cyan-400" />
+                    <Info className="h-4 w-4 text-indigo-400" />
                   )}
                 </div>
 
@@ -113,7 +113,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ logs }) => {
                       Source: {log.source}
                     </span>
                     {log.ticket && (
-                      <span className="px-1.5 py-0.2 rounded bg-slate-900 border border-slate-800 text-cyan-300">
+                      <span className="px-1.5 py-0.2 rounded bg-slate-900 border border-slate-800 text-indigo-300">
                         Ticket #{log.ticket}
                       </span>
                     )}
