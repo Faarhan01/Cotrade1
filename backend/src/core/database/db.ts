@@ -74,6 +74,7 @@ export async function dbPruneDatabase(): Promise<{
 
     // 5. Cap candles history (keep last 2,000 candles)
     await db.execute(`DELETE FROM candles_history WHERE id NOT IN (SELECT id FROM candles_history ORDER BY time DESC LIMIT 2000)`);
+    await db.execute(`DELETE FROM synthetic_candles WHERE id NOT IN (SELECT id FROM synthetic_candles ORDER BY time DESC LIMIT 2000)`);
 
     // 6. Cap audit logs (keep last 500 logs)
     await db.execute(`DELETE FROM audit_logs WHERE timestamp < ? OR id NOT IN (SELECT id FROM audit_logs ORDER BY timestamp DESC LIMIT 500)`, [sevenDaysAgo]);
@@ -103,10 +104,10 @@ export async function dbInsertOrder(order: any) {
   const db = await getDatabaseAdapter();
   const stmt = db.prepare(`
     INSERT OR REPLACE INTO orders (
-      id, action, symbol, order_type, volume, price, sl, tp, ticket, magic, comment,
+      id, action, symbol, order_type, volume, price, stop_limit_price, type_time, expiration, type_filling, deviation, sl, tp, ticket, magic, comment,
       status, source, deal_ticket, execution_price, execution_time_ms, error_code,
       error_message, created_at, executed_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   try {
@@ -117,6 +118,11 @@ export async function dbInsertOrder(order: any) {
       order.orderType || null,
       order.volume != null ? order.volume : null,
       order.price != null ? order.price : null,
+      order.stopLimitPrice != null ? order.stopLimitPrice : null,
+      order.typeTime || null,
+      order.expiration != null ? order.expiration : null,
+      order.typeFilling || null,
+      order.deviation != null ? order.deviation : null,
       order.sl != null ? order.sl : null,
       order.tp != null ? order.tp : null,
       order.ticket || null,
@@ -202,6 +208,35 @@ export async function dbInsertCandles(symbol: string, timeframe: string, candles
   }
 }
 
+export async function dbInsertSyntheticCandles(symbol: string, timeframe: string, candles: CandleData[]) {
+  if (!candles || candles.length === 0) return;
+  const db = await getDatabaseAdapter();
+  const stmt = db.prepare(`
+    INSERT OR REPLACE INTO synthetic_candles (
+      symbol, timeframe, time, open, high, low, close, volume, time_iso
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  try {
+    for (const candle of candles) {
+      const timeIso = candle.timeIso || new Date(candle.time * 1000).toISOString();
+      stmt.run(safeParams([
+        symbol ? symbol.trim() : 'EURUSD',
+        timeframe ? timeframe.trim() : 'M1',
+        candle.time || 0,
+        candle.open ?? 0,
+        candle.high ?? 0,
+        candle.low ?? 0,
+        candle.close ?? 0,
+        candle.volume ?? 0,
+        timeIso,
+      ]));
+    }
+  } finally {
+    stmt.finalize();
+  }
+}
+
 // 4. Ticks History
 export async function dbInsertTicks(ticks: TickData[]) {
   if (!ticks || !Array.isArray(ticks) || ticks.length === 0) return;
@@ -209,7 +244,12 @@ export async function dbInsertTicks(ticks: TickData[]) {
     const db = await getDatabaseAdapter();
     const stmt = db.prepare(`
       INSERT INTO ticks_history (symbol, bid, ask, last, volume, spread, timestamp, time_msc, flags, time_iso)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      WHERE NOT EXISTS (
+        SELECT 1 FROM ticks_history
+        WHERE symbol = ? AND bid = ? AND ask = ? AND last = ? AND volume = ?
+          AND spread = ? AND timestamp = ? AND time_msc = ? AND flags = ?
+      )
     `);
 
     try {
@@ -230,7 +270,7 @@ export async function dbInsertTicks(ticks: TickData[]) {
         const volume = Number(t.volume ?? t.volumeReal ?? 1) || 1;
         const flags = Number(t.flags ?? 0) || 0;
 
-        stmt.run(safeParams([
+        const tickRow = [
           t.symbol ? t.symbol.trim() : 'EURUSD',
           t.bid ?? 0,
           t.ask ?? 0,
@@ -241,7 +281,8 @@ export async function dbInsertTicks(ticks: TickData[]) {
           timeMsc,
           flags,
           timeIso,
-        ]));
+        ];
+        stmt.run(safeParams([...tickRow, ...tickRow.slice(0, 9)]));
       }
     } finally {
       stmt.finalize();
@@ -258,7 +299,7 @@ export async function dbGetCandles(symbol: string, timeframe: string, limit = 10
     SELECT time, open, high, low, close, volume, time_iso
     FROM candles_history
     WHERE symbol = ? COLLATE NOCASE AND timeframe = ? COLLATE NOCASE
-    ORDER BY time ASC
+    ORDER BY time DESC
     LIMIT ?
   `;
   const res = await db.query(sql, [symbol?.trim() || 'EURUSD', timeframe?.trim() || 'M1', limit]);
@@ -272,7 +313,27 @@ export async function dbGetCandles(symbol: string, timeframe: string, limit = 10
     close: Number(r.close),
     volume: Number(r.volume),
     timeIso: String(r.time_iso),
-  }));
+  })).reverse();
+}
+
+export async function dbGetSyntheticCandles(symbol: string, timeframe: string, limit = 100): Promise<CandleData[]> {
+  const db = await getDatabaseAdapter();
+  const rows = await db.query(`
+    SELECT time, open, high, low, close, volume, time_iso
+    FROM synthetic_candles
+    WHERE symbol = ? COLLATE NOCASE AND timeframe = ? COLLATE NOCASE
+    ORDER BY time DESC
+    LIMIT ?
+  `, [symbol?.trim() || 'EURUSD', timeframe?.trim() || 'M1', limit]);
+  return rows.map((row: any) => ({
+    time: Number(row.time),
+    open: Number(row.open),
+    high: Number(row.high),
+    low: Number(row.low),
+    close: Number(row.close),
+    volume: Number(row.volume),
+    timeIso: String(row.time_iso),
+  })).reverse();
 }
 
 // 6. Query Ticks History
@@ -782,8 +843,9 @@ export async function dbSaveBacktestResult(result: any): Promise<void> {
       final_equity, net_profit, profit_factor, win_rate_pct, total_trades,
       winning_trades, losing_trades, max_drawdown_pct, max_drawdown_usd,
       average_trade_profit, average_win, average_loss, risk_reward_ratio,
+      profit_currency, valuation_source, data_source,
       trades_json, equity_curve_json, evaluated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   try {
@@ -812,6 +874,9 @@ export async function dbSaveBacktestResult(result: any): Promise<void> {
       result.averageWin,
       result.averageLoss,
       result.riskRewardRatio,
+      result.profitCurrency || 'EST',
+      result.valuationSource || 'LEGACY_ESTIMATE',
+      result.dataSource || null,
       JSON.stringify(result.trades || []),
       JSON.stringify(result.equityCurve || []),
       result.evaluatedAt || Date.now(),
@@ -862,6 +927,9 @@ export async function dbGetBacktestResults(strategyId?: string, limit = 50): Pro
       averageWin: row.average_win,
       averageLoss: row.average_loss,
       riskRewardRatio: row.risk_reward_ratio,
+      profitCurrency: row.profit_currency || 'EST',
+      valuationSource: row.valuation_source || 'LEGACY_ESTIMATE',
+      dataSource: row.data_source || undefined,
       trades: row.trades_json ? JSON.parse(row.trades_json) : [],
       equityCurve: row.equity_curve_json ? JSON.parse(row.equity_curve_json) : [],
       evaluatedAt: row.evaluated_at,
@@ -1049,14 +1117,8 @@ export async function dbSaveBotExecution(exec: any): Promise<void> {
   );
 }
 
-export async function dbGetBotExecutions(botId?: string, limit = 100): Promise<any[]> {
-  const db = await getDatabaseAdapter();
-  const sql = botId
-    ? `SELECT * FROM bot_executions WHERE bot_id = ? ORDER BY opened_at DESC LIMIT ?`
-    : `SELECT * FROM bot_executions ORDER BY opened_at DESC LIMIT ?`;
-  const params = botId ? [botId, limit] : [limit];
-  const rows = await db.query(sql, params);
-  return rows.map((r: any) => ({
+function mapBotExecutionRow(r: any) {
+  return {
     id: r.id,
     botId: r.bot_id,
     symbol: r.symbol,
@@ -1075,7 +1137,59 @@ export async function dbGetBotExecutions(botId?: string, limit = 100): Promise<a
     closedAt: r.closed_at,
     reason: r.reason,
     magicNumber: r.magic_number,
-  }));
+  };
+}
+
+export async function dbGetBotExecutionById(id: string): Promise<any | null> {
+  const db = await getDatabaseAdapter();
+  const rows = await db.query(`SELECT * FROM bot_executions WHERE id = ? LIMIT 1`, [id]);
+  return rows.length ? mapBotExecutionRow(rows[0]) : null;
+}
+
+export async function dbGetOpenPaperBotExecutions(): Promise<any[]> {
+  const db = await getDatabaseAdapter();
+  const rows = await db.query(
+    `SELECT * FROM bot_executions WHERE status = 'OPEN' AND execution_mode IN ('PAPER', 'DRY_RUN') ORDER BY opened_at ASC`
+  );
+  return rows.map(mapBotExecutionRow);
+}
+
+export async function dbGetBotExecutionStats(botId: string): Promise<{
+  tradesExecuted: number;
+  winningTrades: number;
+  losingTrades: number;
+  realizedPnl: number;
+  lastExecutionTime: number;
+}> {
+  const db = await getDatabaseAdapter();
+  const rows = await db.query(
+    `SELECT
+       SUM(CASE WHEN status IN ('OPEN', 'CLOSED') THEN 1 ELSE 0 END) AS trades_executed,
+       SUM(CASE WHEN status = 'CLOSED' AND pnl > 0 THEN 1 ELSE 0 END) AS winning_trades,
+       SUM(CASE WHEN status = 'CLOSED' AND pnl < 0 THEN 1 ELSE 0 END) AS losing_trades,
+       SUM(CASE WHEN status = 'CLOSED' THEN COALESCE(pnl, 0) ELSE 0 END) AS realized_pnl,
+       MAX(opened_at) AS last_execution_time
+     FROM bot_executions WHERE bot_id = ?`,
+    [botId]
+  );
+  const stats = rows[0] || {};
+  return {
+    tradesExecuted: Number(stats.trades_executed) || 0,
+    winningTrades: Number(stats.winning_trades) || 0,
+    losingTrades: Number(stats.losing_trades) || 0,
+    realizedPnl: Number(stats.realized_pnl) || 0,
+    lastExecutionTime: Number(stats.last_execution_time) || 0,
+  };
+}
+
+export async function dbGetBotExecutions(botId?: string, limit = 100): Promise<any[]> {
+  const db = await getDatabaseAdapter();
+  const sql = botId
+    ? `SELECT * FROM bot_executions WHERE bot_id = ? ORDER BY opened_at DESC LIMIT ?`
+    : `SELECT * FROM bot_executions ORDER BY opened_at DESC LIMIT ?`;
+  const params = botId ? [botId, limit] : [limit];
+  const rows = await db.query(sql, params);
+  return rows.map(mapBotExecutionRow);
 }
 
 export async function dbSaveBotLog(log: any): Promise<void> {
@@ -1265,14 +1379,15 @@ export async function dbSearchObservations(query: string): Promise<any[]> {
 // ==========================================
 
 export async function dbExportAllData(): Promise<any> {
-  const [strategies, observations, backtests, bots, journal, risk] = await Promise.all([
+  const { tradeStore } = await import('@services/tradeStore');
+  const [strategies, observations, backtests, bots, journal] = await Promise.all([
     dbGetStrategies(),
     dbGetObservations(),
     dbGetBacktestResults(undefined, 100),
     dbGetBots(),
     dbGetJournalEntries(100),
-    dbGetRiskSettings(),
   ]);
+  const risk = tradeStore.getRiskGuard();
 
   return {
     version: '2.5.0',

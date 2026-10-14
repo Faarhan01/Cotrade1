@@ -1,1 +1,1 @@
-export * from './strategyController';
+export * from '@/features/strategies/strategyController.ts';

@@ -1,1 +1,1 @@
-export * from './mcpController';
+export * from '@/features/mcp/mcpController.ts';

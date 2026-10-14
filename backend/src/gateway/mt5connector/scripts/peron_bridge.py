@@ -87,6 +87,41 @@ TIMEFRAMES = {
     "MN1": 1 | 0xC000,
 }
 
+
+def resolve_filling_policy(mt5_module, symbol_info, order_type, is_pending, requested=""):
+    filling_modes = {
+        "FOK": (mt5_module.ORDER_FILLING_FOK, 1),
+        "IOC": (mt5_module.ORDER_FILLING_IOC, 2),
+        "RETURN": (mt5_module.ORDER_FILLING_RETURN, None),
+        "BOC": (getattr(mt5_module, "ORDER_FILLING_BOC", 3), 4),
+    }
+    requested = str(requested or "").upper()
+    mode = int(getattr(symbol_info, "filling_mode", 0)) if symbol_info else 0
+    execution = int(getattr(symbol_info, "trade_exemode", getattr(mt5_module, "SYMBOL_TRADE_EXECUTION_MARKET", 2))) if symbol_info else getattr(mt5_module, "SYMBOL_TRADE_EXECUTION_MARKET", 2)
+    market_execution = getattr(mt5_module, "SYMBOL_TRADE_EXECUTION_MARKET", 2)
+
+    if requested:
+        if requested not in filling_modes:
+            return None, f"Unsupported filling policy: {requested}"
+        value, flag = filling_modes[requested]
+        if flag is not None and not mode & flag:
+            return None, f"{requested} filling is not supported for this symbol."
+        if requested == "BOC" and (not is_pending or order_type not in ("BUY_LIMIT", "SELL_LIMIT")):
+            return None, "BOC filling is only valid for pending limit orders."
+        if requested == "RETURN" and not is_pending and execution == market_execution:
+            return None, "RETURN filling is not allowed for market-execution deals."
+        return value, None
+
+    if is_pending:
+        return mt5_module.ORDER_FILLING_RETURN, None
+    if mode & 2:
+        return mt5_module.ORDER_FILLING_IOC, None
+    if mode & 1:
+        return mt5_module.ORDER_FILLING_FOK, None
+    if execution != market_execution:
+        return mt5_module.ORDER_FILLING_RETURN, None
+    return None, "The broker exposes no valid filling policy for this market-execution symbol."
+
 class MT5Engine:
     def __init__(self):
         self.connected = False
@@ -172,6 +207,20 @@ class MT5Engine:
                         "build": info.build,
                         "connected": info.connected,
                         "tradeAllowed": info.trade_allowed,
+                        "tradeApiDisabled": bool(getattr(info, "tradeapi_disabled", False)),
+                        "dllsAllowed": bool(getattr(info, "dlls_allowed", False)),
+                        "emailEnabled": bool(getattr(info, "email_enabled", False)),
+                        "ftpEnabled": bool(getattr(info, "ftp_enabled", False)),
+                        "notificationsEnabled": bool(getattr(info, "notifications_enabled", False)),
+                        "communityAccount": bool(getattr(info, "community_account", False)),
+                        "maxBars": int(getattr(info, "maxbars", 0)),
+                        "pingLast": int(getattr(info, "ping_last", 0)),
+                        "communityConnection": bool(getattr(info, "community_connection", False)),
+                        "communityBalance": float(getattr(info, "community_balance", 0.0)),
+                        "retransmission": float(getattr(info, "retransmission", 0.0)),
+                        "mqid": bool(getattr(info, "mqid", False)),
+                        "codepage": int(getattr(info, "codepage", 0)),
+                        "language": getattr(info, "language", ""),
                         "path": getattr(info, "path", ""),
                         "data_path": getattr(info, "data_path", ""),
                         "commondata_path": getattr(info, "commondata_path", ""),
@@ -209,12 +258,26 @@ class MT5Engine:
                         "margin": round(float(acc.margin), 2),
                         "freeMargin": round(float(acc.margin_free), 2),
                         "marginLevel": round(float(acc.margin_level), 2),
+                        "marginCallLevel": round(float(getattr(acc, "margin_so_call", 0.0)), 2),
+                        "stopOutLevel": round(float(getattr(acc, "margin_so_so", 0.0)), 2),
+                        "marginStopOutMode": int(getattr(acc, "margin_so_mode", 0)),
+                        "marginMode": int(getattr(acc, "margin_mode", 0)),
                         "leverage": int(acc.leverage),
                         "currency": acc.currency,
                         "server": acc.server,
                         "company": acc.company,
                         "profit": round(float(acc.profit), 2),
+                        "assets": round(float(getattr(acc, "assets", 0.0)), 2),
+                        "liabilities": round(float(getattr(acc, "liabilities", 0.0)), 2),
+                        "commissionBlocked": round(float(getattr(acc, "commission_blocked", 0.0)), 2),
                         "lastUpdate": int(time.time() * 1000),
+                        "tradeModeCode": int(getattr(acc, "trade_mode", 0)),
+                        "credit": round(float(getattr(acc, "credit", 0.0)), 2),
+                        "limitOrders": int(getattr(acc, "limit_orders", 0)),
+                        "tradeAllowed": bool(getattr(acc, "trade_allowed", False)),
+                        "tradeExpert": bool(getattr(acc, "trade_expert", False)),
+                        "fifoClose": bool(getattr(acc, "fifo_close", False)),
+                        "currencyDigits": int(getattr(acc, "currency_digits", 2)),
                     }
             except Exception:
                 pass
@@ -226,26 +289,7 @@ class MT5Engine:
             try:
                 symbols = mt5.symbols_get(group=group) if group else mt5.symbols_get()
                 if symbols:
-                    res = []
-                    for s in symbols:
-                        s_digits = int(getattr(s, "digits", 5))
-                        s_point = float(getattr(s, "point", 10 ** (-s_digits)))
-                        res.append({
-                            "symbol": s.name,
-                            "digits": s_digits,
-                            "spread": int(getattr(s, "spread", 0)),
-                            "point": s_point,
-                            "description": s.description or s.name,
-                            "tradeMode": int(getattr(s, "trade_mode", 4)),
-                            "minLot": float(getattr(s, "volume_min", 0.01)),
-                            "maxLot": float(getattr(s, "volume_max", 100.0)),
-                            "lotStep": float(getattr(s, "volume_step", 0.01)),
-                            "contractSize": float(getattr(s, "trade_contract_size", 100000.0)),
-                            "tradeAllowed": int(getattr(s, "trade_mode", 4)) > 0,
-                            "bid": float(getattr(s, "bid", 0.0)),
-                            "ask": float(getattr(s, "ask", 0.0)),
-                        })
-                    return res
+                    return [self._serialize_symbol_info(symbol) for symbol in symbols]
             except Exception:
                 pass
         # Disconnected -> Return empty list (NO fake symbols)
@@ -291,7 +335,7 @@ class MT5Engine:
         # Disconnected -> Return empty list (NO fake ticks)
         return []
 
-    def get_candles(self, symbol, timeframe="M1", count=100, date_from=None, date_to=None):
+    def get_candles(self, symbol, timeframe="M1", count=100, date_from=None, date_to=None, start_pos=0):
         if HAVE_NATIVE_MT5 and mt5 is not None:
             try:
                 tf_code = TIMEFRAMES.get(timeframe, 1)
@@ -302,12 +346,12 @@ class MT5Engine:
                 except Exception:
                     pass
 
-                if date_from and date_to:
+                if date_from is not None and date_to is not None:
                     rates = mt5.copy_rates_range(symbol, tf_code, int(date_from), int(date_to))
-                elif date_from:
+                elif date_from is not None:
                     rates = mt5.copy_rates_from(symbol, tf_code, int(date_from), int(count))
                 else:
-                    rates = mt5.copy_rates_from_pos(symbol, tf_code, 0, int(count))
+                    rates = mt5.copy_rates_from_pos(symbol, tf_code, max(0, int(start_pos)), int(count))
 
                 if rates is not None and len(rates) > 0:
                     candles = []
@@ -328,7 +372,7 @@ class MT5Engine:
         # Disconnected -> Return empty list (NO fake candles)
         return []
 
-    def get_ticks_history(self, symbol, date_from=None, date_to=None, count=1000):
+    def get_ticks_history(self, symbol, date_from=None, date_to=None, count=1000, flags="ALL"):
         if HAVE_NATIVE_MT5 and mt5 is not None:
             try:
                 try:
@@ -336,15 +380,16 @@ class MT5Engine:
                 except Exception:
                     pass
                 ticks = None
-                flag_all = getattr(mt5, "COPY_TICKS_ALL", -1)
+                flag_name = "COPY_TICKS_" + str(flags).upper()
+                tick_flags = getattr(mt5, flag_name, getattr(mt5, "COPY_TICKS_ALL", -1))
                 if date_from and date_to:
-                    ticks = mt5.copy_ticks_range(symbol, int(date_from), int(date_to), flag_all)
+                    ticks = mt5.copy_ticks_range(symbol, int(date_from), int(date_to), tick_flags)
                 elif date_from:
-                    ticks = mt5.copy_ticks_from(symbol, int(date_from), int(count), flag_all)
+                    ticks = mt5.copy_ticks_from(symbol, int(date_from), int(count), tick_flags)
                 else:
                     now_sec = int(time.time())
                     from_sec = now_sec - 86400  # past 24 hours
-                    ticks = mt5.copy_ticks_from(symbol, from_sec, int(count), flag_all)
+                    ticks = mt5.copy_ticks_from(symbol, from_sec, int(count), tick_flags)
 
                 if ticks is not None and len(ticks) > 0:
                     res = []
@@ -376,10 +421,15 @@ class MT5Engine:
                 return {"success": False, "message": str(e)}
         return {"success": False, "message": "MetaTrader 5 terminal not connected"}
 
-    def get_positions(self, symbol=None):
+    def get_positions(self, symbol=None, ticket=None):
         if HAVE_NATIVE_MT5 and mt5 is not None:
             try:
-                raw_positions = mt5.positions_get(symbol=symbol) if symbol else mt5.positions_get()
+                if ticket is not None:
+                    raw_positions = mt5.positions_get(ticket=int(ticket))
+                elif symbol:
+                    raw_positions = mt5.positions_get(symbol=symbol)
+                else:
+                    raw_positions = mt5.positions_get()
                 if raw_positions is not None:
                     res = []
                     for p in raw_positions:
@@ -398,16 +448,27 @@ class MT5Engine:
                             "magic": int(p.magic),
                             "comment": p.comment or "",
                             "openTime": int(p.time),
+                            "openTimeMsc": int(getattr(p, "time_msc", 0)),
+                            "updateTime": int(getattr(p, "time_update", 0)),
+                            "updateTimeMsc": int(getattr(p, "time_update_msc", 0)),
+                            "identifier": int(getattr(p, "identifier", p.ticket)),
+                            "reason": int(getattr(p, "reason", 0)),
+                            "externalId": getattr(p, "external_id", "") or "",
                         })
                     return res
             except Exception:
                 pass
         return []
 
-    def get_orders(self, symbol=None):
+    def get_orders(self, symbol=None, ticket=None):
         if HAVE_NATIVE_MT5 and mt5 is not None:
             try:
-                raw_orders = mt5.orders_get(symbol=symbol) if symbol else mt5.orders_get()
+                if ticket is not None:
+                    raw_orders = mt5.orders_get(ticket=int(ticket))
+                elif symbol:
+                    raw_orders = mt5.orders_get(symbol=symbol)
+                else:
+                    raw_orders = mt5.orders_get()
                 if raw_orders is not None:
                     ORDER_TYPE_NAMES = {
                         2: "BUY_LIMIT",
@@ -428,8 +489,21 @@ class MT5Engine:
                             "sl": float(o.sl),
                             "tp": float(o.tp),
                             "timeSetup": int(o.time_setup),
+                            "timeSetupMsc": int(getattr(o, "time_setup_msc", 0)),
+                            "timeDone": int(getattr(o, "time_done", 0)),
+                            "timeDoneMsc": int(getattr(o, "time_done_msc", 0)),
+                            "expiration": int(getattr(o, "time_expiration", 0)),
+                            "typeTime": int(getattr(o, "type_time", 0)),
+                            "typeFilling": int(getattr(o, "type_filling", 0)),
+                            "state": int(getattr(o, "state", 0)),
+                            "reason": int(getattr(o, "reason", 0)),
+                            "positionId": int(getattr(o, "position_id", 0)),
+                            "positionById": int(getattr(o, "position_by_id", 0)),
+                            "volumeCurrent": float(getattr(o, "volume_current", o.volume_initial)),
+                            "stopLimitPrice": float(getattr(o, "price_stoplimit", 0.0)),
                             "magic": int(o.magic),
                             "comment": o.comment or "",
+                            "externalId": getattr(o, "external_id", "") or "",
                         })
                     return res
             except Exception:
@@ -446,6 +520,18 @@ class MT5Engine:
         symbol = params.get("symbol")
         order_type_str = str(params.get("orderType", "BUY")).strip()
         norm_ot = order_type_str.upper()
+        ORDER_MAPPINGS = {
+            "BUY": (mt5.TRADE_ACTION_DEAL, mt5.ORDER_TYPE_BUY),
+            "SELL": (mt5.TRADE_ACTION_DEAL, mt5.ORDER_TYPE_SELL),
+            "BUY_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_BUY_LIMIT),
+            "SELL_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_SELL_LIMIT),
+            "BUY_STOP": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_BUY_STOP),
+            "SELL_STOP": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_SELL_STOP),
+            "BUY_STOP_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_BUY_STOP_LIMIT),
+            "SELL_STOP_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_SELL_STOP_LIMIT),
+        }
+        if norm_ot not in ORDER_MAPPINGS:
+            return {"success": False, "message": f"Unsupported order type: {norm_ot}"}
         volume = float(params.get("volume", 0.01))
         sl = float(params.get("sl", 0.0))
         tp = float(params.get("tp", 0.0))
@@ -461,34 +547,34 @@ class MT5Engine:
         if not tick:
             return {"success": False, "message": f"No market tick available for symbol '{symbol}'"}
 
-        ORDER_MAPPINGS = {
-            "BUY": (mt5.TRADE_ACTION_DEAL, mt5.ORDER_TYPE_BUY),
-            "SELL": (mt5.TRADE_ACTION_DEAL, mt5.ORDER_TYPE_SELL),
-            "BUY_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_BUY_LIMIT),
-            "SELL_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_SELL_LIMIT),
-            "BUY_STOP": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_BUY_STOP),
-            "SELL_STOP": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_SELL_STOP),
-            "BUY_STOP_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_BUY_STOP_LIMIT),
-            "SELL_STOP_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_SELL_STOP_LIMIT),
-        }
-        trade_action, order_type_val = ORDER_MAPPINGS.get(norm_ot, (mt5.TRADE_ACTION_DEAL, mt5.ORDER_TYPE_BUY))
+        trade_action, order_type_val = ORDER_MAPPINGS[norm_ot]
+        is_pending = trade_action == mt5.TRADE_ACTION_PENDING
+        if is_pending and params.get("price") is None:
+            return {"success": False, "message": "Pending orders require a trigger/entry price."}
+        if norm_ot in ("BUY_STOP_LIMIT", "SELL_STOP_LIMIT") and params.get("stopLimitPrice") is None:
+            return {"success": False, "message": "Stop-limit orders require a stopLimitPrice."}
 
-        if trade_action == mt5.TRADE_ACTION_PENDING and params.get("price") is not None:
+        if is_pending:
             price = float(params.get("price"))
         else:
             price = tick.ask if "BUY" in norm_ot else tick.bid
 
-        # Dynamically determine broker supported filling mode
-        filling_type = mt5.ORDER_FILLING_IOC
         sym_info = mt5.symbol_info(symbol)
-        if sym_info:
-            mode = getattr(sym_info, "filling_mode", 0)
-            if mode & 2:
-                filling_type = mt5.ORDER_FILLING_IOC
-            elif mode & 1:
-                filling_type = mt5.ORDER_FILLING_FOK
-            elif mode & 4:
-                filling_type = mt5.ORDER_FILLING_RETURN
+        filling_type, filling_error = resolve_filling_policy(mt5, sym_info, norm_ot, is_pending, params.get("typeFilling"))
+        if filling_error:
+            return {"success": False, "message": filling_error}
+
+        type_time_names = {
+            "GTC": mt5.ORDER_TIME_GTC,
+            "DAY": mt5.ORDER_TIME_DAY,
+            "SPECIFIED": mt5.ORDER_TIME_SPECIFIED,
+            "SPECIFIED_DAY": mt5.ORDER_TIME_SPECIFIED_DAY,
+        }
+        type_time_name = str(params.get("typeTime", "GTC")).upper()
+        if type_time_name not in type_time_names:
+            return {"success": False, "message": f"Unsupported order time policy: {type_time_name}"}
+        if type_time_name in ("SPECIFIED", "SPECIFIED_DAY") and params.get("expiration") is None:
+            return {"success": False, "message": f"{type_time_name} order time requires an expiration timestamp."}
 
         request = {
             "action": trade_action,
@@ -498,12 +584,16 @@ class MT5Engine:
             "price": price,
             "sl": sl,
             "tp": tp,
-            "deviation": int(params.get("deviation", 20)),
+            "deviation": max(0, int(params.get("deviation", 20))),
             "magic": magic,
             "comment": comment,
-            "type_time": mt5.ORDER_TIME_GTC,
+            "type_time": type_time_names[type_time_name],
             "type_filling": filling_type,
         }
+        if is_pending and params.get("stopLimitPrice") is not None:
+            request["stoplimit"] = float(params["stopLimitPrice"])
+        if type_time_name in ("SPECIFIED", "SPECIFIED_DAY") and params.get("expiration") is not None:
+            request["expiration"] = int(params["expiration"])
 
         try:
             result = mt5.order_send(request)
@@ -511,9 +601,11 @@ class MT5Engine:
                 err = mt5.last_error()
                 return {"success": False, "message": f"MT5 order_send returned None: {err}"}
 
-            success = (result.retcode == mt5.TRADE_RETCODE_DONE)
+            placed_code = getattr(mt5, "TRADE_RETCODE_PLACED", 10008)
+            success = result.retcode in (mt5.TRADE_RETCODE_DONE, placed_code)
             return {
                 "success": success,
+                "status": "PLACED" if is_pending and result.retcode == placed_code else "EXECUTED" if success else "REJECTED",
                 "ticket": result.order,
                 "dealTicket": result.deal,
                 "executionPrice": result.price,
@@ -779,14 +871,71 @@ class MT5Engine:
                 pass
         return None
 
-    def get_history_deals(self, date_from=None, date_to=None, count=100):
+    def _serialize_symbol_info(self, info):
+        trade_mode = int(getattr(info, "trade_mode", 0))
+        trade_mode_names = {0: "DISABLED", 1: "LONG_ONLY", 2: "SHORT_ONLY", 3: "CLOSE_ONLY", 4: "FULL"}
+        digits = int(getattr(info, "digits", 5))
+        return {
+            "symbol": info.name,
+            "digits": digits,
+            "point": float(getattr(info, "point", 10 ** (-digits))),
+            "spread": int(getattr(info, "spread", 0)),
+            "spreadFloat": bool(getattr(info, "spread_float", False)),
+            "description": getattr(info, "description", "") or info.name,
+            "tradeMode": trade_mode,
+            "tradeModeName": trade_mode_names.get(trade_mode, "UNKNOWN"),
+            "canOpenBuy": trade_mode in (1, 4),
+            "canOpenSell": trade_mode in (2, 4),
+            "tradeAllowed": trade_mode in (1, 2, 4),
+            "tradeExecution": int(getattr(info, "trade_exemode", 0)),
+            "tradeCalcMode": int(getattr(info, "trade_calc_mode", 0)),
+            "orderMode": int(getattr(info, "order_mode", 0)),
+            "fillingMode": int(getattr(info, "filling_mode", 0)),
+            "expirationMode": int(getattr(info, "expiration_mode", 0)),
+            "minLot": float(getattr(info, "volume_min", 0.01)),
+            "maxLot": float(getattr(info, "volume_max", 100.0)),
+            "lotStep": float(getattr(info, "volume_step", 0.01)),
+            "volumeLimit": float(getattr(info, "volume_limit", 0.0)),
+            "contractSize": float(getattr(info, "trade_contract_size", 100000.0)),
+            "tickSize": float(getattr(info, "trade_tick_size", 0.0)),
+            "tickValue": float(getattr(info, "trade_tick_value", 0.0)),
+            "tickValueProfit": float(getattr(info, "trade_tick_value_profit", 0.0)),
+            "tickValueLoss": float(getattr(info, "trade_tick_value_loss", 0.0)),
+            "stopsLevel": int(getattr(info, "trade_stops_level", 0)),
+            "freezeLevel": int(getattr(info, "trade_freeze_level", 0)),
+            "swapMode": int(getattr(info, "swap_mode", 0)),
+            "swapLong": float(getattr(info, "swap_long", 0.0)),
+            "swapShort": float(getattr(info, "swap_short", 0.0)),
+            "swapRollover3Days": int(getattr(info, "swap_rollover3days", 0)),
+            "marginInitial": float(getattr(info, "margin_initial", 0.0)),
+            "marginMaintenance": float(getattr(info, "margin_maintenance", 0.0)),
+            "marginHedged": float(getattr(info, "margin_hedged", 0.0)),
+            "currencyBase": getattr(info, "currency_base", ""),
+            "currencyProfit": getattr(info, "currency_profit", ""),
+            "currencyMargin": getattr(info, "currency_margin", ""),
+            "sessionOpen": float(getattr(info, "session_open", 0.0)),
+            "sessionClose": float(getattr(info, "session_close", 0.0)),
+            "selected": bool(getattr(info, "select", False)),
+            "visible": bool(getattr(info, "visible", False)),
+            "bid": float(getattr(info, "bid", 0.0)),
+            "ask": float(getattr(info, "ask", 0.0)),
+        }
+
+    def get_history_deals(self, date_from=None, date_to=None, count=100, ticket=None, position=None):
         if not HAVE_NATIVE_MT5 or mt5 is None:
             return []
         try:
             now_sec = int(time.time())
-            from_sec = int(date_from) if date_from else (now_sec - 30 * 86400)
-            to_sec = int(date_to) if date_to else (now_sec + 86400)
-            deals = mt5.history_deals_get(from_sec, to_sec)
+            from_sec = int(date_from) if date_from is not None else (now_sec - 30 * 86400)
+            to_sec = int(date_to) if date_to is not None else (now_sec + 86400)
+            if ticket is not None and position is not None:
+                return []
+            if ticket is not None:
+                deals = mt5.history_deals_get(ticket=int(ticket))
+            elif position is not None:
+                deals = mt5.history_deals_get(position=int(position))
+            else:
+                deals = mt5.history_deals_get(from_sec, to_sec)
             if deals:
                 DEAL_TYPE_NAMES = {0: "BUY", 1: "SELL", 2: "BALANCE", 3: "CREDIT"}
                 ENTRY_NAMES = {0: "IN", 1: "OUT", 2: "INOUT"}
@@ -796,9 +945,11 @@ class MT5Engine:
                         "ticket": int(d.ticket),
                         "order": int(d.order),
                         "time": int(d.time),
+                        "timeMsc": int(getattr(d, "time_msc", int(d.time) * 1000)),
                         "timeIso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(d.time)),
                         "type": DEAL_TYPE_NAMES.get(d.type, "DEAL"),
                         "entry": ENTRY_NAMES.get(d.entry, "IN"),
+                        "positionId": int(getattr(d, "position_id", 0)),
                         "symbol": getattr(d, "symbol", "") or "",
                         "volume": float(d.volume),
                         "price": float(d.price),
@@ -807,21 +958,30 @@ class MT5Engine:
                         "profit": round(float(getattr(d, "profit", 0.0)), 2),
                         "fee": round(float(getattr(d, "fee", 0.0)), 2),
                         "magic": int(getattr(d, "magic", 0)),
+                        "reason": int(getattr(d, "reason", 0)),
                         "comment": getattr(d, "comment", "") or "",
+                        "externalId": getattr(d, "external_id", "") or "",
                     })
                 return res
         except Exception:
             pass
         return []
 
-    def get_history_orders(self, date_from=None, date_to=None, count=100):
+    def get_history_orders(self, date_from=None, date_to=None, count=100, ticket=None, position=None):
         if not HAVE_NATIVE_MT5 or mt5 is None:
             return []
         try:
             now_sec = int(time.time())
-            from_sec = int(date_from) if date_from else (now_sec - 30 * 86400)
-            to_sec = int(date_to) if date_to else (now_sec + 86400)
-            orders = mt5.history_orders_get(from_sec, to_sec)
+            from_sec = int(date_from) if date_from is not None else (now_sec - 30 * 86400)
+            to_sec = int(date_to) if date_to is not None else (now_sec + 86400)
+            if ticket is not None and position is not None:
+                return []
+            if ticket is not None:
+                orders = mt5.history_orders_get(ticket=int(ticket))
+            elif position is not None:
+                orders = mt5.history_orders_get(position=int(position))
+            else:
+                orders = mt5.history_orders_get(from_sec, to_sec)
             if orders:
                 STATE_NAMES = {0: "STARTED", 1: "PLACED", 2: "CANCELLED", 3: "PARTIAL", 4: "FILLED", 5: "REJECTED", 6: "EXPIRED"}
                 ORDER_TYPE_NAMES = {0: "BUY", 1: "SELL", 2: "BUY_LIMIT", 3: "SELL_LIMIT", 4: "BUY_STOP", 5: "SELL_STOP"}
@@ -830,7 +990,11 @@ class MT5Engine:
                     res.append({
                         "ticket": int(o.ticket),
                         "symbol": o.symbol,
+                        "positionId": int(getattr(o, "position_id", 0)),
                         "type": ORDER_TYPE_NAMES.get(o.type, "ORDER"),
+                        "typeTime": int(getattr(o, "type_time", 0)),
+                        "typeFilling": int(getattr(o, "type_filling", 0)),
+                        "reason": int(getattr(o, "reason", 0)),
                         "volumeInitial": float(o.volume_initial),
                         "volumeCurrent": float(o.volume_current),
                         "priceOpen": float(o.price_open),
@@ -839,14 +1003,44 @@ class MT5Engine:
                         "tp": float(o.tp),
                         "state": STATE_NAMES.get(o.state, "FILLED"),
                         "timeSetup": int(o.time_setup),
+                        "timeSetupMsc": int(getattr(o, "time_setup_msc", 0)),
                         "timeDone": int(getattr(o, "time_done", 0)),
+                        "timeDoneMsc": int(getattr(o, "time_done_msc", 0)),
+                        "expiration": int(getattr(o, "time_expiration", 0)),
+                        "stopLimitPrice": float(getattr(o, "price_stoplimit", 0.0)),
                         "magic": int(o.magic),
                         "comment": o.comment or "",
+                        "externalId": getattr(o, "external_id", "") or "",
                     })
                 return res
         except Exception:
             pass
         return []
+
+    def get_history_totals(self, date_from=None, date_to=None):
+        if not HAVE_NATIVE_MT5 or mt5 is None:
+            return {"success": False, "message": "Native MT5 package is unavailable"}
+        try:
+            now_sec = int(time.time())
+            from_sec = int(date_from) if date_from is not None else now_sec - 30 * 86400
+            to_sec = int(date_to) if date_to is not None else now_sec
+            if from_sec < 0 or to_sec <= from_sec:
+                return {"success": False, "message": "History interval must have a non-negative start before its end"}
+
+            deals_total = mt5.history_deals_total(from_sec, to_sec)
+            orders_total = mt5.history_orders_total(from_sec, to_sec)
+            if deals_total is None or orders_total is None or deals_total < 0 or orders_total < 0:
+                error = mt5.last_error()
+                return {"success": False, "message": f"MT5 history count failed: {error}"}
+            return {
+                "success": True,
+                "dateFrom": from_sec,
+                "dateTo": to_sec,
+                "dealsTotal": int(deals_total),
+                "ordersTotal": int(orders_total),
+            }
+        except Exception as error:
+            return {"success": False, "message": str(error)}
 
     def calc_margin(self, action_str, symbol, volume, price=None):
         if not HAVE_NATIVE_MT5 or mt5 is None:
@@ -888,20 +1082,62 @@ class MT5Engine:
             symbol = params.get("symbol")
             order_type_str = str(params.get("orderType", "BUY")).upper()
             volume = float(params.get("volume", 0.01))
+            order_mappings = {
+                "BUY": (mt5.TRADE_ACTION_DEAL, mt5.ORDER_TYPE_BUY),
+                "SELL": (mt5.TRADE_ACTION_DEAL, mt5.ORDER_TYPE_SELL),
+                "BUY_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_BUY_LIMIT),
+                "SELL_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_SELL_LIMIT),
+                "BUY_STOP": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_BUY_STOP),
+                "SELL_STOP": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_SELL_STOP),
+                "BUY_STOP_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_BUY_STOP_LIMIT),
+                "SELL_STOP_LIMIT": (mt5.TRADE_ACTION_PENDING, mt5.ORDER_TYPE_SELL_STOP_LIMIT),
+            }
+            if order_type_str not in order_mappings:
+                return {"feasible": False, "message": f"Unsupported order type: {order_type_str}"}
+            action, order_type = order_mappings[order_type_str]
+            is_pending = action == mt5.TRADE_ACTION_PENDING
             tick = mt5.symbol_info_tick(symbol)
             if not tick:
                 return {"feasible": False, "message": f"Symbol tick not found for {symbol}"}
-            price = float(params.get("price")) if params.get("price") else (tick.ask if "BUY" in order_type_str else tick.bid)
-            action_val = mt5.ORDER_TYPE_BUY if order_type_str == "BUY" else mt5.ORDER_TYPE_SELL
+            if is_pending and params.get("price") is None:
+                return {"feasible": False, "message": "Pending orders require a trigger/entry price."}
+            if order_type_str in ("BUY_STOP_LIMIT", "SELL_STOP_LIMIT") and params.get("stopLimitPrice") is None:
+                return {"feasible": False, "message": "Stop-limit orders require a stopLimitPrice."}
+            price = float(params["price"]) if is_pending else (tick.ask if order_type_str == "BUY" else tick.bid)
+
+            type_time_names = {
+                "GTC": mt5.ORDER_TIME_GTC,
+                "DAY": mt5.ORDER_TIME_DAY,
+                "SPECIFIED": mt5.ORDER_TIME_SPECIFIED,
+                "SPECIFIED_DAY": mt5.ORDER_TIME_SPECIFIED_DAY,
+            }
+            type_time_name = str(params.get("typeTime", "GTC")).upper()
+            if type_time_name not in type_time_names:
+                return {"feasible": False, "message": f"Unsupported order time policy: {type_time_name}"}
+            if type_time_name in ("SPECIFIED", "SPECIFIED_DAY") and params.get("expiration") is None:
+                return {"feasible": False, "message": f"{type_time_name} order time requires an expiration timestamp."}
+
+            symbol_info = mt5.symbol_info(symbol)
+            filling, filling_error = resolve_filling_policy(mt5, symbol_info, order_type_str, is_pending, params.get("typeFilling"))
+            if filling_error:
+                return {"feasible": False, "message": filling_error}
 
             request = {
-                "action": mt5.TRADE_ACTION_DEAL,
+                "action": action,
                 "symbol": symbol,
                 "volume": volume,
-                "type": action_val,
+                "type": order_type,
                 "price": price,
-                "deviation": 20,
+                "sl": float(params.get("sl", 0) or 0),
+                "tp": float(params.get("tp", 0) or 0),
+                "deviation": max(0, int(params.get("deviation", 20))),
+                "type_time": type_time_names[type_time_name],
+                "type_filling": filling,
             }
+            if order_type_str in ("BUY_STOP_LIMIT", "SELL_STOP_LIMIT"):
+                request["stoplimit"] = float(params["stopLimitPrice"])
+            if type_time_name in ("SPECIFIED", "SPECIFIED_DAY"):
+                request["expiration"] = int(params["expiration"])
             res = mt5.order_check(request)
             if res:
                 return {
@@ -926,38 +1162,21 @@ class MT5Engine:
         try:
             s = mt5.symbol_info(symbol)
             if s:
-                digits = int(getattr(s, "digits", 5))
-                point = float(getattr(s, "point", 10 ** (-digits)))
-                return {
-                    "symbol": s.name,
-                    "digits": digits,
-                    "point": point,
-                    "spread": int(getattr(s, "spread", 0)),
-                    "description": s.description or s.name,
-                    "minLot": float(getattr(s, "volume_min", 0.01)),
-                    "maxLot": float(getattr(s, "volume_max", 100.0)),
-                    "lotStep": float(getattr(s, "volume_step", 0.01)),
-                    "contractSize": float(getattr(s, "trade_contract_size", 100000.0)),
-                    "stopsLevel": int(getattr(s, "trade_stops_level", 0)),
-                    "freezeLevel": int(getattr(s, "trade_freeze_level", 0)),
-                    "swapLong": float(getattr(s, "swap_long", 0.0)),
-                    "swapShort": float(getattr(s, "swap_short", 0.0)),
-                    "currencyBase": getattr(s, "currency_base", ""),
-                    "currencyProfit": getattr(s, "currency_profit", ""),
-                    "currencyMargin": getattr(s, "currency_margin", ""),
-                    "tradeAllowed": int(getattr(s, "trade_mode", 4)) > 0,
-                    "bid": float(getattr(s, "bid", 0.0)),
-                    "ask": float(getattr(s, "ask", 0.0)),
-                }
+                return self._serialize_symbol_info(s)
         except Exception:
             pass
         return None
 
     def get_market_depth(self, symbol):
         if not HAVE_NATIVE_MT5 or mt5 is None:
-            return {"bids": [], "asks": []}
+            return {"bids": [], "asks": [], "available": False, "message": "Native MT5 package is unavailable"}
+        subscribed = False
         try:
-            mt5.market_book_add(symbol)
+            subscribed = bool(mt5.market_book_add(symbol))
+            if not subscribed:
+                error = mt5.last_error()
+                message = str(error[1]) if error and error[0] not in (0, 1) else f"Market depth is not available for {symbol} on this broker."
+                return {"bids": [], "asks": [], "available": False, "message": message}
             book = mt5.market_book_get(symbol)
             if book:
                 bids = []
@@ -969,32 +1188,80 @@ class MT5Engine:
                         bids.append(entry)
                     else:
                         asks.append(entry)
-                return {"bids": bids, "asks": asks}
-        except Exception:
-            pass
-        return {"bids": [], "asks": []}
+                bids.sort(key=lambda item: item["price"], reverse=True)
+                asks.sort(key=lambda item: item["price"])
+                return {"bids": bids, "asks": asks, "available": True}
+            return {"bids": [], "asks": [], "available": True, "message": "No depth levels reported by broker"}
+        except Exception as e:
+            return {"bids": [], "asks": [], "available": False, "message": str(e)}
+        finally:
+            if subscribed:
+                try:
+                    mt5.market_book_release(symbol)
+                except Exception:
+                    pass
+
+    def get_native_diagnostics(self):
+        if not HAVE_NATIVE_MT5 or mt5 is None:
+            return {"available": False, "message": package_error_detail}
+        try:
+            version = mt5.version()
+            error = mt5.last_error()
+            return {
+                "available": True,
+                "packageVersion": getattr(mt5, "__version__", None),
+                "terminalVersion": list(version) if version else None,
+                "lastError": {"code": error[0], "message": error[1]} if error else None,
+                "totals": {
+                    "symbols": mt5.symbols_total(),
+                    "positions": mt5.positions_total(),
+                    "orders": mt5.orders_total(),
+                },
+            }
+        except Exception as e:
+            return {"available": False, "message": str(e)}
 
 
 engine = MT5Engine()
 
 class BridgeHTTPHandler(BaseHTTPRequestHandler):
+    def _is_origin_allowed(self):
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        allowed_origins = os.environ.get(
+            "CORS_ALLOWED_ORIGINS",
+            "http://localhost:3000,http://127.0.0.1:3000",
+        )
+        return origin in {value.strip() for value in allowed_origins.split(",") if value.strip()}
+
     def _send_json(self, status_code, data):
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        origin = self.headers.get("Origin")
+        if origin and self._is_origin_allowed():
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
         self.wfile.write(json.dumps(data).encode("utf-8"))
 
     def do_OPTIONS(self):
+        if not self._is_origin_allowed():
+            return self._send_json(403, {"error": "Origin not allowed"})
         self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
+        origin = self.headers.get("Origin")
+        if origin:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
     def do_GET(self):
+        if not self._is_origin_allowed():
+            return self._send_json(403, {"error": "Origin not allowed"})
         parsed = urlparse(self.path)
         path = parsed.path
         qs = parse_qs(parsed.query)
@@ -1041,30 +1308,42 @@ class BridgeHTTPHandler(BaseHTTPRequestHandler):
             date_from = qs.get("from", [None])[0]
             date_to = qs.get("to", [None])[0]
             count = int(qs.get("count", [1000])[0])
-            self._send_json(200, engine.get_ticks_history(symbol, date_from, date_to, count))
+            flags = qs.get("flags", ["ALL"])[0]
+            self._send_json(200, engine.get_ticks_history(symbol, date_from, date_to, count, flags))
         elif path == "/candles":
             symbol = qs.get("symbol", ["EURUSD"])[0]
             timeframe = qs.get("timeframe", ["M1"])[0]
             count = int(qs.get("count", [100])[0])
             date_from = qs.get("from", [None])[0]
             date_to = qs.get("to", [None])[0]
-            self._send_json(200, engine.get_candles(symbol, timeframe, count, date_from, date_to))
+            start_pos = int(qs.get("startPos", [0])[0])
+            self._send_json(200, engine.get_candles(symbol, timeframe, count, date_from, date_to, start_pos))
         elif path == "/positions":
             symbol = qs.get("symbol", [None])[0]
-            self._send_json(200, engine.get_positions(symbol))
+            ticket = qs.get("ticket", [None])[0]
+            self._send_json(200, engine.get_positions(symbol, ticket))
         elif path == "/orders":
             symbol = qs.get("symbol", [None])[0]
-            self._send_json(200, engine.get_orders(symbol))
+            ticket = qs.get("ticket", [None])[0]
+            self._send_json(200, engine.get_orders(symbol, ticket))
         elif path == "/history/deals":
             date_from = qs.get("from", [None])[0]
             date_to = qs.get("to", [None])[0]
             count = int(qs.get("count", [100])[0])
-            self._send_json(200, engine.get_history_deals(date_from, date_to, count))
+            ticket = qs.get("ticket", [None])[0]
+            position = qs.get("position", [None])[0]
+            self._send_json(200, engine.get_history_deals(date_from, date_to, count, ticket, position))
         elif path == "/history/orders":
             date_from = qs.get("from", [None])[0]
             date_to = qs.get("to", [None])[0]
             count = int(qs.get("count", [100])[0])
-            self._send_json(200, engine.get_history_orders(date_from, date_to, count))
+            ticket = qs.get("ticket", [None])[0]
+            position = qs.get("position", [None])[0]
+            self._send_json(200, engine.get_history_orders(date_from, date_to, count, ticket, position))
+        elif path == "/history/totals":
+            date_from = qs.get("from", [None])[0]
+            date_to = qs.get("to", [None])[0]
+            self._send_json(200, engine.get_history_totals(date_from, date_to))
         elif path == "/symbol/info":
             sym = qs.get("symbol", [None])[0]
             self._send_json(200, engine.get_symbol_info(sym) if sym else None)
@@ -1076,10 +1355,14 @@ class BridgeHTTPHandler(BaseHTTPRequestHandler):
         elif path == "/depth":
             sym = qs.get("symbol", ["EURUSD"])[0]
             self._send_json(200, engine.get_market_depth(sym))
+        elif path == "/native/diagnostics":
+            self._send_json(200, engine.get_native_diagnostics())
         else:
             self._send_json(404, {"error": "Endpoint not found"})
 
     def do_POST(self):
+        if not self._is_origin_allowed():
+            return self._send_json(403, {"error": "Origin not allowed"})
         parsed = urlparse(self.path)
         path = parsed.path
 

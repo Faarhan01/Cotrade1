@@ -61,12 +61,12 @@ export function setupWebSocketServer(server: Server) {
   return wss;
 }
 
-export function broadcast(message: { type: string; payload: any }) {
+export function broadcast(message: { type: string; payload: any }, options: { persist?: boolean } = {}) {
   totalEventsBroadcasted++;
   const raw = JSON.stringify(message);
 
   // 1. Also buffer the event to file for persistence and querying
-  appendEvent(message);
+  if (options.persist !== false) appendEvent(message);
 
   // 2. Broadcast to WebSockets
   if (wss && clients.size > 0) {

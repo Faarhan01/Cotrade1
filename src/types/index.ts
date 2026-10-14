@@ -95,9 +95,14 @@ export interface TradeCommand {
   id: string;
   action: OrderAction;
   symbol?: string;
-  orderType?: OrderType;
+  orderType?: TradeOrderType;
   volume?: number;
   price?: number;
+  stopLimitPrice?: number;
+  typeTime?: 'GTC' | 'DAY' | 'SPECIFIED' | 'SPECIFIED_DAY';
+  expiration?: number;
+  typeFilling?: 'FOK' | 'IOC' | 'RETURN' | 'BOC';
+  deviation?: number;
   sl?: number;
   tp?: number;
   ticket?: number;
@@ -108,7 +113,7 @@ export interface TradeCommand {
   createdAt: number;
   dispatchedAt?: number;
   executedAt?: number;
-  source: 'AI_MCP' | 'MANUAL_UI' | 'RISK_GUARD' | 'API';
+  source: 'AI_MCP' | 'MANUAL_UI' | 'RISK_GUARD' | 'API' | 'BOT';
   result?: {
     success: boolean;
     dealTicket?: number;
@@ -180,6 +185,36 @@ export interface DetailedSymbolInfo {
   lotStep: number;
   contractSize: number;
   tradeAllowed: boolean;
+  canOpenBuy?: boolean;
+  canOpenSell?: boolean;
+  tradeMode?: number;
+  tradeModeName?: string;
+  tradeExecution?: number;
+  tradeCalcMode?: number;
+  orderMode?: number;
+  fillingMode?: number;
+  expirationMode?: number;
+  volumeLimit?: number;
+  tickSize?: number;
+  tickValue?: number;
+  tickValueProfit?: number;
+  tickValueLoss?: number;
+  stopsLevel?: number;
+  freezeLevel?: number;
+  swapMode?: number;
+  swapLong?: number;
+  swapShort?: number;
+  swapRollover3Days?: number;
+  marginInitial?: number;
+  marginMaintenance?: number;
+  marginHedged?: number;
+  currencyBase?: string;
+  currencyProfit?: string;
+  currencyMargin?: string;
+  spreadFloat?: boolean;
+  sessionClose?: number;
+  selected?: boolean;
+  visible?: boolean;
   high24h?: number;
   low24h?: number;
   sessionOpen?: number;
@@ -204,6 +239,7 @@ export interface CandleData {
 }
 
 export type PendingOrderType = 'BUY_LIMIT' | 'SELL_LIMIT' | 'BUY_STOP' | 'SELL_STOP' | 'BUY_STOP_LIMIT' | 'SELL_STOP_LIMIT';
+export type TradeOrderType = OrderType | PendingOrderType;
 
 export interface PendingOrder {
   ticket: number;
@@ -356,7 +392,9 @@ export interface SimulatedTrade {
   exitTimeIso: string;
   exitPrice: number;
   profitPoints: number;
-  profitUsd: number;
+  profitAmount?: number;
+  profitUsd?: number;
+  profitCurrency?: string;
   returnPct: number;
   exitReason: 'TAKE_PROFIT' | 'STOP_LOSS' | 'SIGNAL_REVERSAL' | 'MAX_HOLD_BARS' | 'END_OF_DATA';
   lotSize: number;
@@ -389,8 +427,10 @@ export interface BacktestResult {
   averageWin: number;
   averageLoss: number;
   riskRewardRatio: number;
-  sharpeRatio?: number;
+  profitCurrency?: string;
+  valuationSource?: 'BROKER_TICK_VALUE' | 'FIXED_PIP_ESTIMATE' | 'LEGACY_ESTIMATE';
   dataSource?: string;
+  sharpeRatio?: number;
   trades: SimulatedTrade[];
   equityCurve: { time: number; timeIso: string; equity: number }[];
   evaluatedAt: number;

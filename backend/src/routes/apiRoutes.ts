@@ -13,8 +13,16 @@ import {
 } from '@controllers/index';
 import { daemonRouter } from './daemonRoutes.ts';
 import { botRouter } from '@features/bot';
+import { commandRegistry, executeCommand } from '@commands';
 
 export const apiRouter = Router();
+
+const runCommand = (action: string | ((req: any) => string)) => async (req: any, res: any) => {
+  const commandAction = typeof action === 'function' ? action(req) : action;
+  const result = await executeCommand(commandAction, { ...req.body, ...req.params }, { source: 'UI' });
+  const payload = result.data && typeof result.data === 'object' ? result.data : { data: result.data };
+  res.status(result.success ? 200 : 400).json({ ...payload, success: result.success, action: result.action });
+};
 
 // Mount Daemon & Automated Bot Routers
 apiRouter.use('/daemon', daemonRouter);
@@ -27,11 +35,16 @@ apiRouter.get('/state', (req, res) => {
   res.json(tradeStore.getState());
 });
 
+apiRouter.get('/commands', (_req, res) => {
+  res.json({ commands: commandRegistry.toMetadataList() });
+});
+apiRouter.post('/commands', runCommand((req) => req.body.action || 'EXECUTE_TRADE'));
+
 apiRouter.get('/status', MT5Controller.getStatus);
 apiRouter.get('/connection/status', MT5Controller.getStatus);
-apiRouter.post('/connection/connect', MT5Controller.connect);
-apiRouter.post('/connection/disconnect', MT5Controller.disconnect);
-apiRouter.post('/connection/provider', MT5Controller.switchProvider);
+apiRouter.post('/connection/connect', runCommand('CONNECT_MT5'));
+apiRouter.post('/connection/disconnect', runCommand('DISCONNECT_MT5'));
+apiRouter.post('/connection/provider', runCommand('SWITCH_PROVIDER'));
 
 // Symbols, Ticks, Candles, Terminal & Account
 apiRouter.get('/symbols', MT5Controller.getSymbols);
@@ -48,11 +61,11 @@ apiRouter.get('/terminal', MT5Controller.getTerminal);
 apiRouter.get('/positions', MT5Controller.getPositions);
 apiRouter.get('/orders', MT5Controller.getOrders);
 apiRouter.get('/gateway/diagnostics', MT5Controller.getGatewayDiagnostics);
-apiRouter.post('/positions/close-all', MT5Controller.closeAllPositions);
-apiRouter.post('/positions/close-by', MT5Controller.closeByPosition);
-apiRouter.post('/positions/close-batch', MT5Controller.closePositionsBatch);
-apiRouter.post('/orders/cancel-all', MT5Controller.cancelAllOrders);
-apiRouter.post('/orders/cancel-batch', MT5Controller.cancelOrdersBatch);
+apiRouter.post('/positions/close-all', runCommand('CLOSE_ALL'));
+apiRouter.post('/positions/close-by', runCommand('CLOSE_BY'));
+apiRouter.post('/positions/close-batch', runCommand('CLOSE_POSITIONS_BATCH'));
+apiRouter.post('/orders/cancel-all', runCommand('CANCEL_ORDERS_BATCH'));
+apiRouter.post('/orders/cancel-batch', runCommand('CANCEL_ORDERS_BATCH'));
 apiRouter.get('/history/deals', MT5Controller.getHistoryDeals);
 apiRouter.get('/history/orders', MT5Controller.getHistoryOrders);
 apiRouter.get('/market-depth', MT5Controller.getMarketDepth);
@@ -60,12 +73,11 @@ apiRouter.get('/market-depth', MT5Controller.getMarketDepth);
 // ==========================================
 // 2. Trading Operations Endpoints
 // ==========================================
-apiRouter.post('/commands', TradeController.executeTrade);
-apiRouter.post('/trades/execute', TradeController.executeTrade);
-apiRouter.post('/positions/:ticket/close', TradeController.closePosition);
-apiRouter.post('/positions/:ticket/modify', TradeController.modifyPosition);
-apiRouter.post('/orders/:ticket/modify', TradeController.modifyOrder);
-apiRouter.post('/orders/:ticket/cancel', TradeController.cancelOrder);
+apiRouter.post('/trades/execute', runCommand((req) => req.body.action || 'EXECUTE_TRADE'));
+apiRouter.post('/positions/:ticket/close', runCommand('CLOSE_POSITION'));
+apiRouter.post('/positions/:ticket/modify', runCommand('MODIFY_POSITION'));
+apiRouter.post('/orders/:ticket/modify', runCommand('MODIFY_ORDER'));
+apiRouter.post('/orders/:ticket/cancel', runCommand('CANCEL_ORDER'));
 
 // Candle & Tick management endpoints (for testing/debug and chart simulation)
 apiRouter.post('/candles/request', TradeController.requestHistoryFromEA);
@@ -137,12 +149,12 @@ apiRouter.post('/charts/simulate-batch', (req, res) => {
   });
 });
 
-apiRouter.post('/orders/check', MT5Controller.checkOrder);
-apiRouter.post('/tools/calc-margin', MT5Controller.calcMargin);
-apiRouter.post('/tools/calc-profit', MT5Controller.calcProfit);
+apiRouter.post('/orders/check', runCommand('CHECK_ORDER'));
+apiRouter.post('/tools/calc-margin', runCommand('CALC_MARGIN'));
+apiRouter.post('/tools/calc-profit', runCommand('CALC_PROFIT'));
 
-apiRouter.post('/risk', TradeController.updateRisk);
-apiRouter.post('/kill-switch', TradeController.toggleKillSwitch);
+apiRouter.post('/risk', runCommand('CONFIGURE_RISK'));
+apiRouter.post('/kill-switch', runCommand('TOGGLE_KILL_SWITCH'));
 
 // ==========================================
 // 3. External AI Live Intercept Stream (SSE)
@@ -229,20 +241,20 @@ apiRouter.post('/mcp/tools/execute', MCPController.executeTool);
 // 4. Strategy & Knowledge Base Endpoints
 // ==========================================
 apiRouter.get('/strategies', StrategyController.getStrategies);
-apiRouter.post('/strategies', StrategyController.saveStrategy);
-apiRouter.delete('/strategies/:id', StrategyController.deleteStrategy);
-apiRouter.post('/strategies/backtest', StrategyController.runBacktest);
+apiRouter.post('/strategies', runCommand('SAVE_STRATEGY'));
+apiRouter.delete('/strategies/:id', runCommand('DELETE_STRATEGY'));
+apiRouter.post('/strategies/backtest', runCommand('RUN_BACKTEST'));
 apiRouter.get('/strategies/backtest/history', StrategyController.getBacktestHistory);
 
 apiRouter.get('/observations', StrategyController.getObservations);
-apiRouter.post('/observations', StrategyController.saveObservation);
-apiRouter.delete('/observations/:id', StrategyController.deleteObservation);
+apiRouter.post('/observations', runCommand('SAVE_OBSERVATION'));
+apiRouter.delete('/observations/:id', runCommand('DELETE_OBSERVATION'));
 
 // ==========================================
 // 5. Database & Audit Endpoints
 // ==========================================
 apiRouter.get('/database/analytics', DatabaseController.getAnalytics.bind(DatabaseController));
-apiRouter.post('/database/prune', DatabaseController.pruneDatabase.bind(DatabaseController));
+apiRouter.post('/database/prune', runCommand('PRUNE_DATABASE'));
 apiRouter.get('/database/orders', DatabaseController.getOrders.bind(DatabaseController));
 apiRouter.get('/database/candles', DatabaseController.getCandles.bind(DatabaseController));
 apiRouter.get('/database/ticks', DatabaseController.getTicks.bind(DatabaseController));
@@ -251,8 +263,8 @@ apiRouter.get('/database/export', DatabaseController.exportDatabase.bind(Databas
 
 // Trade Journal & Research Insights
 apiRouter.get('/journal', DatabaseController.getJournal.bind(DatabaseController));
-apiRouter.post('/journal', DatabaseController.saveJournal.bind(DatabaseController));
-apiRouter.delete('/journal/:id', DatabaseController.deleteJournal.bind(DatabaseController));
+apiRouter.post('/journal', runCommand('SAVE_JOURNAL'));
+apiRouter.delete('/journal/:id', runCommand('DELETE_JOURNAL'));
 
 // ==========================================
 // 6. Event Buffering Endpoints

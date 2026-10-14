@@ -23,7 +23,7 @@ export const ApiConnectionRadar: React.FC<ApiConnectionRadarProps> = ({ state, o
   const [isPinging, setIsPinging] = useState(false);
   const [pingResult, setPingResult] = useState<{ ok: boolean; latencyMs: number } | null>(null);
 
-  const isConnected = state?.account.server !== 'Awaiting MT5 Connection';
+  const isConnected = state?.connection.terminalConnected ?? Boolean(state?.account.login);
   const lastSync = state?.account.lastUpdate ?? 0;
   // Note: terminalName, terminalCompany, chartSymbol, chartTimeframe are not updated in the direct API mode
   // We leave them empty or set to default values for display purposes.

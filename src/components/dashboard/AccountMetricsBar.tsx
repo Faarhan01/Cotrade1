@@ -11,6 +11,9 @@ export const AccountMetricsBar: React.FC<AccountMetricsBarProps> = ({ account })
 
   const isConnected = account.login > 0;
   const isProfitPositive = account.profit >= 0;
+  const formatMoney = (value: number) => isConnected
+    ? `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : '—';
   const marginLevelColor =
     account.marginLevel > 500
       ? 'text-emerald-400'
@@ -23,19 +26,16 @@ export const AccountMetricsBar: React.FC<AccountMetricsBarProps> = ({ account })
   return (
     <div className="space-y-3">
       {!isConnected && (
-        <div className="bg-cyan-950/40 border border-cyan-800/60 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
+        <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
-            <span className="text-cyan-300 font-bold">
-              MetaTrader 5 Direct Package Engine Active:
+            <span className="h-2 w-2 rounded-full bg-slate-500" />
+            <span className="text-slate-300 font-bold">
+              No live MT5 account:
             </span>
-            <span className="text-slate-300">
-              Awaiting MetaTrader 5 desktop application hook via Python package
+            <span className="text-slate-400">
+              account metrics will appear after the terminal is connected
             </span>
           </div>
-          <span className="text-[11px] text-slate-400">
-            Real broker account data will sync automatically when MT5 app is running
-          </span>
         </div>
       )}
 
@@ -47,10 +47,10 @@ export const AccountMetricsBar: React.FC<AccountMetricsBarProps> = ({ account })
           <Wallet className="h-3.5 w-3.5 text-slate-500" />
         </div>
         <div className="text-xl font-bold font-mono text-white tracking-tight">
-          ${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {formatMoney(account.balance)}
         </div>
         <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-          {account.currency} • {account.server}
+          {isConnected ? `${account.currency} • ${account.server}` : 'Disconnected'}
         </div>
       </div>
 
@@ -61,7 +61,7 @@ export const AccountMetricsBar: React.FC<AccountMetricsBarProps> = ({ account })
           <TrendingUp className="h-3.5 w-3.5 text-cyan-400" />
         </div>
         <div className="text-xl font-bold font-mono text-cyan-300 tracking-tight">
-          ${account.equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {formatMoney(account.equity)}
         </div>
         <div className="text-[11px] text-slate-400 font-mono mt-0.5">
           Net Assets
@@ -74,12 +74,8 @@ export const AccountMetricsBar: React.FC<AccountMetricsBarProps> = ({ account })
           <span>Floating PnL</span>
           <DollarSign className={`h-3.5 w-3.5 ${isProfitPositive ? 'text-emerald-400' : 'text-rose-400'}`} />
         </div>
-        <div
-          className={`text-xl font-bold font-mono tracking-tight ${
-            isProfitPositive ? 'text-emerald-400' : 'text-rose-400'
-          }`}
-        >
-          {isProfitPositive ? '+' : ''}${account.profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        <div className={`text-xl font-bold font-mono tracking-tight ${!isConnected ? 'text-slate-500' : isProfitPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+          {isConnected ? `${isProfitPositive ? '+' : ''}${formatMoney(account.profit)}` : '—'}
         </div>
         <div className="text-[11px] text-slate-400 font-mono mt-0.5">
           Live MT5 Unrealized
@@ -93,7 +89,7 @@ export const AccountMetricsBar: React.FC<AccountMetricsBarProps> = ({ account })
           <ShieldCheck className="h-3.5 w-3.5 text-slate-500" />
         </div>
         <div className="text-xl font-bold font-mono text-slate-200 tracking-tight">
-          ${account.freeMargin.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {formatMoney(account.freeMargin)}
         </div>
         <div className="text-[11px] text-slate-500 font-mono mt-0.5">
           Available to Trade
@@ -107,10 +103,10 @@ export const AccountMetricsBar: React.FC<AccountMetricsBarProps> = ({ account })
           <Layers className="h-3.5 w-3.5 text-slate-500" />
         </div>
         <div className="text-xl font-bold font-mono text-slate-300 tracking-tight">
-          ${account.margin.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {formatMoney(account.margin)}
         </div>
         <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-          Leverage 1:{account.leverage}
+          {isConnected ? `Leverage 1:${account.leverage}` : 'Leverage unavailable'}
         </div>
       </div>
 
@@ -123,10 +119,10 @@ export const AccountMetricsBar: React.FC<AccountMetricsBarProps> = ({ account })
           </span>
         </div>
         <div className={`text-xl font-bold font-mono tracking-tight ${marginLevelColor}`}>
-          {account.marginLevel > 0 ? `${account.marginLevel.toFixed(1)}%` : '∞'}
+          {isConnected && account.margin > 0 ? `${account.marginLevel.toFixed(1)}%` : '—'}
         </div>
         <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-          {account.marginLevel > 200 ? 'Health: Optimal' : 'Health: Caution'}
+          {!isConnected || account.margin <= 0 ? 'Health: Unavailable' : account.marginLevel > 200 ? 'Health: Optimal' : 'Health: Caution'}
         </div>
       </div>
     </div>

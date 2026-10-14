@@ -65,6 +65,7 @@ export const KnowledgeBasePage: React.FC = () => {
   const [backtestCandleLimit, setBacktestCandleLimit] = useState<number>(500);
   const [backtestDeposit, setBacktestDeposit] = useState<number>(10000);
   const [backtestLot, setBacktestLot] = useState<number>(0.1);
+  const [useSyntheticBacktestData, setUseSyntheticBacktestData] = useState(false);
 
   // Chart History Inspector State
   const [chartSymbol, setChartSymbol] = useState<string>('EURUSD');
@@ -247,12 +248,20 @@ export const KnowledgeBasePage: React.FC = () => {
       const res = await api.runBacktest(strategy.id, {
         candleLimit: backtestCandleLimit,
         initialDeposit: backtestDeposit,
+        includeSynthetic: useSyntheticBacktestData,
       });
       if (res.success) {
         setActiveBacktestResult(res.result);
         setActiveSubTab('backtests');
-        const srcText = (res as any).dataSource === 'mt5_live' ? 'Live MT5 Chart Data' : 'Cached History';
-        showNotification(`Backtest for "${strategy.name}" completed using ${srcText}! Net: $${res.result.netProfit}`);
+        const source = (res as any).dataSource || res.result.dataSource || 'database_cache';
+        const sourceLabels: Record<string, string> = {
+          mt5_live: 'Live MT5 candles',
+          database_cache: 'Broker candle cache',
+          synthetic_test_data: 'Synthetic test candles',
+          simulated_benchmark: 'Generated benchmark estimate',
+        };
+        const srcText = sourceLabels[source] || source;
+        showNotification(`Backtest for "${strategy.name}" completed using ${srcText}! Net: ${res.result.profitCurrency || 'EST'} ${res.result.netProfit}`);
         await loadAllData();
       }
     } catch (err: any) {
@@ -345,6 +354,7 @@ export const KnowledgeBasePage: React.FC = () => {
         body: JSON.stringify({ symbol: chartSymbol, timeframe: chartTimeframe, count: 60 }),
       });
       const data = await res.json();
+      setUseSyntheticBacktestData(true);
       showNotification(`Seeded ${data.count || 60} candles for ${chartSymbol}`);
       await handleFetchChartHistory();
     } catch (err: any) {
@@ -870,6 +880,16 @@ export const KnowledgeBasePage: React.FC = () => {
                     </div>
                   </div>
 
+                  <label className="flex items-center gap-2 text-xs font-mono text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={useSyntheticBacktestData}
+                      onChange={(event) => setUseSyntheticBacktestData(event.target.checked)}
+                      className="accent-cyan-500"
+                    />
+                    Use seeded synthetic candles for this backtest
+                  </label>
+
                   <div className="flex justify-end pt-2">
                     <button
                       onClick={() => handleRunBacktest(selectedStrategy)}
@@ -960,6 +980,12 @@ export const KnowledgeBasePage: React.FC = () => {
                   </div>
                   <span className="text-[11px] font-mono text-slate-400 mt-1 block">
                     Evaluated on {new Date(activeBacktestResult.evaluatedAt).toLocaleString()}
+                    {' · '}{(activeBacktestResult.dataSource || 'unknown source').replaceAll('_', ' ')}
+                    {' · '}{activeBacktestResult.valuationSource === 'BROKER_TICK_VALUE'
+                      ? 'broker tick-value valuation'
+                      : activeBacktestResult.valuationSource === 'FIXED_PIP_ESTIMATE'
+                        ? 'estimated valuation'
+                        : 'legacy valuation unknown'}
                   </span>
                 </div>
 
@@ -970,9 +996,9 @@ export const KnowledgeBasePage: React.FC = () => {
                         activeBacktestResult.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'
                       }`}
                     >
-                      {activeBacktestResult.netProfit >= 0 ? '+' : ''}${activeBacktestResult.netProfit.toFixed(2)}
+                      {activeBacktestResult.netProfit >= 0 ? '+' : ''}{activeBacktestResult.profitCurrency || 'EST'} {activeBacktestResult.netProfit.toFixed(2)}
                     </span>
-                    <span className="text-[10px] text-slate-400 uppercase font-mono">Net Profit</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-mono">Net Profit · {activeBacktestResult.profitCurrency || 'EST'}</span>
                   </div>
                 </div>
               </div>
@@ -1099,7 +1125,8 @@ export const KnowledgeBasePage: React.FC = () => {
                         </tr>
                       ) : (
                         activeBacktestResult.trades?.map((trd) => {
-                          const isWin = trd.profitUsd >= 0;
+                          const profitAmount = trd.profitAmount ?? trd.profitUsd ?? 0;
+                          const isWin = profitAmount >= 0;
                           return (
                             <tr key={trd.id} className="hover:bg-slate-800/40">
                               <td className="py-2 px-3 text-slate-400">{trd.id}</td>
@@ -1117,7 +1144,7 @@ export const KnowledgeBasePage: React.FC = () => {
                               <td className="py-2 px-3 text-white">{trd.entryPrice}</td>
                               <td className="py-2 px-3 text-white">{trd.exitPrice}</td>
                               <td className={`py-2 px-3 font-bold ${isWin ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                {isWin ? '+' : ''}${trd.profitUsd.toFixed(2)}
+                                {isWin ? '+' : ''}{trd.profitCurrency || activeBacktestResult.profitCurrency || (trd.profitUsd !== undefined ? 'USD' : 'EST')} {profitAmount.toFixed(2)}
                               </td>
                               <td className="py-2 px-3 text-slate-300">{trd.profitPoints} pts</td>
                               <td className="py-2 px-3 text-slate-400 text-[11px]">{trd.exitReason}</td>

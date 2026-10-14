@@ -26,6 +26,7 @@ export const strategyApi = {
     candleCount?: number;
     initialDeposit?: number;
     fixedLot?: number;
+    includeSynthetic?: boolean;
   }): Promise<{ success: boolean; result: any }> {
     return request('/api/strategies/backtest', {
       method: 'POST',

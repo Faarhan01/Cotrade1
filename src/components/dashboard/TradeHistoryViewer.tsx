@@ -23,6 +23,7 @@ export const TradeHistoryViewer: React.FC<TradeHistoryViewerProps> = ({ onSelect
   const [filterSymbol, setFilterSymbol] = useState<string>('ALL');
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | 'all'>('7d');
   const [lastFetched, setLastFetched] = useState<number>(0);
+  const [brokerTotals, setBrokerTotals] = useState<{ dealsTotal: number; ordersTotal: number } | null>(null);
 
   const fetchDeals = async () => {
     try {
@@ -32,11 +33,18 @@ export const TradeHistoryViewer: React.FC<TradeHistoryViewerProps> = ({ onSelect
       if (timeRange === '24h') fromSec = nowSec - 86400;
       else if (timeRange === '7d') fromSec = nowSec - 7 * 86400;
       else if (timeRange === '30d') fromSec = nowSec - 30 * 86400;
+      else fromSec = 0;
 
-      const res = await api.getHistoryDeals({ from: fromSec, count: 100 });
+      const [res, totals] = await Promise.all([
+        api.getHistoryDeals({ from: fromSec, to: nowSec, count: 100 }),
+        api.executeCommand('GET_HISTORY_TOTALS', { dateFrom: fromSec, dateTo: nowSec }),
+      ]);
       if (res && Array.isArray(res.deals)) {
         setDeals(res.deals);
       }
+      setBrokerTotals(totals.success
+        ? { dealsTotal: totals.dealsTotal, ordersTotal: totals.ordersTotal }
+        : null);
       setLastFetched(Date.now());
     } catch (e) {
       console.error('Failed to fetch MT5 history deals:', e);
@@ -76,7 +84,7 @@ export const TradeHistoryViewer: React.FC<TradeHistoryViewerProps> = ({ onSelect
             <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               MT5 Trade History & Closed Deals
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
-                {filteredDeals.length} deals
+                {filteredDeals.length}{brokerTotals ? ` / ${brokerTotals.dealsTotal}` : ''} loaded
               </span>
             </h2>
             <p className="text-xs text-slate-400 font-mono">
@@ -168,7 +176,7 @@ export const TradeHistoryViewer: React.FC<TradeHistoryViewerProps> = ({ onSelect
           <span className="text-slate-500 text-[10px] block uppercase">Sync Status</span>
           <span className="text-xs text-cyan-400 flex items-center gap-1">
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-            {lastFetched ? `${Math.floor((Date.now() - lastFetched) / 1000)}s ago` : 'Connected'}
+            {brokerTotals ? `${brokerTotals.ordersTotal} orders in range` : lastFetched ? `${Math.floor((Date.now() - lastFetched) / 1000)}s ago` : 'Connected'}
           </span>
         </div>
       </div>

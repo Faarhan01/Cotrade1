@@ -23,6 +23,39 @@ import {
 } from 'lucide-react';
 import { api } from '../lib/api';
 
+interface RegisteredCommand {
+  name: string;
+  category: string;
+  description: string;
+  inputSchema: { properties?: Record<string, any>; required?: string[] };
+}
+
+function exampleArguments(command?: RegisteredCommand): Record<string, any> {
+  if (!command) return {};
+  const examples: Record<string, any> = {
+    symbol: 'EURUSD',
+    orderType: 'BUY',
+    volume: 0.01,
+    timeframe: 'M1',
+    count: 100,
+    limit: 100,
+    botId: 'bot-id',
+    ticket: 0,
+    strategyId: 'strategy-id',
+  };
+  const args: Record<string, any> = {};
+  for (const key of command.inputSchema.required || []) {
+    const property = command.inputSchema.properties?.[key] || {};
+    args[key] = examples[key] ?? (property.enum?.[0] ?? (property.type === 'number' ? 0 : property.type === 'boolean' ? false : property.type === 'array' ? [] : property.type === 'object' ? {} : ''));
+  }
+  if (command.name === 'EXECUTE_TRADE') {
+    args.symbol = 'EURUSD';
+    args.orderType = 'BUY';
+    args.volume = 0.01;
+  }
+  return args;
+}
+
 export const DaemonPage: React.FC = () => {
   const [status, setStatus] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
@@ -32,20 +65,9 @@ export const DaemonPage: React.FC = () => {
 
   // Expanded Command Dispatch State
   const [actionCategory, setActionCategory] = useState<'trade' | 'check' | 'knowledge' | 'system'>('trade');
-  const [dispatchForm, setDispatchForm] = useState({
-    action: 'BUY',
-    symbol: 'EURUSD',
-    volume: 0.1,
-    price: 0,
-    sl: 250,
-    tp: 500,
-    ticket: 0,
-    confidence: 0.92,
-    reason: 'External AI Momentum Breakout Consensus',
-    strategyName: 'AI Dynamic Momentum Alpha',
-    obsTitle: 'London Session Volatility Breakout',
-    obsContent: 'EURUSD spread compressed below 8 points with rising tick velocity.',
-  });
+  const [commands, setCommands] = useState<RegisteredCommand[]>([]);
+  const [selectedAction, setSelectedAction] = useState('EXECUTE_TRADE');
+  const [commandArgsJson, setCommandArgsJson] = useState('{\n  "symbol": "EURUSD",\n  "orderType": "BUY",\n  "volume": 0.01\n}');
   const [dispatchResult, setDispatchResult] = useState<any>(null);
   const [dispatching, setDispatching] = useState(false);
 
@@ -72,9 +94,55 @@ export const DaemonPage: React.FC = () => {
 
   useEffect(() => {
     fetchDaemonData();
-    const interval = setInterval(fetchDaemonData, 3000);
-    return () => clearInterval(interval);
+    const statusInterval = setInterval(async () => {
+      try {
+        const res = await api.getDaemonStatus();
+        if (res?.success) setStatus(res.daemon);
+      } catch (error) {
+        console.error('Failed to refresh daemon status:', error);
+      }
+    }, 10000);
+
+    const eventSource = new EventSource('/api/daemon/stream');
+    eventSource.addEventListener('snapshot', (message) => {
+      try {
+        setStatus(JSON.parse((message as MessageEvent).data));
+      } catch {}
+    });
+    eventSource.addEventListener('daemon', (message) => {
+      try {
+        const incoming = JSON.parse((message as MessageEvent).data);
+        setEvents((current) => [
+          incoming,
+          ...current.filter((event) => !(event.ts === incoming.ts && event.type === incoming.type)),
+        ].slice(0, 60));
+      } catch {}
+    });
+
+    return () => {
+      clearInterval(statusInterval);
+      eventSource.close();
+    };
   }, []);
+
+  useEffect(() => {
+    api.getCommands().then(({ commands: available }) => setCommands(available)).catch((error) => {
+      setDispatchResult({ success: false, message: error?.message || 'Failed to load commands' });
+    });
+  }, []);
+
+  const visibleCommands = commands.filter((command) => {
+    if (actionCategory === 'trade') return command.category === 'trading';
+    if (actionCategory === 'check') return command.category === 'market' || command.category === 'account';
+    if (actionCategory === 'knowledge') return command.category === 'knowledge';
+    return command.category === 'system' || command.category === 'bot';
+  });
+
+  const selectCommand = (name: string) => {
+    setSelectedAction(name);
+    const command = commands.find((item) => item.name === name);
+    setCommandArgsJson(JSON.stringify(exampleArguments(command), null, 2));
+  };
 
   const handleHeartbeatPing = async () => {
     try {
@@ -93,41 +161,11 @@ export const DaemonPage: React.FC = () => {
       setDispatching(true);
       setDispatchResult(null);
 
-      const payload: any = {
-        action: dispatchForm.action,
-        symbol: dispatchForm.symbol,
-        volume: Number(dispatchForm.volume),
-        confidence: Number(dispatchForm.confidence),
-        reason: dispatchForm.reason,
-      };
-
-      if (dispatchForm.price > 0) payload.price = Number(dispatchForm.price);
-      if (dispatchForm.sl > 0) payload.sl = Number(dispatchForm.sl);
-      if (dispatchForm.tp > 0) payload.tp = Number(dispatchForm.tp);
-      if (dispatchForm.ticket > 0) payload.ticket = Number(dispatchForm.ticket);
-
-      if (dispatchForm.action === 'CREATE_STRATEGY') {
-        payload.strategy = {
-          name: dispatchForm.strategyName,
-          symbol: dispatchForm.symbol,
-          timeframe: 'M1',
-          type: 'MULTI_INDICATOR_CONSENSUS',
-          parameters: {
-            rsiOversold: 30,
-            rsiOverbought: 70,
-            stopLossPoints: 300,
-            takeProfitPoints: 600,
-            lotSize: dispatchForm.volume,
-          },
-        };
-      } else if (dispatchForm.action === 'RECORD_OBSERVATION') {
-        payload.observation = {
-          title: dispatchForm.obsTitle,
-          content: dispatchForm.obsContent,
-          symbol: dispatchForm.symbol,
-          category: 'market_insight',
-        };
+      const args = JSON.parse(commandArgsJson);
+      if (!args || typeof args !== 'object' || Array.isArray(args)) {
+        throw new Error('Command arguments must be a JSON object');
       }
+      const payload = { action: selectedAction, ...args };
 
       const res = await api.dispatchDaemonCommand(payload);
       setDispatchResult(res);
@@ -385,7 +423,7 @@ print("Knowledge Base:", strat.json())`;
                 type="button"
                 onClick={() => {
                   setActionCategory('trade');
-                  setDispatchForm((f) => ({ ...f, action: 'BUY' }));
+                  selectCommand('EXECUTE_TRADE');
                 }}
                 className={`flex-1 py-1 px-2 rounded transition-colors ${
                   actionCategory === 'trade' ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-white'
@@ -397,7 +435,7 @@ print("Knowledge Base:", strat.json())`;
                 type="button"
                 onClick={() => {
                   setActionCategory('check');
-                  setDispatchForm((f) => ({ ...f, action: 'CHECK_ORDER' }));
+                  selectCommand('CHECK_ORDER');
                 }}
                 className={`flex-1 py-1 px-2 rounded transition-colors ${
                   actionCategory === 'check' ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-white'
@@ -409,7 +447,7 @@ print("Knowledge Base:", strat.json())`;
                 type="button"
                 onClick={() => {
                   setActionCategory('knowledge');
-                  setDispatchForm((f) => ({ ...f, action: 'CREATE_STRATEGY' }));
+                  selectCommand('SAVE_STRATEGY');
                 }}
                 className={`flex-1 py-1 px-2 rounded transition-colors ${
                   actionCategory === 'knowledge' ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-white'
@@ -421,7 +459,7 @@ print("Knowledge Base:", strat.json())`;
                 type="button"
                 onClick={() => {
                   setActionCategory('system');
-                  setDispatchForm((f) => ({ ...f, action: 'GET_ACCOUNT' }));
+                  selectCommand('GET_ACCOUNT');
                 }}
                 className={`flex-1 py-1 px-2 rounded transition-colors ${
                   actionCategory === 'system' ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-white'
@@ -435,158 +473,28 @@ print("Knowledge Base:", strat.json())`;
               <div>
                 <label className="text-[11px] font-mono text-slate-400 block mb-1">Directive Action</label>
                 <select
-                  value={dispatchForm.action}
-                  onChange={(e) => setDispatchForm({ ...dispatchForm, action: e.target.value })}
+                  value={selectedAction}
+                  onChange={(e) => selectCommand(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
                 >
-                  {actionCategory === 'trade' && (
-                    <>
-                      <option value="BUY">BUY (Market Order)</option>
-                      <option value="SELL">SELL (Market Order)</option>
-                      <option value="CLOSE_POSITION">CLOSE POSITION (Ticket)</option>
-                      <option value="CLOSE_ALL">CLOSE ALL POSITIONS</option>
-                      <option value="MODIFY_POSITION">MODIFY POSITION (SL / TP)</option>
-                      <option value="CANCEL_ORDER">CANCEL PENDING ORDER</option>
-                    </>
-                  )}
-                  {actionCategory === 'check' && (
-                    <>
-                      <option value="CHECK_ORDER">CHECK ORDER FEASIBILITY</option>
-                      <option value="CALC_MARGIN">CALCULATE MARGIN</option>
-                      <option value="CALC_PROFIT">CALCULATE PROJECTED PROFIT</option>
-                      <option value="GET_MARKET_DEPTH">LEVEL 2 MARKET DEPTH (DOM)</option>
-                      <option value="GET_TICKS">QUERY LIVE TICKS</option>
-                      <option value="GET_CANDLES">FETCH HISTORICAL CANDLES</option>
-                    </>
-                  )}
-                  {actionCategory === 'knowledge' && (
-                    <>
-                      <option value="CREATE_STRATEGY">CREATE STRATEGY IN KNOWLEDGE BASE</option>
-                      <option value="GET_STRATEGIES">QUERY SAVED STRATEGIES</option>
-                      <option value="RECORD_OBSERVATION">STORE MARKET OBSERVATION</option>
-                      <option value="GET_OBSERVATIONS">READ SAVED OBSERVATIONS</option>
-                      <option value="RUN_BACKTEST">EXECUTE STRATEGY BACKTEST</option>
-                      <option value="GET_BACKTEST_RESULTS">RETRIEVE BACKTEST REPORTS</option>
-                    </>
-                  )}
-                  {actionCategory === 'system' && (
-                    <>
-                      <option value="GET_ACCOUNT">GET ACCOUNT TELEMETRY</option>
-                      <option value="GET_POSITIONS">LIST OPEN POSITIONS</option>
-                      <option value="GET_HISTORY_DEALS">GET BROKER DEALS HISTORY</option>
-                      <option value="GET_DATABASE_ANALYTICS">DATABASE ANALYTICS</option>
-                      <option value="PRUNE_DATABASE">PRUNE & COMPACT DATABASE</option>
-                      <option value="EMERGENCY_HALT">EMERGENCY HALT</option>
-                      <option value="RESUME">RESUME OPERATIONS</option>
-                    </>
-                  )}
+                  {visibleCommands.map((command) => (
+                    <option key={command.name} value={command.name}>{command.name}</option>
+                  ))}
                 </select>
               </div>
-
-              {/* Dynamic Inputs Based on Category */}
-              {(actionCategory === 'trade' || actionCategory === 'check') && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] font-mono text-slate-400 block mb-1">Symbol</label>
-                    <input
-                      type="text"
-                      value={dispatchForm.symbol}
-                      onChange={(e) => setDispatchForm({ ...dispatchForm, symbol: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-mono text-slate-400 block mb-1">Volume (Lots)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={dispatchForm.volume}
-                      onChange={(e) => setDispatchForm({ ...dispatchForm, volume: parseFloat(e.target.value) || 0 })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {(dispatchForm.action === 'CLOSE_POSITION' || dispatchForm.action === 'MODIFY_POSITION' || dispatchForm.action === 'CANCEL_ORDER') && (
-                <div>
-                  <label className="text-[11px] font-mono text-slate-400 block mb-1">Ticket Number</label>
-                  <input
-                    type="number"
-                    value={dispatchForm.ticket || ''}
-                    placeholder="e.g. 1294819"
-                    onChange={(e) => setDispatchForm({ ...dispatchForm, ticket: parseInt(e.target.value, 10) || 0 })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
-                  />
-                </div>
-              )}
-
-              {dispatchForm.action === 'CREATE_STRATEGY' && (
-                <div>
-                  <label className="text-[11px] font-mono text-slate-400 block mb-1">Strategy Name</label>
-                  <input
-                    type="text"
-                    value={dispatchForm.strategyName}
-                    onChange={(e) => setDispatchForm({ ...dispatchForm, strategyName: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
-                  />
-                </div>
-              )}
-
-              {dispatchForm.action === 'RECORD_OBSERVATION' && (
-                <>
-                  <div>
-                    <label className="text-[11px] font-mono text-slate-400 block mb-1">Observation Title</label>
-                    <input
-                      type="text"
-                      value={dispatchForm.obsTitle}
-                      onChange={(e) => setDispatchForm({ ...dispatchForm, obsTitle: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-mono text-slate-400 block mb-1">Observation Details</label>
-                    <textarea
-                      rows={2}
-                      value={dispatchForm.obsContent}
-                      onChange={(e) => setDispatchForm({ ...dispatchForm, obsContent: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
-                    />
-                  </div>
-                </>
-              )}
-
-              {actionCategory === 'trade' && (dispatchForm.action === 'BUY' || dispatchForm.action === 'SELL' || dispatchForm.action === 'MODIFY_POSITION') && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] font-mono text-slate-400 block mb-1">SL Price / Points</label>
-                    <input
-                      type="number"
-                      value={dispatchForm.sl}
-                      onChange={(e) => setDispatchForm({ ...dispatchForm, sl: parseFloat(e.target.value) || 0 })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-mono text-slate-400 block mb-1">TP Price / Points</label>
-                    <input
-                      type="number"
-                      value={dispatchForm.tp}
-                      onChange={(e) => setDispatchForm({ ...dispatchForm, tp: parseFloat(e.target.value) || 0 })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="text-[11px] font-mono text-slate-400 block mb-1">AI Rationale & Context</label>
-                <input
-                  type="text"
-                  value={dispatchForm.reason}
-                  onChange={(e) => setDispatchForm({ ...dispatchForm, reason: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-cyan-500"
+              <div className="space-y-2">
+                <p className="text-xs text-slate-400">{commands.find((command) => command.name === selectedAction)?.description || 'Loading registered commands.'}</p>
+                <label className="text-[11px] font-mono text-slate-400 block">Command arguments (JSON)</label>
+                <textarea
+                  rows={10}
+                  value={commandArgsJson}
+                  onChange={(event) => setCommandArgsJson(event.target.value)}
+                  spellCheck={false}
+                  className="w-full resize-y bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white font-mono focus:border-cyan-500"
                 />
+                <p className="text-[10px] text-slate-500 font-mono">
+                  Required: {(commands.find((command) => command.name === selectedAction)?.inputSchema.required || []).join(', ') || 'none'}
+                </p>
               </div>
 
               <button

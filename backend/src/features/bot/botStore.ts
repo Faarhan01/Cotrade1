@@ -11,6 +11,9 @@ import {
   dbDeleteBot,
   dbSaveBotExecution,
   dbGetBotExecutions,
+  dbGetBotExecutionById,
+  dbGetBotExecutionStats,
+  dbGetOpenPaperBotExecutions,
   dbSaveBotLog,
   dbGetBotLogs,
   dbGetStrategyById,
@@ -37,7 +40,14 @@ export class BotStore {
     try {
       const persisted = await dbGetBots();
       for (const bot of persisted) {
+        const executionStats = await dbGetBotExecutionStats(bot.id);
+        bot.stats = {
+          ...bot.stats,
+          ...executionStats,
+        };
+        if (executionStats.lastExecutionTime > 0) bot.lastTradeTimestamp = executionStats.lastExecutionTime;
         this.bots.set(bot.id, bot);
+        await dbSaveBot(bot);
       }
       this.initialized = true;
       logger.info('BotStore', `Loaded ${this.bots.size} bot instances from database`);
@@ -245,27 +255,37 @@ export class BotStore {
   }
 
   public async recordExecution(exec: BotExecutionRecord): Promise<void> {
+    let previousExecution: BotExecutionRecord | null = null;
+    try {
+      previousExecution = await dbGetBotExecutionById(exec.id);
+      await dbSaveBotExecution(exec);
+    } catch (err: any) {
+      logger.warn('BotStore', `Failed to persist execution ${exec.id}: ${err.message}`);
+      return;
+    }
+
     const bot = this.bots.get(exec.botId);
     if (bot) {
-      bot.stats.tradesExecuted += 1;
-      bot.stats.lastExecutionTime = exec.openedAt;
-      bot.lastTradeTimestamp = exec.openedAt;
-      if (exec.pnl !== undefined) {
+      if (!previousExecution && exec.status === 'OPEN') {
+        bot.stats.tradesExecuted += 1;
+        bot.stats.lastExecutionTime = exec.openedAt;
+        bot.lastTradeTimestamp = exec.openedAt;
+      }
+      if (previousExecution?.status === 'OPEN' && exec.status === 'CLOSED' && exec.pnl !== undefined) {
         bot.stats.realizedPnl += exec.pnl;
         if (exec.pnl > 0) bot.stats.winningTrades += 1;
         else if (exec.pnl < 0) bot.stats.losingTrades += 1;
       }
       await this.saveBot(bot);
     }
-    try {
-      await dbSaveBotExecution(exec);
-    } catch (err: any) {
-      logger.warn('BotStore', `Failed to persist execution ${exec.id}: ${err.message}`);
-    }
   }
 
   public async getExecutions(botId?: string, limit = 50): Promise<BotExecutionRecord[]> {
     return dbGetBotExecutions(botId, limit);
+  }
+
+  public async getOpenPaperExecutions(): Promise<BotExecutionRecord[]> {
+    return dbGetOpenPaperBotExecutions();
   }
 
   public async log(

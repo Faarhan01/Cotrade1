@@ -1,2 +1,1 @@
-export * from './tradeController';
-export * from '../mt5/mt5Controller';
+export * from '@/features/mt5/tradeController.ts';

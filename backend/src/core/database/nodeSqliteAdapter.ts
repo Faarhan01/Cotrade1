@@ -18,6 +18,11 @@ CREATE TABLE IF NOT EXISTS orders (
   order_type TEXT,
   volume REAL,
   price REAL,
+  stop_limit_price REAL,
+  type_time TEXT,
+  expiration INTEGER,
+  type_filling TEXT,
+  deviation INTEGER,
   sl REAL,
   tp REAL,
   ticket INTEGER,
@@ -68,6 +73,20 @@ CREATE TABLE IF NOT EXISTS account_history (
 );
 
 CREATE TABLE IF NOT EXISTS candles_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  symbol TEXT NOT NULL,
+  timeframe TEXT NOT NULL,
+  time INTEGER NOT NULL,
+  open REAL NOT NULL,
+  high REAL NOT NULL,
+  low REAL NOT NULL,
+  close REAL NOT NULL,
+  volume REAL NOT NULL,
+  time_iso TEXT,
+  UNIQUE(symbol, timeframe, time)
+);
+
+CREATE TABLE IF NOT EXISTS synthetic_candles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   symbol TEXT NOT NULL,
   timeframe TEXT NOT NULL,
@@ -174,6 +193,9 @@ CREATE TABLE IF NOT EXISTS backtest_results (
   average_win REAL NOT NULL,
   average_loss REAL NOT NULL,
   risk_reward_ratio REAL NOT NULL,
+  profit_currency TEXT NOT NULL DEFAULT 'EST',
+  valuation_source TEXT NOT NULL DEFAULT 'LEGACY_ESTIMATE',
+  data_source TEXT,
   trades_json TEXT NOT NULL,
   equity_curve_json TEXT NOT NULL,
   evaluated_at INTEGER NOT NULL
@@ -255,6 +277,7 @@ CREATE TABLE IF NOT EXISTS bot_presets (
 );
 
 CREATE INDEX IF NOT EXISTS idx_candles_lookup ON candles_history(symbol, timeframe, time);
+CREATE INDEX IF NOT EXISTS idx_synthetic_candles_lookup ON synthetic_candles(symbol, timeframe, time);
 CREATE INDEX IF NOT EXISTS idx_ticks_lookup ON ticks_history(symbol, timestamp);
 CREATE INDEX IF NOT EXISTS idx_strategies_symbol ON strategies(symbol, status);
 CREATE INDEX IF NOT EXISTS idx_backtest_strategy ON backtest_results(strategy_id, evaluated_at);
@@ -333,6 +356,30 @@ export class NodeSqliteAdapter implements DatabaseAdapter {
         this.dbInstance.exec('ALTER TABLE account_history ADD COLUMN created_at_iso TEXT;');
       } catch {
         // column exists or new table
+      }
+      for (const [column, definition] of [
+        ['stop_limit_price', 'REAL'],
+        ['type_time', 'TEXT'],
+        ['expiration', 'INTEGER'],
+        ['type_filling', 'TEXT'],
+        ['deviation', 'INTEGER'],
+      ]) {
+        try {
+          this.dbInstance.exec(`ALTER TABLE orders ADD COLUMN ${column} ${definition};`);
+        } catch {
+          // Column already exists.
+        }
+      }
+      for (const [column, definition] of [
+        ['profit_currency', "TEXT NOT NULL DEFAULT 'EST'"],
+        ['valuation_source', "TEXT NOT NULL DEFAULT 'LEGACY_ESTIMATE'"],
+        ['data_source', 'TEXT'],
+      ]) {
+        try {
+          this.dbInstance.exec(`ALTER TABLE backtest_results ADD COLUMN ${column} ${definition};`);
+        } catch {
+          // Column already exists.
+        }
       }
       try {
         this.dbInstance.exec('ALTER TABLE ticks_history ADD COLUMN last REAL DEFAULT 0;');

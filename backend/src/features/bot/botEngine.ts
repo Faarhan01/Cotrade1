@@ -29,6 +29,13 @@ export class BotEngine {
 
   public async start(): Promise<void> {
     await botStore.initialize();
+    this.paperPositions.clear();
+    const openPaperExecutions = await botStore.getOpenPaperExecutions();
+    for (const execution of openPaperExecutions) {
+      const executions = this.paperPositions.get(execution.botId) || [];
+      executions.push(execution);
+      this.paperPositions.set(execution.botId, executions);
+    }
     if (this.loopTimer) clearInterval(this.loopTimer);
 
     // Run evaluation loop every 3 seconds
@@ -452,12 +459,8 @@ export class BotEngine {
     const execId = `bexec-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
     if (bot.executionMode === 'LIVE') {
-      const connector = connectorManager.getConnector();
-      const res = await connector.executeOrder({
-        id: `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        status: 'pending',
-        createdAt: now,
-        action: 'EXECUTE_TRADE',
+      const { executeCommand } = await import('@commands');
+      const commandResult = await executeCommand('EXECUTE_TRADE', {
         symbol: bot.symbol,
         orderType,
         volume,
@@ -467,7 +470,14 @@ export class BotEngine {
         magic: bot.magicNumber,
         comment: `BOT_${bot.name.slice(0, 15)}`,
         source: 'AI_MCP',
+        confidence: signal.confidence,
+        reason: signal.reason,
+      }, {
+        source: 'BOT',
+        aiName: bot.name,
+        metadata: { botId: bot.id, strategyId: bot.strategyId },
       });
+      const res = commandResult.data || { success: false, message: commandResult.error || commandResult.message };
 
       if (res.success) {
         const record: BotExecutionRecord = {
@@ -593,18 +603,22 @@ export class BotEngine {
     // 2. Manage Live MT5 Positions with Bot Magic Number
     if (bot.executionMode === 'LIVE') {
       const livePositions = tradeStore.getPositions().filter((p) => p.magic === bot.magicNumber);
-      const connector = connectorManager.getConnector();
+      const { executeCommand } = await import('@commands');
 
       for (const pos of livePositions) {
         if (pos.type === 'BUY') {
           const targetSl = currentPrice - distance;
           if (targetSl > (pos.sl || 0) + step && currentPrice > pos.openPrice) {
-            await connector.modifyPosition(pos.ticket, targetSl, pos.tp);
+            await executeCommand('MODIFY_POSITION', { ticket: pos.ticket, sl: targetSl, tp: pos.tp }, {
+              source: 'BOT', aiName: bot.name, metadata: { botId: bot.id },
+            });
           }
         } else if (pos.type === 'SELL') {
           const targetSl = currentPrice + distance;
           if ((!pos.sl || targetSl < pos.sl - step) && currentPrice < pos.openPrice) {
-            await connector.modifyPosition(pos.ticket, targetSl, pos.tp);
+            await executeCommand('MODIFY_POSITION', { ticket: pos.ticket, sl: targetSl, tp: pos.tp }, {
+              source: 'BOT', aiName: bot.name, metadata: { botId: bot.id },
+            });
           }
         }
       }
@@ -640,9 +654,11 @@ export class BotEngine {
     // Live positions closure
     if (bot.executionMode === 'LIVE') {
       const livePositions = tradeStore.getPositions().filter((p) => p.magic === bot.magicNumber);
-      const connector = connectorManager.getConnector();
+      const { executeCommand } = await import('@commands');
       for (const pos of livePositions) {
-        const res = await connector.closePosition(pos.ticket);
+        const res = await executeCommand('CLOSE_POSITION', { ticket: pos.ticket }, {
+          source: 'BOT', aiName: bot.name, metadata: { botId: bot.id, reason },
+        });
         if (res.success) closedCount++;
       }
     }
@@ -788,6 +804,7 @@ export class BotEngine {
       confidence: 0.99,
       reason: `Operator / AI Forced Execution Signal (${signalType})`,
       price: lastPrice,
+      indicatorValues: { forced: true, source: 'OPERATOR' },
       timestamp: Date.now(),
     };
 

@@ -8,6 +8,7 @@ import { LivePriceChart } from '../components/dashboard/LivePriceChart';
 import { OrderExecutionDock } from '../components/dashboard/OrderExecutionDock';
 import { OpenPositionsTable } from '../components/dashboard/OpenPositionsTable';
 import { AllTrackedSymbolsTable } from '../components/dashboard/AllTrackedSymbolsTable';
+import { MarketDepthPanel } from '../components/dashboard/MarketDepthPanel';
 
 interface DashboardPageProps {
   state: AppState | null;
@@ -97,6 +98,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ state, onRefresh }
           />
         </div>
       </div>
+
+      <MarketDepthPanel symbol={selectedSymbol} />
 
       {/* 6. Active MT5 Open Positions */}
       <OpenPositionsTable

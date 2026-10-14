@@ -38,7 +38,7 @@ export const marketApi = {
   },
 
   // OHLCV Candlesticks (supports count and optional date range)
-  getCandles(symbol: string, timeframe = 'M1', count = 100, from?: number, to?: number): Promise<{
+  getCandles(symbol: string, timeframe = 'M1', count = 100, from?: number, to?: number, startPos?: number): Promise<{
     success: boolean;
     symbol: string;
     timeframe: string;
@@ -51,6 +51,7 @@ export const marketApi = {
     qs.set('count', String(count));
     if (from) qs.set('from', String(from));
     if (to) qs.set('to', String(to));
+    if (startPos !== undefined) qs.set('startPos', String(Math.max(0, startPos)));
     return request(`/api/candles?${qs.toString()}`);
   },
 

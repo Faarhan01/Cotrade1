@@ -17,7 +17,7 @@ export const strategyApi = {
     return request(`/api/strategies/${id}`, { method: 'DELETE' });
   },
 
-  async runBacktest(params: { strategy: { id: string }; candleCount?: number; initialDeposit?: number }): Promise<{ success: boolean; result: any }> {
+  async runBacktest(params: { strategy: { id: string }; candleCount?: number; initialDeposit?: number; includeSynthetic?: boolean }): Promise<{ success: boolean; result: any }> {
     return request('/api/strategies/backtest', {
       method: 'POST',
       body: JSON.stringify(params),

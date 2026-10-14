@@ -1,1 +1,1 @@
-export * from './daemonController.ts';
+export * from '@/features/daemon/daemonController.ts';

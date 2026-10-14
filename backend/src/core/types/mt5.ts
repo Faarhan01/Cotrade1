@@ -1,21 +1,36 @@
 export type OrderType = 'BUY' | 'SELL';
 export type PendingOrderType = 'BUY_LIMIT' | 'SELL_LIMIT' | 'BUY_STOP' | 'SELL_STOP' | 'BUY_STOP_LIMIT' | 'SELL_STOP_LIMIT';
+export type TradeOrderType = OrderType | PendingOrderType;
 export type CommandStatus = 'pending' | 'dispatched' | 'executed' | 'failed' | 'cancelled';
 export type OrderAction = 'EXECUTE_TRADE' | 'MODIFY_POSITION' | 'CLOSE_POSITION' | 'CLOSE_ALL' | 'CANCEL_PENDING' | 'FETCH_HISTORY' | 'SET_RISK_GUARD';
 
 export interface AccountInfo {
   login: number;
   tradeMode: string; // 'DEMO' | 'REAL' | 'CONTEST'
+  tradeModeCode?: number;
   balance: number;
+  credit?: number;
   equity: number;
   margin: number;
   freeMargin: number;
   marginLevel: number; // percentage
+  marginCallLevel?: number;
+  stopOutLevel?: number;
+  marginStopOutMode?: number;
+  marginMode?: number;
   leverage: number;
+  limitOrders?: number;
+  tradeAllowed?: boolean;
+  tradeExpert?: boolean;
+  fifoClose?: boolean;
+  currencyDigits?: number;
   currency: string;
   server: string;
   company: string;
   profit: number;
+  assets?: number;
+  liabilities?: number;
+  commissionBlocked?: number;
   lastUpdate: number;
 }
 
@@ -50,6 +65,12 @@ export interface Position {
   magic: number;
   comment: string;
   openTime: number;
+  openTimeMsc?: number;
+  updateTime?: number;
+  updateTimeMsc?: number;
+  identifier?: number;
+  reason?: number;
+  externalId?: string;
   trailingEnabled?: boolean;
   trailingDistance?: number;
   trailingStep?: number;
@@ -59,9 +80,14 @@ export interface TradeCommand {
   id: string;
   action: OrderAction;
   symbol?: string;
-  orderType?: OrderType;
+  orderType?: TradeOrderType;
   volume?: number;
   price?: number;
+  stopLimitPrice?: number;
+  typeTime?: 'GTC' | 'DAY' | 'SPECIFIED' | 'SPECIFIED_DAY';
+  expiration?: number;
+  typeFilling?: 'FOK' | 'IOC' | 'RETURN' | 'BOC';
+  deviation?: number;
   sl?: number;
   tp?: number;
   ticket?: number;
@@ -72,7 +98,7 @@ export interface TradeCommand {
   createdAt: number;
   dispatchedAt?: number;
   executedAt?: number;
-  source: 'AI_MCP' | 'MANUAL_UI' | 'RISK_GUARD' | 'API';
+  source: 'AI_MCP' | 'MANUAL_UI' | 'RISK_GUARD' | 'API' | 'BOT';
   result?: {
     success: boolean;
     dealTicket?: number;
@@ -144,6 +170,36 @@ export interface DetailedSymbolInfo {
   lotStep: number;
   contractSize: number;
   tradeAllowed: boolean;
+  canOpenBuy?: boolean;
+  canOpenSell?: boolean;
+  tradeMode?: number;
+  tradeModeName?: string;
+  tradeExecution?: number;
+  tradeCalcMode?: number;
+  orderMode?: number;
+  fillingMode?: number;
+  expirationMode?: number;
+  volumeLimit?: number;
+  tickSize?: number;
+  tickValue?: number;
+  tickValueProfit?: number;
+  tickValueLoss?: number;
+  stopsLevel?: number;
+  freezeLevel?: number;
+  swapMode?: number;
+  swapLong?: number;
+  swapShort?: number;
+  swapRollover3Days?: number;
+  marginInitial?: number;
+  marginMaintenance?: number;
+  marginHedged?: number;
+  currencyBase?: string;
+  currencyProfit?: string;
+  currencyMargin?: string;
+  spreadFloat?: boolean;
+  sessionClose?: number;
+  selected?: boolean;
+  visible?: boolean;
   high24h?: number;
   low24h?: number;
   sessionOpen?: number;
@@ -180,6 +236,19 @@ export interface PendingOrder {
   comment: string;
   timeSetup: number;
   timeSetupIso?: string;
+  timeSetupMsc?: number;
+  timeDone?: number;
+  timeDoneMsc?: number;
+  expiration?: number;
+  typeTime?: number;
+  typeFilling?: number;
+  state?: string;
+  reason?: number;
+  positionId?: number;
+  positionById?: number;
+  volumeCurrent?: number;
+  stopLimitPrice?: number;
+  externalId?: string;
 }
 
 export interface MarketDepthItem {
@@ -266,6 +335,7 @@ export interface HistoryDeal {
   ticket: number;
   order: number;
   time: number;
+  timeMsc?: number;
   timeIso?: string;
   type: 'BUY' | 'SELL' | 'BALANCE' | 'CREDIT';
   entry: 'IN' | 'OUT' | 'INOUT';
@@ -277,7 +347,10 @@ export interface HistoryDeal {
   profit: number;
   fee?: number;
   magic: number;
+  positionId?: number;
+  reason?: number;
   comment: string;
+  externalId?: string;
 }
 
 export interface HistoryOrder {
@@ -292,9 +365,18 @@ export interface HistoryOrder {
   tp: number;
   state: 'FILLED' | 'CANCELLED' | 'REJECTED' | 'EXPIRED' | string;
   timeSetup: number;
+  timeSetupMsc?: number;
   timeDone?: number;
+  timeDoneMsc?: number;
+  expiration?: number;
+  typeTime?: number;
+  typeFilling?: number;
+  reason?: number;
+  positionId?: number;
+  stopLimitPrice?: number;
   magic: number;
   comment: string;
+  externalId?: string;
 }
 
 export interface MarginCalcResult {

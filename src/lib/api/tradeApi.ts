@@ -8,6 +8,11 @@ export const tradeApi = {
     orderType: TradeCommand['orderType'];
     volume: number;
     price?: number;
+    stopLimitPrice?: number;
+    typeTime?: TradeCommand['typeTime'];
+    expiration?: number;
+    typeFilling?: TradeCommand['typeFilling'];
+    deviation?: number;
     sl?: number;
     tp?: number;
     ticket?: number;
@@ -71,16 +76,16 @@ export const tradeApi = {
 
   getHistoryDeals(params?: { from?: number; to?: number; count?: number }) {
     const qs = new URLSearchParams();
-    if (params?.from) qs.set('from', String(params.from));
-    if (params?.to) qs.set('to', String(params.to));
+    if (params?.from !== undefined) qs.set('from', String(params.from));
+    if (params?.to !== undefined) qs.set('to', String(params.to));
     if (params?.count) qs.set('count', String(params.count));
     return request<{ success: boolean; count: number; deals: any[] }>(`/api/history/deals?${qs.toString()}`);
   },
 
   getHistoryOrders(params?: { from?: number; to?: number; count?: number }) {
     const qs = new URLSearchParams();
-    if (params?.from) qs.set('from', String(params.from));
-    if (params?.to) qs.set('to', String(params.to));
+    if (params?.from !== undefined) qs.set('from', String(params.from));
+    if (params?.to !== undefined) qs.set('to', String(params.to));
     if (params?.count) qs.set('count', String(params.count));
     return request<{ success: boolean; count: number; orders: any[] }>(`/api/history/orders?${qs.toString()}`);
   },

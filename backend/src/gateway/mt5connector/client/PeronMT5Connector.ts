@@ -44,7 +44,7 @@ export class PeronMT5Connector implements IMT5Connector {
     message: 'Initializing Peron MT5 Connector',
   };
   private onSyncCallback?: (data: {
-    account: AccountInfo;
+    account: AccountInfo | null;
     positions: Position[];
     pendingOrders: PendingOrder[];
     ticks: TickData[];
@@ -69,7 +69,7 @@ export class PeronMT5Connector implements IMT5Connector {
 
   public setOnSyncCallback(
     cb: (data: {
-      account: AccountInfo;
+      account: AccountInfo | null;
       positions: Position[];
       pendingOrders: PendingOrder[];
       ticks: TickData[];
@@ -300,21 +300,7 @@ export class PeronMT5Connector implements IMT5Connector {
 
       if (this.onSyncCallback) {
         this.onSyncCallback({
-          account: rawAccount || {
-            login: 0,
-            tradeMode: 'STANDBY',
-            balance: 100000,
-            equity: 100000,
-            margin: 0,
-            freeMargin: 100000,
-            marginLevel: 0,
-            leverage: 100,
-            currency: 'USD',
-            server: 'MetaTrader 5 Direct Sandbox',
-            company: 'MetaTrader 5',
-            profit: 0,
-            lastUpdate: Date.now(),
-          },
+          account: rawAccount,
           positions: Array.isArray(positions) ? positions : [],
           pendingOrders: Array.isArray(pendingOrders) ? pendingOrders : [],
           ticks,
@@ -376,6 +362,37 @@ export class PeronMT5Connector implements IMT5Connector {
         lotStep: Number(s.lotStep ?? s.volumeStep ?? 0.01),
         contractSize: Number(s.contractSize ?? 100000),
         tradeAllowed: s.tradeAllowed !== undefined ? Boolean(s.tradeAllowed) : true,
+        canOpenBuy: s.canOpenBuy !== undefined ? Boolean(s.canOpenBuy) : undefined,
+        canOpenSell: s.canOpenSell !== undefined ? Boolean(s.canOpenSell) : undefined,
+        tradeMode: s.tradeMode !== undefined ? Number(s.tradeMode) : undefined,
+        tradeModeName: s.tradeModeName,
+        tradeExecution: s.tradeExecution !== undefined ? Number(s.tradeExecution) : undefined,
+        tradeCalcMode: s.tradeCalcMode !== undefined ? Number(s.tradeCalcMode) : undefined,
+        orderMode: s.orderMode !== undefined ? Number(s.orderMode) : undefined,
+        fillingMode: s.fillingMode !== undefined ? Number(s.fillingMode) : undefined,
+        expirationMode: s.expirationMode !== undefined ? Number(s.expirationMode) : undefined,
+        volumeLimit: s.volumeLimit !== undefined ? Number(s.volumeLimit) : undefined,
+        tickSize: s.tickSize !== undefined ? Number(s.tickSize) : undefined,
+        tickValue: s.tickValue !== undefined ? Number(s.tickValue) : undefined,
+        tickValueProfit: s.tickValueProfit !== undefined ? Number(s.tickValueProfit) : undefined,
+        tickValueLoss: s.tickValueLoss !== undefined ? Number(s.tickValueLoss) : undefined,
+        stopsLevel: s.stopsLevel !== undefined ? Number(s.stopsLevel) : undefined,
+        freezeLevel: s.freezeLevel !== undefined ? Number(s.freezeLevel) : undefined,
+        swapMode: s.swapMode !== undefined ? Number(s.swapMode) : undefined,
+        swapLong: s.swapLong !== undefined ? Number(s.swapLong) : undefined,
+        swapShort: s.swapShort !== undefined ? Number(s.swapShort) : undefined,
+        swapRollover3Days: s.swapRollover3Days !== undefined ? Number(s.swapRollover3Days) : undefined,
+        marginInitial: s.marginInitial !== undefined ? Number(s.marginInitial) : undefined,
+        marginMaintenance: s.marginMaintenance !== undefined ? Number(s.marginMaintenance) : undefined,
+        marginHedged: s.marginHedged !== undefined ? Number(s.marginHedged) : undefined,
+        currencyBase: s.currencyBase,
+        currencyProfit: s.currencyProfit,
+        currencyMargin: s.currencyMargin,
+        spreadFloat: s.spreadFloat !== undefined ? Boolean(s.spreadFloat) : undefined,
+        sessionOpen: s.sessionOpen !== undefined ? Number(s.sessionOpen) : undefined,
+        sessionClose: s.sessionClose !== undefined ? Number(s.sessionClose) : undefined,
+        selected: s.selected !== undefined ? Boolean(s.selected) : undefined,
+        visible: s.visible !== undefined ? Boolean(s.visible) : undefined,
         description: s.description || s.symbol,
         high24h: s.high24h != null ? Number(s.high24h) : undefined,
         low24h: s.low24h != null ? Number(s.low24h) : undefined,
@@ -472,13 +489,14 @@ export class PeronMT5Connector implements IMT5Connector {
     return [];
   }
 
-  public async getTicksHistory(symbol: string, dateFrom?: number, dateTo?: number, count?: number): Promise<TickData[]> {
+  public async getTicksHistory(symbol: string, dateFrom?: number, dateTo?: number, count?: number, flags = 'ALL'): Promise<TickData[]> {
     try {
       const qs = new URLSearchParams();
       qs.set('symbol', normalizeSymbol(symbol));
       if (dateFrom) qs.set('from', String(dateFrom));
       if (dateTo) qs.set('to', String(dateTo));
       if (count) qs.set('count', String(count));
+      if (flags) qs.set('flags', flags.toUpperCase());
       const res = await fetch(`${this.bridgeUrl}/ticks/history?${qs.toString()}`);
       if (res.ok) {
         const raw = (await res.json()) as any[];
@@ -488,7 +506,7 @@ export class PeronMT5Connector implements IMT5Connector {
     return [];
   }
 
-  public async getCandles(symbol: string, timeframe: string, count: number, dateFrom?: number, dateTo?: number): Promise<CandleData[]> {
+  public async getCandles(symbol: string, timeframe: string, count: number, dateFrom?: number, dateTo?: number, startPos?: number): Promise<CandleData[]> {
     try {
       const normSym = normalizeSymbol(symbol);
       const qs = new URLSearchParams();
@@ -497,6 +515,7 @@ export class PeronMT5Connector implements IMT5Connector {
       qs.set('count', String(count));
       if (dateFrom) qs.set('from', String(dateFrom));
       if (dateTo) qs.set('to', String(dateTo));
+      if (startPos !== undefined) qs.set('startPos', String(startPos));
 
       const res = await fetch(`${this.bridgeUrl}/candles?${qs.toString()}`);
       if (res.ok) return (await res.json()) as CandleData[];
@@ -504,19 +523,23 @@ export class PeronMT5Connector implements IMT5Connector {
     return [];
   }
 
-  public async getPositions(symbol?: string): Promise<Position[]> {
+  public async getPositions(symbol?: string, ticket?: number): Promise<Position[]> {
     try {
-      const qs = symbol ? `?symbol=${encodeURIComponent(normalizeSymbol(symbol))}` : '';
-      const res = await fetch(`${this.bridgeUrl}/positions${qs}`);
+      const qs = new URLSearchParams();
+      if (ticket !== undefined) qs.set('ticket', String(ticket));
+      else if (symbol) qs.set('symbol', normalizeSymbol(symbol));
+      const res = await fetch(`${this.bridgeUrl}/positions?${qs.toString()}`);
       if (res.ok) return (await res.json()) as Position[];
     } catch {}
     return [];
   }
 
-  public async getOrders(symbol?: string): Promise<PendingOrder[]> {
+  public async getOrders(symbol?: string, ticket?: number): Promise<PendingOrder[]> {
     try {
-      const qs = symbol ? `?symbol=${encodeURIComponent(normalizeSymbol(symbol))}` : '';
-      const res = await fetch(`${this.bridgeUrl}/orders${qs}`);
+      const qs = new URLSearchParams();
+      if (ticket !== undefined) qs.set('ticket', String(ticket));
+      else if (symbol) qs.set('symbol', normalizeSymbol(symbol));
+      const res = await fetch(`${this.bridgeUrl}/orders?${qs.toString()}`);
       if (res.ok) return (await res.json()) as PendingOrder[];
     } catch {}
     return [];
@@ -534,6 +557,11 @@ export class PeronMT5Connector implements IMT5Connector {
           sl: cmd.sl,
           tp: cmd.tp,
           price: cmd.price,
+          stopLimitPrice: cmd.stopLimitPrice,
+          typeTime: cmd.typeTime,
+          expiration: cmd.expiration,
+          typeFilling: cmd.typeFilling,
+          deviation: cmd.deviation,
           comment: cmd.comment || 'MT5_Direct',
           magic: cmd.magic,
         }),
@@ -541,7 +569,7 @@ export class PeronMT5Connector implements IMT5Connector {
       if (res.ok) {
         const data = (await res.json()) as ExecutionResult;
         setTimeout(() => this.syncCycle(), 100);
-        return data;
+        return { ...data, price: data.executionPrice ?? data.price };
       }
     } catch {}
 
@@ -706,28 +734,51 @@ export class PeronMT5Connector implements IMT5Connector {
     }
   }
 
-  public async getHistoryDeals(params?: { dateFrom?: number; dateTo?: number; count?: number }): Promise<HistoryDeal[]> {
+  public async getHistoryDeals(params?: { dateFrom?: number; dateTo?: number; count?: number; ticket?: number; position?: number }): Promise<HistoryDeal[]> {
     try {
       const qs = new URLSearchParams();
       if (params?.dateFrom) qs.set('from', String(params.dateFrom));
       if (params?.dateTo) qs.set('to', String(params.dateTo));
       if (params?.count) qs.set('count', String(params.count));
+      if (params?.ticket !== undefined) qs.set('ticket', String(params.ticket));
+      if (params?.position !== undefined) qs.set('position', String(params.position));
       const res = await fetch(`${this.bridgeUrl}/history/deals?${qs.toString()}`);
       if (res.ok) return (await res.json()) as HistoryDeal[];
     } catch {}
     return [];
   }
 
-  public async getHistoryOrders(params?: { dateFrom?: number; dateTo?: number; count?: number }): Promise<HistoryOrder[]> {
+  public async getHistoryOrders(params?: { dateFrom?: number; dateTo?: number; count?: number; ticket?: number; position?: number }): Promise<HistoryOrder[]> {
     try {
       const qs = new URLSearchParams();
       if (params?.dateFrom) qs.set('from', String(params.dateFrom));
       if (params?.dateTo) qs.set('to', String(params.dateTo));
       if (params?.count) qs.set('count', String(params.count));
+      if (params?.ticket !== undefined) qs.set('ticket', String(params.ticket));
+      if (params?.position !== undefined) qs.set('position', String(params.position));
       const res = await fetch(`${this.bridgeUrl}/history/orders?${qs.toString()}`);
       if (res.ok) return (await res.json()) as HistoryOrder[];
     } catch {}
     return [];
+  }
+
+  public async getHistoryTotals(params?: { dateFrom?: number; dateTo?: number }): Promise<{
+    success: boolean;
+    dateFrom?: number;
+    dateTo?: number;
+    dealsTotal?: number;
+    ordersTotal?: number;
+    message?: string;
+  }> {
+    try {
+      const qs = new URLSearchParams();
+      if (params?.dateFrom !== undefined) qs.set('from', String(params.dateFrom));
+      if (params?.dateTo !== undefined) qs.set('to', String(params.dateTo));
+      const res = await fetch(`${this.bridgeUrl}/history/totals?${qs.toString()}`);
+      return await res.json();
+    } catch (error: any) {
+      return { success: false, message: error.message || 'Failed to get history totals' };
+    }
   }
 
   public async calcMargin(orderType: string, symbol: string, volume: number, price?: number): Promise<MarginCalcResult> {
@@ -766,8 +817,15 @@ export class PeronMT5Connector implements IMT5Connector {
         body: JSON.stringify({
           symbol: normalizeSymbol(cmd.symbol),
           orderType: cmd.orderType || 'BUY',
-          volume: cmd.volume || 0.1,
+          volume: cmd.volume ?? 0.1,
           price: cmd.price,
+          stopLimitPrice: cmd.stopLimitPrice,
+          sl: cmd.sl,
+          tp: cmd.tp,
+          typeTime: cmd.typeTime,
+          expiration: cmd.expiration,
+          typeFilling: cmd.typeFilling,
+          deviation: cmd.deviation,
         }),
       });
       return (await res.json()) as OrderCheckResult;
@@ -782,6 +840,16 @@ export class PeronMT5Connector implements IMT5Connector {
       if (res.ok) return await res.json();
     } catch {}
     return { bids: [], asks: [] };
+  }
+
+  public async getNativeDiagnostics(): Promise<Record<string, any>> {
+    try {
+      const res = await fetch(`${this.bridgeUrl}/native/diagnostics`);
+      if (res.ok) return await res.json();
+      return { available: false, message: `Diagnostics request failed (${res.status})` };
+    } catch (err: any) {
+      return { available: false, message: err.message || 'Diagnostics request failed' };
+    }
   }
 
   public async getDetailedSymbol(symbol: string): Promise<DetailedSymbolInfo | null> {

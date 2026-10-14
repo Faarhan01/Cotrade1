@@ -10,6 +10,7 @@ export function useBridgeData() {
   const [lastPingMs, setLastPingMs] = useState<number>(0);
   const wsRef = useRef<WebSocket | null>(null);
   const pingIntervalRef = useRef<any>(null);
+  const wsConnectedRef = useRef(false);
 
   const fetchFullState = useCallback(async () => {
     try {
@@ -26,12 +27,12 @@ export function useBridgeData() {
     let retryTimeout: any = null;
     let isUnmounted = false;
 
-    // Automatic polling heartbeat ensures instant pickup when EA begins streaming
+    // REST polling is a fallback only; WebSocket snapshots are the primary live feed.
     const pollInterval = setInterval(() => {
-      if (!isUnmounted) {
+      if (!isUnmounted && !wsConnectedRef.current) {
         fetchFullState();
       }
-    }, 2000);
+    }, 5000);
 
     function connectWs() {
       if (isUnmounted) return;
@@ -46,6 +47,7 @@ export function useBridgeData() {
 
         socket.onopen = () => {
           if (isUnmounted) return;
+          wsConnectedRef.current = true;
           setWsStatus('connected');
           socket.send(JSON.stringify({ type: 'get_state' }));
 
@@ -172,6 +174,7 @@ export function useBridgeData() {
 
         socket.onclose = () => {
           if (isUnmounted) return;
+          wsConnectedRef.current = false;
           setWsStatus('disconnected');
           if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
           retryTimeout = setTimeout(connectWs, 2500);
@@ -181,6 +184,7 @@ export function useBridgeData() {
           socket.close();
         };
       } catch (err) {
+        wsConnectedRef.current = false;
         setWsStatus('disconnected');
         retryTimeout = setTimeout(connectWs, 3000);
       }
@@ -190,6 +194,7 @@ export function useBridgeData() {
 
     return () => {
       isUnmounted = true;
+      wsConnectedRef.current = false;
       clearInterval(pollInterval);
       if (retryTimeout) clearTimeout(retryTimeout);
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { tradeStore } from '@services/tradeStore';
 import { broadcast } from '@/services/websocketServer';
 import { EASyncPayload, EASyncResponse } from '@core/types';
+import { ingestEASnapshot } from '@gateway/mt5connector/dataflow/mt5Dataflow';
 
 export const mt5Router = Router();
 
@@ -26,24 +27,7 @@ mt5Router.post(['/sync', '/api/mt5/sync'], async (req, res) => {
   }
 
   // Process EA incoming state (account, positions, ticks, results, currentChart, allSymbols)
-  const commandsToExecute = await tradeStore.handleEASync(payload);
-
-  // Broadcast live updates immediately to connected web terminals
-  broadcast({
-    type: 'ea:sync',
-    payload: {
-      account: tradeStore.getAccount(),
-      positions: tradeStore.getPositions(),
-      ticks: tradeStore.getTicks(),
-      tickHistory: tradeStore.getTickHistory(),
-      currentChart: tradeStore.getCurrentChart(),
-      allSymbols: tradeStore.getAllSymbols(),
-      chartHistory: tradeStore.getChartHistory(),
-      connection: tradeStore.getState().connection,
-      isEaConnected: true,
-      lastEaSync: Date.now(),
-    },
-  });
+  const commandsToExecute = await ingestEASnapshot(payload);
 
   const response: EASyncResponse = {
     status: 'ok',

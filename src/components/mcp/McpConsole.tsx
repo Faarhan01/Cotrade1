@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { MCP_TOOLS } from '../../constants/mcpTools';
+import React, { useEffect, useState } from 'react';
 import { MCPToolDefinition } from '@/types';
 import { api } from '../../lib/api';
 import {
@@ -16,7 +15,8 @@ import {
 } from 'lucide-react';
 
 export const McpConsole: React.FC = () => {
-  const [selectedTool, setSelectedTool] = useState(MCP_TOOLS[3]); // mt5_execute_trade
+  const [tools, setTools] = useState<MCPToolDefinition[]>([]);
+  const [selectedTool, setSelectedTool] = useState<MCPToolDefinition | null>(null);
   const [toolArgsJson, setToolArgsJson] = useState(
     JSON.stringify(
       {
@@ -35,6 +35,15 @@ export const McpConsole: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [copiedConfig, setCopiedConfig] = useState(false);
   const [configType, setConfigType] = useState<'claude' | 'stdio' | 'cli' | 'cursor' | 'python'>('stdio');
+
+  useEffect(() => {
+    api.getMcpTools().then(({ tools: availableTools }) => {
+      setTools(availableTools);
+      setSelectedTool(availableTools.find((tool) => tool.name === 'mt5_execute_trade') || availableTools[0] || null);
+    }).catch((error) => {
+      setTestResult({ error: error?.message || 'Failed to load command registry' });
+    });
+  }, []);
 
   const stdioConfig = JSON.stringify(
     {
@@ -147,7 +156,7 @@ print("Asynchronous Order Dispatched to MetaTrader 5:", trade_res)
     setTimeout(() => setCopiedConfig(false), 2000);
   };
 
-  const handleSelectTool = (tool: (typeof MCP_TOOLS)[0]) => {
+  const handleSelectTool = (tool: MCPToolDefinition) => {
     setSelectedTool(tool);
     // Build default arguments template
     const defaults: Record<string, any> = {};
@@ -180,6 +189,7 @@ print("Asynchronous Order Dispatched to MetaTrader 5:", trade_res)
   };
 
   const handleRunTool = async () => {
+    if (!selectedTool) return;
     try {
       setIsRunning(true);
       setTestResult(null);
@@ -246,7 +256,7 @@ print("Asynchronous Order Dispatched to MetaTrader 5:", trade_res)
               <div className="flex items-center gap-2">
                 <Code2 className="h-4 w-4 text-cyan-400" />
                 <h2 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Registered MCP Tools ({MCP_TOOLS.length})
+                  Registered MCP Tools ({tools.length})
                 </h2>
               </div>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">
@@ -255,8 +265,8 @@ print("Asynchronous Order Dispatched to MetaTrader 5:", trade_res)
             </div>
 
             <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
-              {MCP_TOOLS.map((tool: MCPToolDefinition) => {
-                const isSelected = selectedTool.name === tool.name;
+              {tools.map((tool) => {
+                const isSelected = selectedTool?.name === tool.name;
                 return (
                   <div
                     key={tool.name}
@@ -296,7 +306,7 @@ print("Asynchronous Order Dispatched to MetaTrader 5:", trade_res)
                 <span className="text-xs text-slate-500 font-mono block">Testing Tool:</span>
                 <h3 className="text-base font-bold text-white font-mono flex items-center gap-2">
                   <Terminal className="h-4 w-4 text-cyan-400" />
-                  {selectedTool.name}
+                  {selectedTool?.name || 'Loading command registry'}
                 </h3>
               </div>
               <button
@@ -310,7 +320,7 @@ print("Asynchronous Order Dispatched to MetaTrader 5:", trade_res)
             </div>
 
             <p className="text-xs text-slate-300 bg-slate-950/70 p-2.5 rounded-lg border border-slate-800">
-              {selectedTool.description}
+              {selectedTool?.description || 'Commands load from the backend registry.'}
             </p>
 
             {/* Input Arguments Editor */}

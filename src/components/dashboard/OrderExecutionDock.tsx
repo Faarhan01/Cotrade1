@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { OrderType, TickData, RiskGuardConfig, DetailedSymbolInfo } from '@/types';
+import { TradeOrderType, TickData, RiskGuardConfig, DetailedSymbolInfo } from '@/types';
 import { api } from '../../lib/api';
 import { Send, ArrowUp, ArrowDown, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 
@@ -18,29 +18,92 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
   riskGuard,
   onSelectSymbol,
 }) => {
-  const [orderType, setOrderType] = useState<OrderType>('BUY');
+  const [orderType, setOrderType] = useState<TradeOrderType>('BUY');
   const [volume, setVolume] = useState<string>('0.10');
+  const [price, setPrice] = useState<string>('');
+  const [stopLimitPrice, setStopLimitPrice] = useState<string>('');
+  const [typeTime, setTypeTime] = useState<'GTC' | 'DAY' | 'SPECIFIED' | 'SPECIFIED_DAY'>('GTC');
+  const [expiration, setExpiration] = useState<string>('');
+  const [typeFilling, setTypeFilling] = useState<'AUTO' | 'FOK' | 'IOC' | 'RETURN' | 'BOC'>('AUTO');
+  const [deviation, setDeviation] = useState<string>('20');
   const [sl, setSl] = useState<string>('');
   const [tp, setTp] = useState<string>('');
+  const [riskPercent, setRiskPercent] = useState<string>('1');
   const [comment, setComment] = useState<string>('COPILOT_DESK');
   const [submitting, setSubmitting] = useState(false);
+  const [sizing, setSizing] = useState(false);
+  const [sizingResult, setSizingResult] = useState<any>(null);
   const [status, setStatus] = useState<{ message: string; error?: boolean } | null>(null);
 
   const activeTick = ticks.find((t) => t.symbol.toLowerCase() === selectedSymbol.toLowerCase());
   const symbolSpec = allSymbols.find((s) => s.symbol.toLowerCase() === selectedSymbol.toLowerCase());
 
-  const maxLots = riskGuard?.maxLotSizePerTrade || 2.0;
+  const riskMaxLots = riskGuard?.maxLotSizePerTrade || 2.0;
+  const maxLots = Math.min(riskMaxLots, symbolSpec?.maxLot ?? riskMaxLots);
+  const minLots = symbolSpec?.minLot ?? 0.01;
+  const lotStep = symbolSpec?.lotStep ?? 0.01;
   const isKillSwitch = riskGuard?.emergencyKillSwitch || false;
+  const isBuy = orderType.startsWith('BUY');
+  const isPending = orderType !== 'BUY' && orderType !== 'SELL';
+  const isStopLimit = orderType === 'BUY_STOP_LIMIT' || orderType === 'SELL_STOP_LIMIT';
+  const riskOrderType = isBuy ? 'BUY' : 'SELL';
+  const entryPrice = isPending ? Number(price) : isBuy ? activeTick?.ask : activeTick?.bid;
 
   const lotNumber = parseFloat(volume) || 0;
-  const exceedsRisk = lotNumber > maxLots;
+  const invalidVolume = lotNumber < minLots || lotNumber > maxLots || Math.abs(lotNumber / lotStep - Math.round(lotNumber / lotStep)) > 1e-7;
+  const exceedsRisk = invalidVolume;
+  const directionAllowed = isBuy
+    ? (symbolSpec?.canOpenBuy ?? symbolSpec?.tradeAllowed ?? true)
+    : (symbolSpec?.canOpenSell ?? symbolSpec?.tradeAllowed ?? true);
 
   const quickLotSizes = ['0.01', '0.05', '0.10', '0.25', '0.50', '1.00'];
+
+  const handleCalculateSize = async () => {
+    const stopLossPrice = Number(sl);
+    if (!Number.isFinite(stopLossPrice) || stopLossPrice <= 0 || !entryPrice) {
+      setSizingResult({ success: false, message: 'Set a stop loss and valid market quote or pending entry price before calculating size.' });
+      return;
+    }
+
+    try {
+      setSizing(true);
+      setSizingResult(null);
+      const result = await api.executeCommand('CALCULATE_POSITION_SIZE', {
+        symbol: selectedSymbol,
+        orderType: riskOrderType,
+        entryPrice,
+        stopLossPrice,
+        riskPercent: Number(riskPercent),
+      });
+      setSizingResult(result);
+      if (result.success && result.feasible && result.volume > 0) setVolume(String(result.volume));
+    } catch (error: any) {
+      setSizingResult({ success: false, message: error?.message || 'Position sizing failed.' });
+    } finally {
+      setSizing(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (exceedsRisk) {
-      setStatus({ message: `Lot size exceeds risk limit (${maxLots} lots)`, error: true });
+      setStatus({ message: `Volume must be ${minLots}-${maxLots} lots in steps of ${lotStep}`, error: true });
+      return;
+    }
+    if (!directionAllowed) {
+      setStatus({ message: `${symbolSpec?.tradeModeName || 'Broker'} settings do not allow opening ${riskOrderType} positions on ${selectedSymbol}.`, error: true });
+      return;
+    }
+    if (isPending && (!Number.isFinite(entryPrice) || (entryPrice ?? 0) <= 0)) {
+      setStatus({ message: 'Pending orders require a valid trigger/entry price.', error: true });
+      return;
+    }
+    if (isStopLimit && (!Number.isFinite(Number(stopLimitPrice)) || Number(stopLimitPrice) <= 0)) {
+      setStatus({ message: 'Stop-limit orders require a valid limit-leg price.', error: true });
+      return;
+    }
+    if (['SPECIFIED', 'SPECIFIED_DAY'].includes(typeTime) && (!expiration || new Date(expiration).getTime() <= Date.now())) {
+      setStatus({ message: 'Set an expiration time in the future.', error: true });
       return;
     }
     if (isKillSwitch) {
@@ -57,6 +120,12 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
         symbol: selectedSymbol,
         orderType,
         volume: lotNumber,
+        price: isPending ? entryPrice : undefined,
+        stopLimitPrice: isStopLimit ? Number(stopLimitPrice) : undefined,
+        typeTime: isPending ? typeTime : undefined,
+        expiration: ['SPECIFIED', 'SPECIFIED_DAY'].includes(typeTime) ? Math.floor(new Date(expiration).getTime() / 1000) : undefined,
+        typeFilling: typeFilling === 'AUTO' ? undefined : typeFilling,
+        deviation: isPending ? undefined : Math.max(0, Number(deviation) || 0),
         sl: sl ? parseFloat(sl) : undefined,
         tp: tp ? parseFloat(tp) : undefined,
         comment,
@@ -118,41 +187,97 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
             </div>
 
             <div>
-              <label className="block text-slate-400 text-[11px] mb-1">Order Direction</label>
-              <div className="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setOrderType('BUY')}
-                  className={`flex items-center justify-center gap-1 py-1 rounded text-xs font-bold transition-all ${
-                    orderType === 'BUY'
-                      ? 'bg-emerald-600 text-white shadow'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <ArrowUp className="h-3 w-3" />
-                  BUY
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOrderType('SELL')}
-                  className={`flex items-center justify-center gap-1 py-1 rounded text-xs font-bold transition-all ${
-                    orderType === 'SELL'
-                      ? 'bg-rose-600 text-white shadow'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <ArrowDown className="h-3 w-3" />
-                  SELL
-                </button>
-              </div>
+              <label className="block text-slate-400 text-[11px] mb-1">Order Type</label>
+              <select
+                value={orderType}
+                onChange={(event) => setOrderType(event.target.value as TradeOrderType)}
+                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-2 font-mono text-white focus:border-cyan-500 focus:outline-none"
+              >
+                <optgroup label="Market">
+                  <option value="BUY" disabled={symbolSpec?.canOpenBuy === false}>Buy Market</option>
+                  <option value="SELL" disabled={symbolSpec?.canOpenSell === false}>Sell Market</option>
+                </optgroup>
+                <optgroup label="Pending Limit">
+                  <option value="BUY_LIMIT" disabled={symbolSpec?.canOpenBuy === false}>Buy Limit</option>
+                  <option value="SELL_LIMIT" disabled={symbolSpec?.canOpenSell === false}>Sell Limit</option>
+                </optgroup>
+                <optgroup label="Pending Stop">
+                  <option value="BUY_STOP" disabled={symbolSpec?.canOpenBuy === false}>Buy Stop</option>
+                  <option value="SELL_STOP" disabled={symbolSpec?.canOpenSell === false}>Sell Stop</option>
+                  <option value="BUY_STOP_LIMIT" disabled={symbolSpec?.canOpenBuy === false}>Buy Stop Limit</option>
+                  <option value="SELL_STOP_LIMIT" disabled={symbolSpec?.canOpenSell === false}>Sell Stop Limit</option>
+                </optgroup>
+              </select>
             </div>
           </div>
+
+          {isPending && (
+            <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-800 bg-slate-950/60 p-2.5">
+              <div>
+                <label className="mb-1 block text-[11px] text-slate-400">{isStopLimit ? 'Stop trigger price' : 'Entry price'}</label>
+                <input
+                  type="number"
+                  step={symbolSpec?.point || 'any'}
+                  value={price}
+                  onChange={(event) => setPrice(event.target.value)}
+                  placeholder={activeTick ? (isBuy ? activeTick.ask : activeTick.bid).toFixed(symbolSpec?.digits ?? 5) : 'Required'}
+                  className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 font-mono text-white focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+              {isStopLimit && (
+                <div>
+                  <label className="mb-1 block text-[11px] text-slate-400">Limit-leg price</label>
+                  <input
+                    type="number"
+                    step={symbolSpec?.point || 'any'}
+                    value={stopLimitPrice}
+                    onChange={(event) => setStopLimitPrice(event.target.value)}
+                    className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 font-mono text-white focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="mb-1 block text-[11px] text-slate-400">Time in force</label>
+                <select value={typeTime} onChange={(event) => setTypeTime(event.target.value as typeof typeTime)} className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 font-mono text-white">
+                  <option value="GTC">Good till cancelled</option>
+                  <option value="DAY">End of day</option>
+                  <option value="SPECIFIED">Specified time</option>
+                  <option value="SPECIFIED_DAY">Specified day</option>
+                </select>
+              </div>
+              {['SPECIFIED', 'SPECIFIED_DAY'].includes(typeTime) && (
+                <div>
+                  <label className="mb-1 block text-[11px] text-slate-400">Expires at</label>
+                  <input type="datetime-local" value={expiration} onChange={(event) => setExpiration(event.target.value)} className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 font-mono text-white" />
+                </div>
+              )}
+              <div className="col-span-2">
+                <label className="mb-1 block text-[11px] text-slate-400">Filling policy</label>
+                <select value={typeFilling} onChange={(event) => setTypeFilling(event.target.value as typeof typeFilling)} className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 font-mono text-white">
+                  <option value="AUTO">Broker default</option>
+                  <option value="RETURN">Return remaining volume</option>
+                  <option value="IOC">Immediate or cancel</option>
+                  <option value="FOK">Fill or kill</option>
+                  <option value="BOC">Book or cancel</option>
+                </select>
+              </div>
+            </div>
+          )}
 
           {symbolSpec && (
             <div className="flex items-center justify-between text-[11px] text-slate-400 bg-slate-950/60 px-2 py-1.5 rounded border border-slate-800">
               <span>Lot: <strong className="text-slate-200">{symbolSpec.minLot}</strong> - <strong className="text-slate-200">{symbolSpec.maxLot}</strong></span>
               <span>Step: <strong className="text-slate-200">{symbolSpec.lotStep}</strong></span>
               <span>Digits: <strong className="text-cyan-300">{symbolSpec.digits}</strong></span>
+            </div>
+          )}
+          {symbolSpec && (symbolSpec.tradeModeName || symbolSpec.tickValueLoss !== undefined || symbolSpec.stopsLevel !== undefined) && (
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 border-b border-slate-800 pb-2 text-[10px] font-mono text-slate-500 sm:grid-cols-3">
+              <span>Mode: <strong className="text-slate-300">{symbolSpec.tradeModeName || 'Unknown'}</strong></span>
+              {symbolSpec.tickValueLoss !== undefined && <span>Tick loss: <strong className="text-slate-300">{symbolSpec.tickValueLoss} {symbolSpec.currencyProfit}</strong></span>}
+              {symbolSpec.stopsLevel !== undefined && <span>Min stop: <strong className="text-slate-300">{symbolSpec.stopsLevel} pts</strong></span>}
+              {symbolSpec.freezeLevel !== undefined && <span>Freeze: <strong className="text-slate-300">{symbolSpec.freezeLevel} pts</strong></span>}
+              {symbolSpec.volumeLimit ? <span>Directional cap: <strong className="text-slate-300">{symbolSpec.volumeLimit}</strong></span> : null}
             </div>
           )}
 
@@ -166,8 +291,8 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
             </div>
             <input
               type="number"
-              step="0.01"
-              min="0.01"
+              step={lotStep}
+              min={minLots}
               max={maxLots}
               value={volume}
               onChange={(e) => setVolume(e.target.value)}
@@ -194,8 +319,44 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
             </div>
           </div>
 
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2 rounded-lg border border-slate-800 bg-slate-950/70 p-2.5">
+            <div>
+              <label className="mb-1 block text-[11px] text-slate-400">Risk budget (% of equity)</label>
+              <input
+                type="number"
+                min="0.01"
+                max="100"
+                step="0.1"
+                value={riskPercent}
+                onChange={(event) => setRiskPercent(event.target.value)}
+                className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 font-mono text-white focus:border-cyan-500 focus:outline-none"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleCalculateSize}
+              disabled={sizing || !sl || !activeTick}
+              className="inline-flex items-center gap-1.5 rounded border border-cyan-800 bg-cyan-950/60 px-3 py-1.5 text-[11px] font-bold text-cyan-200 hover:bg-cyan-900/70 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {sizing ? 'Calculating' : 'Size by risk'}
+            </button>
+            {sizingResult && (
+              <div className={`col-span-2 text-[11px] leading-relaxed ${sizingResult.success ? 'text-slate-300' : 'text-rose-300'}`}>
+                {sizingResult.success ? (
+                  <>
+                    <span className="font-semibold text-cyan-200">{sizingResult.volume} lots</span>
+                    {' · '}estimated stop loss {sizingResult.estimatedLoss?.toFixed(2)} {sizingResult.riskCurrency}
+                    {sizingResult.estimatedMargin != null && <> · margin {sizingResult.estimatedMargin.toFixed(2)} {sizingResult.marginCurrency}</>}
+                    {!sizingResult.feasible && <span className="ml-1 text-amber-300">Review margin/risk limits before trading.</span>}
+                    {sizingResult.message && <div className="text-slate-500">{sizingResult.message}</div>}
+                  </>
+                ) : sizingResult.message}
+              </div>
+            )}
+          </div>
+
           {/* SL & TP */}
-          <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-slate-400 text-[11px] mb-1">Stop Loss (Price)</label>
               <input
@@ -219,6 +380,13 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
               />
             </div>
           </div>
+
+          {!isPending && (
+            <div>
+              <label className="mb-1 block text-[11px] text-slate-400">Maximum deviation (points)</label>
+              <input type="number" min="0" step="1" value={deviation} onChange={(event) => setDeviation(event.target.value)} className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 font-mono text-white focus:border-cyan-500 focus:outline-none" />
+            </div>
+          )}
 
           {/* Comment / AI Tag */}
           <div>
@@ -249,17 +417,17 @@ export const OrderExecutionDock: React.FC<OrderExecutionDockProps> = ({
           {/* Execution Button */}
           <button
             type="submit"
-            disabled={submitting || exceedsRisk || isKillSwitch}
+            disabled={submitting || exceedsRisk || isKillSwitch || !directionAllowed}
             className={`w-full py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2 ${
               isKillSwitch
                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                : orderType === 'BUY'
+                : isBuy
                 ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/30'
                 : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-900/30'
             }`}
           >
             <Send className="h-3.5 w-3.5" />
-            {submitting ? 'Dispatching to Queue...' : `Dispatch ${orderType} ${lotNumber} Lots`}
+            {submitting ? 'Dispatching to Queue...' : `Dispatch ${orderType.replaceAll('_', ' ')} ${lotNumber} Lots`}
           </button>
         </form>
       </div>

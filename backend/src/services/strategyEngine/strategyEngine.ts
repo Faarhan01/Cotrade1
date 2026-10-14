@@ -46,6 +46,14 @@ export interface StrategyDefinition {
   updatedAt: number;
 }
 
+export interface BacktestValuation {
+  point?: number;
+  tickSize?: number;
+  tickValueProfit?: number;
+  tickValueLoss?: number;
+  currency?: string;
+}
+
 export interface Observation {
   id: string;
   title: string;
@@ -72,7 +80,9 @@ export interface SimulatedTrade {
   exitTimeIso: string;
   exitPrice: number;
   profitPoints: number;
-  profitUsd: number;
+  profitAmount: number;
+  profitUsd?: number;
+  profitCurrency: string;
   returnPct: number;
   exitReason: 'TAKE_PROFIT' | 'STOP_LOSS' | 'SIGNAL_REVERSAL' | 'MAX_HOLD_BARS' | 'END_OF_DATA';
   lotSize: number;
@@ -105,6 +115,9 @@ export interface BacktestResult {
   averageWin: number;
   averageLoss: number;
   riskRewardRatio: number;
+  profitCurrency: string;
+  valuationSource: 'BROKER_TICK_VALUE' | 'FIXED_PIP_ESTIMATE';
+  dataSource?: string;
   sharpeRatio?: number;
   trades: SimulatedTrade[];
   equityCurve: { time: number; timeIso: string; equity: number }[];
@@ -119,7 +132,8 @@ export function runStrategyBacktest(
   strategy: StrategyDefinition,
   candles: CandleData[],
   deposit = 10000,
-  pointValue = 0.0001
+  pointValue = 0.0001,
+  valuation?: BacktestValuation
 ): BacktestResult {
   if (!candles || candles.length < 20) {
     throw new Error(`Insufficient historical candles for backtesting (requires at least 20, got ${candles?.length || 0})`);
@@ -134,10 +148,27 @@ export function runStrategyBacktest(
   // Adapt point value for JPY or Crypto / Metals
   const sym = strategy.symbol || 'EURUSD';
   const symUpper = sym.toUpperCase();
-  let effectivePoint = pointValue;
-  if (symUpper.includes('JPY')) effectivePoint = 0.01;
-  else if (symUpper.includes('XAU') || symUpper.includes('GOLD')) effectivePoint = 0.01;
-  else if (symUpper.includes('BTC') || symUpper.includes('ETH')) effectivePoint = 0.1;
+  let effectivePoint = valuation?.point && valuation.point > 0 ? valuation.point : pointValue;
+  if (!valuation?.point) {
+    if (symUpper.includes('JPY')) effectivePoint = 0.01;
+    else if (symUpper.includes('XAU') || symUpper.includes('GOLD')) effectivePoint = 0.01;
+    else if (symUpper.includes('BTC') || symUpper.includes('ETH')) effectivePoint = 0.1;
+  }
+  const hasBrokerValuation = Boolean(
+    valuation && valuation.tickSize && valuation.tickSize > 0
+      && valuation.tickValueProfit && valuation.tickValueProfit > 0
+      && valuation.tickValueLoss && valuation.tickValueLoss > 0
+  );
+  const profitCurrency = hasBrokerValuation ? valuation?.currency || 'N/A' : 'EST';
+  const valuationSource = hasBrokerValuation ? 'BROKER_TICK_VALUE' : 'FIXED_PIP_ESTIMATE';
+  const calculateProfit = (type: 'BUY' | 'SELL', entryPrice: number, exitPrice: number, lots: number, pointDiff: number) => {
+    if (hasBrokerValuation) {
+      const priceMove = type === 'BUY' ? exitPrice - entryPrice : entryPrice - exitPrice;
+      const tickValue = priceMove >= 0 ? valuation!.tickValueProfit! : valuation!.tickValueLoss!;
+      return Math.round((priceMove / valuation!.tickSize! * tickValue * lots) * 100) / 100;
+    }
+    return Math.round((pointDiff * lots * 10) * 100) / 100;
+  };
 
   const trades: SimulatedTrade[] = [];
   const equityCurve: { time: number; timeIso: string; equity: number }[] = [];
@@ -208,10 +239,10 @@ export function runStrategyBacktest(
             : (openTrade.entryPrice - exitPrice) / effectivePoint;
 
         // Approx profit USD based on lot size (e.g. 0.1 lot = $1/point for FX)
-        const profitUsd = Math.round(pointDiff * lotSize * 10 * 100) / 100;
-        const returnPct = Math.round((profitUsd / currentEquity) * 10000) / 100;
+        const profitAmount = calculateProfit(openTrade.type, openTrade.entryPrice, exitPrice, lotSize, pointDiff);
+        const returnPct = Math.round((profitAmount / currentEquity) * 10000) / 100;
 
-        currentEquity += profitUsd;
+        currentEquity += profitAmount;
         if (currentEquity > peakEquity) peakEquity = currentEquity;
         const ddUsd = peakEquity - currentEquity;
         const ddPct = (ddUsd / peakEquity) * 100;
@@ -230,7 +261,9 @@ export function runStrategyBacktest(
           exitTimeIso: currentBar.timeIso || new Date(currentBar.time * 1000).toISOString(),
           exitPrice: Number(exitPrice.toFixed(5)),
           profitPoints: Math.round(pointDiff),
-          profitUsd,
+          profitAmount,
+          profitUsd: profitCurrency === 'USD' ? profitAmount : undefined,
+          profitCurrency,
           returnPct,
           exitReason,
           lotSize,
@@ -340,9 +373,9 @@ export function runStrategyBacktest(
         ? (lastBar.close - openTrade.entryPrice) / effectivePoint
         : (openTrade.entryPrice - lastBar.close) / effectivePoint;
 
-    const profitUsd = Math.round(pointDiff * lotSize * 10 * 100) / 100;
-    const returnPct = Math.round((profitUsd / currentEquity) * 10000) / 100;
-    currentEquity += profitUsd;
+    const profitAmount = calculateProfit(openTrade.type, openTrade.entryPrice, lastBar.close, lotSize, pointDiff);
+    const returnPct = Math.round((profitAmount / currentEquity) * 10000) / 100;
+    currentEquity += profitAmount;
 
      trades.push({
        id: `sim-trd-${trades.length + 1}`,
@@ -356,7 +389,9 @@ export function runStrategyBacktest(
        exitTimeIso: lastBar.timeIso || new Date(lastBar.time * 1000).toISOString(),
        exitPrice: Number(lastBar.close.toFixed(5)),
        profitPoints: Math.round(pointDiff),
-       profitUsd,
+      profitAmount,
+      profitUsd: profitCurrency === 'USD' ? profitAmount : undefined,
+      profitCurrency,
        returnPct,
        exitReason: 'END_OF_DATA',
        lotSize,
@@ -366,13 +401,13 @@ export function runStrategyBacktest(
   }
 
   // Calculate Summary Statistics
-  const winningTrades = trades.filter((t) => t.profitUsd > 0);
-  const losingTrades = trades.filter((t) => t.profitUsd < 0);
+  const winningTrades = trades.filter((t) => t.profitAmount > 0);
+  const losingTrades = trades.filter((t) => t.profitAmount < 0);
   const totalTrades = trades.length;
   const winRatePct = totalTrades > 0 ? Math.round((winningTrades.length / totalTrades) * 1000) / 10 : 0;
 
-  const grossProfit = winningTrades.reduce((acc, t) => acc + t.profitUsd, 0);
-  const grossLoss = Math.abs(losingTrades.reduce((acc, t) => acc + t.profitUsd, 0));
+  const grossProfit = winningTrades.reduce((acc, t) => acc + t.profitAmount, 0);
+  const grossLoss = Math.abs(losingTrades.reduce((acc, t) => acc + t.profitAmount, 0));
   const profitFactor = grossLoss > 0 ? Math.round((grossProfit / grossLoss) * 100) / 100 : grossProfit > 0 ? 999 : 0;
   const netProfit = Math.round((currentEquity - deposit) * 100) / 100;
 
@@ -409,10 +444,12 @@ export function runStrategyBacktest(
      averageWin,
      averageLoss,
      riskRewardRatio,
+    profitCurrency,
+    valuationSource,
      sharpeRatio:
        trades.length >= 3
          ? (() => {
-             const returns = trades.map((t) => t.profitUsd);
+             const returns = trades.map((t) => t.profitAmount);
              const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
              const variance =
                returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / (returns.length - 1);

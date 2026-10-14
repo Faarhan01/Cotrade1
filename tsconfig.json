@@ -25,7 +25,9 @@
       "@routes/*": ["./backend/src/routes/*"],
       "@middleware/*": ["./backend/src/middleware/*"],
       "@integrations/*": ["./backend/src/integrations/*"],
-      "@gateway/*": ["./backend/src/gateway/*"]
+      "@gateway/*": ["./backend/src/gateway/*"],
+      "@commands": ["./backend/src/commands/index.ts"],
+      "@commands/*": ["./backend/src/commands/*"]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true

@@ -1,9 +1,9 @@
 import { IMT5Connector } from './mt5Provider.ts';
 import { PeronMT5Connector } from './PeronMT5Connector.ts';
 import { tradeStore } from '@services/tradeStore';
-import { broadcast } from '@services/websocket';
 import { defaultMT5Config, MT5ProviderType } from '@core/config';
 import { logger } from '@core/utils';
+import { ingestPackageSnapshot } from '../dataflow/mt5Dataflow.ts';
 
 class ConnectorManager {
   private activeConnector: IMT5Connector;
@@ -18,14 +18,7 @@ class ConnectorManager {
   private setupActiveConnector() {
     if (this.activeConnector instanceof PeronMT5Connector) {
       this.activeConnector.setOnSyncCallback((data) => {
-        // Feed real-time synced data from Peron package directly into tradeStore
-        tradeStore.handleDirectSync({
-          account: data.account,
-          positions: data.positions,
-          pendingOrders: data.pendingOrders,
-          ticks: data.ticks,
-          symbols: data.symbols,
-        });
+        ingestPackageSnapshot(data);
 
         // Check for risk guard or trailing stop commands that need execution
         const pendingRiskCommands = tradeStore.getState().commandQueue.filter(
@@ -50,33 +43,6 @@ class ConnectorManager {
           }
         }
 
-        // Broadcast to frontend terminal clients
-        const syncPayload = {
-          account: data.account,
-          positions: data.positions,
-          pendingOrders: data.pendingOrders,
-          ticks: data.ticks,
-          allSymbols: data.symbols,
-          currentChart: tradeStore.getCurrentChart(),
-          chartHistory: tradeStore.getChartHistory(),
-          tickHistory: tradeStore.getTickHistory(),
-          connection: tradeStore.getState().connection,
-          terminalConnected: true,
-          isEaConnected: true,
-          provider: this.activeConnector.name,
-          lastSync: Date.now(),
-          lastEaSync: Date.now(),
-        };
-
-        broadcast({
-          type: 'mt5:sync',
-          payload: syncPayload,
-        });
-
-        broadcast({
-          type: 'ea:sync',
-          payload: syncPayload,
-        });
       });
     }
   }

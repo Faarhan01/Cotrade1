@@ -23,6 +23,7 @@ import {
   dbGetAnalytics,
   dbInsertAccountSnapshot,
   dbInsertCandles,
+  dbInsertSyntheticCandles,
   dbInsertTicks,
   dbGetCandles,
   dbGetTicksHistory,
@@ -83,6 +84,8 @@ class TradeStore {
 
   private eaConnected: boolean = false;
   private lastEaSync: number = 0;
+  private directConnected: boolean = false;
+  private lastDirectSync: number = 0;
   private eaVersion: string = '2.10';
   private mt5ServerTime: number = 0;
   private terminalName: string = '';
@@ -97,6 +100,7 @@ class TradeStore {
 
   // Track tick movement history for charts (populated by live MT5 tick updates)
   private tickHistory: Map<string, { time: number; bid: number; ask: number }[]> = new Map();
+  private lastTickIdentity: Map<string, string> = new Map();
 
   constructor() {
     // Initialize SQLite Database asynchronously
@@ -109,7 +113,9 @@ class TradeStore {
   public async handleEASync(payload: EASyncPayload): Promise<TradeCommand[]> {
     const wasConnected = this.eaConnected && Date.now() - this.lastEaSync < 5000;
     this.eaConnected = true;
+    this.directConnected = false;
     this.lastEaSync = Date.now();
+    this.lastDirectSync = 0;
     this.eaVersion = payload.eaVersion || this.eaVersion;
     this.mt5ServerTime = payload.mt5Time || Math.floor(Date.now() / 1000);
 
@@ -202,14 +208,7 @@ class TradeStore {
         };
         this.ticks.set(tick.symbol, updated);
 
-        // Update history
-        let hist = this.tickHistory.get(tick.symbol);
-        if (!hist) {
-          hist = [];
-          this.tickHistory.set(tick.symbol, hist);
-        }
-        hist.push({ time: Date.now(), bid: tick.bid, ask: tick.ask });
-        if (hist.length > 100) hist.shift();
+        this.appendTickHistory(tick);
       }
     }
 
@@ -237,13 +236,7 @@ class TradeStore {
     };
     this.ticks.set(tick.symbol, updated);
 
-    let hist = this.tickHistory.get(tick.symbol);
-    if (!hist) {
-      hist = [];
-      this.tickHistory.set(tick.symbol, hist);
-    }
-    hist.push({ time: Date.now(), bid: tick.bid, ask: tick.ask });
-    if (hist.length > 100) hist.shift();
+    this.appendTickHistory(tick);
 
     // Recalculate floating profit on open positions for this symbol
     for (const [ticket, pos] of this.positions.entries()) {
@@ -282,6 +275,11 @@ class TradeStore {
     orderType?: TradeCommand['orderType'];
     volume?: number;
     price?: number;
+    stopLimitPrice?: number;
+    typeTime?: TradeCommand['typeTime'];
+    expiration?: number;
+    typeFilling?: TradeCommand['typeFilling'];
+    deviation?: number;
     sl?: number;
     tp?: number;
     ticket?: number;
@@ -329,6 +327,11 @@ class TradeStore {
       orderType: params.orderType,
       volume: params.volume,
       price: params.price,
+      stopLimitPrice: params.stopLimitPrice,
+      typeTime: params.typeTime,
+      expiration: params.expiration,
+      typeFilling: params.typeFilling,
+      deviation: params.deviation,
       sl: params.sl,
       tp: params.tp,
       ticket: params.ticket,
@@ -582,11 +585,15 @@ class TradeStore {
     this.pruneStaleOrders();
     // Check if EA timed out (no sync in 5 seconds)
     const isEaActive = this.eaConnected && Date.now() - this.lastEaSync < 5000;
+    const isDirectActive = this.directConnected && Date.now() - this.lastDirectSync < 5000;
 
     return {
       connection: {
         isEaConnected: isEaActive,
+        isDirectConnected: isDirectActive,
+        terminalConnected: isEaActive || isDirectActive,
         lastEaSync: this.lastEaSync,
+        lastDirectSync: this.lastDirectSync,
         eaVersion: this.eaVersion,
         bridgeEndpoint: 'http://127.0.0.1:7777',
         fallbackEndpoint: 'http://127.0.0.1:3000/api/mt5',
@@ -654,6 +661,21 @@ class TradeStore {
     return this.account;
   }
 
+  private appendTickHistory(tick: TickData) {
+    const timeMsc = tick.timeMsc ?? tick.time_msc ?? tick.time * 1000;
+    const identity = [timeMsc, tick.bid, tick.ask, tick.last, tick.volume, tick.flags ?? 0].join(':');
+    if (this.lastTickIdentity.get(tick.symbol) === identity) return;
+    this.lastTickIdentity.set(tick.symbol, identity);
+
+    let history = this.tickHistory.get(tick.symbol);
+    if (!history) {
+      history = [];
+      this.tickHistory.set(tick.symbol, history);
+    }
+    history.push({ time: Date.now(), bid: tick.bid, ask: tick.ask });
+    if (history.length > 100) history.shift();
+  }
+
   public getRiskGuard() {
     return this.riskGuard;
   }
@@ -671,15 +693,15 @@ class TradeStore {
 
   // Direct sync feeder used by Peron Python connector and real-time feeds
   public handleDirectSync(data: {
-    account: AccountInfo;
+    account: AccountInfo | null;
     positions: Position[];
     pendingOrders: PendingOrder[];
     ticks: TickData[];
     symbols: DetailedSymbolInfo[];
   }) {
     const isRealAccountConnected = Boolean(data.account && data.account.login > 0);
-    this.eaConnected = isRealAccountConnected;
-    this.lastEaSync = Date.now();
+    this.directConnected = isRealAccountConnected;
+    this.lastDirectSync = isRealAccountConnected ? Date.now() : 0;
     this.terminalName = isRealAccountConnected ? 'Peron MT5 Engine' : '';
     this.terminalCompany = isRealAccountConnected ? 'MetaTrader 5 Python Bridge' : '';
 
@@ -694,18 +716,18 @@ class TradeStore {
     } else {
       this.account = {
         login: 0,
-        tradeMode: 'PENDING_MT5',
+        tradeMode: 'DISCONNECTED',
         balance: 0,
         equity: 0,
         margin: 0,
         freeMargin: 0,
         marginLevel: 0,
         leverage: 0,
-        currency: 'USD',
+        currency: '',
         server: 'Awaiting MetaTrader 5 Terminal',
-        company: 'MetaQuotes Ltd.',
+        company: 'MetaTrader 5',
         profit: 0,
-        lastUpdate: Date.now(),
+        lastUpdate: 0,
       };
     }
 
@@ -753,6 +775,7 @@ class TradeStore {
 
     if (Array.isArray(data.ticks) && data.ticks.length > 0 && isRealAccountConnected) {
       dbInsertTicks(data.ticks).catch((e) => console.error('DB insert ticks error:', e));
+      pruneDatabase().catch((e) => console.error('DB prune error:', e));
       for (const tick of data.ticks) {
         const existing = this.ticks.get(tick.symbol);
         const updated: TickData = {
@@ -762,18 +785,12 @@ class TradeStore {
         };
         this.ticks.set(tick.symbol, updated);
 
-        // Update tick history for charts
-        let hist = this.tickHistory.get(tick.symbol);
-        if (!hist) {
-          hist = [];
-          this.tickHistory.set(tick.symbol, hist);
-        }
-        hist.push({ time: Date.now(), bid: tick.bid, ask: tick.ask });
-        if (hist.length > 100) hist.shift();
+        this.appendTickHistory(tick);
       }
     } else if (!isRealAccountConnected) {
       this.ticks.clear();
       this.tickHistory.clear();
+      this.lastTickIdentity.clear();
     }
 
     if (isRealAccountConnected) {
@@ -812,7 +829,7 @@ class TradeStore {
     }
 
     this.chartHistory = generated;
-    await dbInsertCandles(sym, tf, generated);
+    await dbInsertSyntheticCandles(sym, tf, generated);
     this.indicators = calculateIndicators(this.chartHistory, sym, tf);
     this.addLog('info', `Seeded ${count} test candles`, `${sym} [${tf}] starting @ ${basePrice}`, 'TEST_SIMULATOR');
     return {

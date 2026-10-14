@@ -1,8 +1,8 @@
+import 'dotenv/config';
 import express from 'express';
 import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { setupWebSocketServer } from './backend/src/services/websocketServer/websocketServer.ts';
 import { mt5Router } from './backend/src/routes/mt5Routes.ts';
@@ -12,13 +12,12 @@ import { connectorManager } from './backend/src/gateway/index.ts';
 import { logger } from './backend/src/core/utils/logger.ts';
 import { Database } from './backend/src/core/database/database.ts';
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const isProd = process.env.NODE_ENV === 'production';
 const PORT = 3000;
 const MT5_PORT = 7777;
+const HOST = process.env.HOST || '127.0.0.1';
 
 async function startServer() {
   const app = express();
@@ -82,7 +81,7 @@ async function startServer() {
   }
 
   // Start Main Server on Port 3000
-  server.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, HOST, () => {
     logger.info('Server', `Web UI & Peron MT5 Terminal running at http://localhost:${PORT}`);
   });
 
@@ -96,8 +95,8 @@ async function startServer() {
     mt5App.use('/api', apiRouter);
 
     const mt5Server = http.createServer(mt5App);
-    mt5Server.listen(MT5_PORT, '0.0.0.0', () => {
-      logger.info('Server', `Dedicated MT5 Bridge port listening at http://127.0.0.1:${MT5_PORT}`);
+    mt5Server.listen(MT5_PORT, HOST, () => {
+      logger.info('Server', `Dedicated MT5 Bridge port listening at http://${HOST}:${MT5_PORT}`);
     });
     mt5Server.on('error', (err: any) => {
       logger.warn('Server', `Port ${MT5_PORT} notice: ${err.message}. Port ${PORT} remains active.`);

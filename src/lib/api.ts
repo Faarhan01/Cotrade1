@@ -11,6 +11,19 @@ import {
 export * from './api/index';
 
 export const api = {
+  async executeCommand(action: string, params: Record<string, unknown> = {}): Promise<Record<string, any>> {
+    const res = await fetch('/api/commands', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...params }),
+    });
+    const result = await res.json();
+    if (!res.ok && result?.success === undefined) {
+      throw new Error(result?.message || `Command ${action} failed`);
+    }
+    return result;
+  },
+
   async getState(): Promise<AppState> {
     const res = await fetch('/api/state');
     if (!res.ok) throw new Error('Failed to fetch state');
@@ -23,6 +36,11 @@ export const api = {
     orderType?: TradeCommand['orderType'];
     volume?: number;
     price?: number;
+    stopLimitPrice?: number;
+    typeTime?: TradeCommand['typeTime'];
+    expiration?: number;
+    typeFilling?: TradeCommand['typeFilling'];
+    deviation?: number;
     sl?: number;
     tp?: number;
     ticket?: number;
@@ -36,6 +54,11 @@ export const api = {
       orderType: command.orderType || 'BUY',
       volume: command.volume || 0.1,
       price: command.price,
+      stopLimitPrice: command.stopLimitPrice,
+      typeTime: command.typeTime,
+      expiration: command.expiration,
+      typeFilling: command.typeFilling,
+      deviation: command.deviation,
       sl: command.sl,
       tp: command.tp,
       ticket: command.ticket,
@@ -56,6 +79,12 @@ export const api = {
 
   async getMcpTools(): Promise<{ tools: MCPToolDefinition[] }> {
     return mcpApi.getTools();
+  },
+
+  async getCommands(): Promise<{ commands: Array<{ name: string; category: string; description: string; inputSchema: any }> }> {
+    const res = await fetch('/api/commands');
+    if (!res.ok) throw new Error('Failed to load registered commands');
+    return res.json();
   },
 
   async executeMcpTool(name: string, args: Record<string, any>): Promise<any> {
@@ -144,11 +173,12 @@ export const api = {
     return { success: res.success };
   },
 
-  async runBacktest(strategyId: string, options?: { candleLimit?: number; initialDeposit?: number }): Promise<{ success: boolean; result: any }> {
+  async runBacktest(strategyId: string, options?: { candleLimit?: number; initialDeposit?: number; includeSynthetic?: boolean }): Promise<{ success: boolean; result: any }> {
     return strategyApi.runBacktest({
       strategy: { id: strategyId },
       candleCount: options?.candleLimit,
       initialDeposit: options?.initialDeposit,
+      includeSynthetic: options?.includeSynthetic,
     });
   },
 

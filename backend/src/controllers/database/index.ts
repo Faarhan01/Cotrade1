@@ -1,1 +1,1 @@
-export * from './databaseController';
+export * from '@/features/database/databaseController.ts';
